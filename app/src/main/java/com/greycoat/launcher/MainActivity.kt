@@ -3,6 +3,7 @@ package com.greycoat.launcher
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.role.RoleManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -18,6 +19,7 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.media.AudioManager
+import android.media.AudioPlaybackConfiguration
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
@@ -27,6 +29,8 @@ import android.net.Network
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
@@ -94,6 +98,7 @@ class MainActivity : Activity(), LocationListener {
     private var locationManager: LocationManager? = null
     private var connectivityManager: ConnectivityManager? = null
     private var cachedAppsJson: String? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     private val mediaReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -102,17 +107,22 @@ class MainActivity : Activity(), LocationListener {
                 val track = intent.getStringExtra("track")
                     ?: intent.getStringExtra("title")
                     ?: intent.getStringExtra("EXTRA_TRACK")
-                    ?: return
+                    ?: intent.getStringExtra("music_title")
                 val artist = intent.getStringExtra("artist")
                     ?: intent.getStringExtra("album")
-                    ?: "Musik Headunit"
+                    ?: intent.getStringExtra("music_artist")
+                    ?: ""
                 val playing = if (intent.hasExtra("playing")) {
                     intent.getBooleanExtra("playing", true)
                 } else {
                     audioManager?.isMusicActive ?: true
                 }
-                val pkg = intent.action ?: "Media"
-                pushMediaToWeb(track, artist, pkg, playing)
+                val pkg = intent.action ?: ""
+                if (!track.isNullOrBlank()) {
+                    pushMediaToWeb(track, artist, pkg, playing)
+                } else {
+                    pushAudioPlayingState(playing)
+                }
             } catch (_: Throwable) {}
         }
     }
@@ -157,6 +167,8 @@ class MainActivity : Activity(), LocationListener {
             settings.mediaPlaybackRequiresUserGesture = false
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
+            // User-Agent standar Chrome agar server peta (Google Maps / OSM) tidak pernah memblokir tile
+            settings.userAgentString = "Mozilla/5.0 (Linux; Android 13; Headunit) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             }
@@ -175,18 +187,44 @@ class MainActivity : Activity(), LocationListener {
             Toast.makeText(this, "WebView error: ${t.message}", Toast.LENGTH_LONG).show()
         }
 
-        // Hubungkan MediaListenerService callback
         MediaListenerService.onMediaChangedCallback = { title, artist, pkg, playing ->
             pushMediaToWeb(title, artist, pkg, playing)
         }
 
         registerMediaBroadcasts()
+        registerAudioPlaybackWatcher()
         registerAutoNetworkSync()
 
         window?.decorView?.post {
             hideSystemUI()
             requestGpsPermissionsSafely()
             MediaListenerService.instance?.pollActiveMediaSessions()
+        }
+    }
+
+    private fun registerAudioPlaybackWatcher() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioManager?.registerAudioPlaybackCallback(object : AudioManager.AudioPlaybackCallback() {
+                    override fun onPlaybackConfigChanged(configs: MutableList<AudioPlaybackConfiguration>?) {
+                        super.onPlaybackConfigChanged(configs)
+                        val active = audioManager?.isMusicActive ?: false
+                        pushAudioPlayingState(active)
+                        mainHandler.postDelayed({
+                            pushAudioPlayingState(audioManager?.isMusicActive ?: false)
+                        }, 400)
+                    }
+                }, mainHandler)
+            }
+        } catch (_: Throwable) {}
+    }
+
+    private fun pushAudioPlayingState(playing: Boolean) {
+        runOnUiThread {
+            webView?.evaluateJavascript(
+                "if(window.onNativeAudioStateChanged) window.onNativeAudioStateChanged($playing);",
+                null
+            )
         }
     }
 
@@ -220,6 +258,9 @@ class MainActivity : Activity(), LocationListener {
                 addAction("com.rdio.android.metachanged")
                 addAction("com.samsung.sec.android.MusicPlayer.metachanged")
                 addAction("com.andrew.apollo.metachanged")
+                addAction("com.maxmpz.audioplayer.TRACK_CHANGED")
+                addAction("com.syu.music.metachanged")
+                addAction("com.syu.bt.metachanged")
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 registerReceiver(mediaReceiver, filter, Context.RECEIVER_EXPORTED)
@@ -248,6 +289,16 @@ class MainActivity : Activity(), LocationListener {
         } catch (_: Throwable) {}
     }
 
+    override fun onResume() {
+        super.onResume()
+        hideSystemUI()
+        val playing = audioManager?.isMusicActive ?: false
+        pushAudioPlayingState(playing)
+        runOnUiThread {
+            webView?.evaluateJavascript("if(window.onNativeResumeCheck) window.onNativeResumeCheck();", null)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         try {
@@ -259,6 +310,7 @@ class MainActivity : Activity(), LocationListener {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
             hideSystemUI()
+            pushAudioPlayingState(audioManager?.isMusicActive ?: false)
             MediaListenerService.instance?.pollActiveMediaSessions()
         }
     }
@@ -406,6 +458,49 @@ class MainActivity : Activity(), LocationListener {
     inner class HeadunitBridge(private val context: Context) {
 
         @JavascriptInterface
+        fun isDefaultLauncher(): Boolean {
+            return try {
+                val intent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                }
+                val resolveInfo = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                val currentHomePkg = resolveInfo?.activityInfo?.packageName
+                currentHomePkg == context.packageName
+            } catch (_: Throwable) {
+                false
+            }
+        }
+
+        @JavascriptInterface
+        fun promptSetDefaultLauncher() {
+            runOnUiThread {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val roleManager = getSystemService(RoleManager::class.java)
+                        if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_HOME) && !roleManager.isRoleHeld(RoleManager.ROLE_HOME)) {
+                            val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME)
+                            startActivityForResult(intent, 2002)
+                            return@runOnUiThread
+                        }
+                    }
+                    try {
+                        val homeSettings = Intent(Settings.ACTION_HOME_SETTINGS)
+                        homeSettings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(homeSettings)
+                    } catch (_: Throwable) {
+                        val chooser = Intent(Intent.ACTION_MAIN).apply {
+                            addCategory(Intent.CATEGORY_HOME)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(Intent.createChooser(chooser, "Pilih GREYCOAT sebagai Layar Utama"))
+                    }
+                } catch (_: Throwable) {
+                    Toast.makeText(context, "Buka Setelan -> Aplikasi Default -> Aplikasi Layar Utama", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        @JavascriptInterface
         fun getInstalledAppsJson(forceRefresh: Boolean): String {
             if (!forceRefresh && cachedAppsJson != null) {
                 return cachedAppsJson!!
@@ -460,9 +555,14 @@ class MainActivity : Activity(), LocationListener {
                 am.dispatchMediaKeyEvent(downEvent)
                 am.dispatchMediaKeyEvent(upEvent)
 
-                window?.decorView?.postDelayed({
+                // Periksa status audio 250ms dan 600ms setelah tombol ditekan
+                mainHandler.postDelayed({
+                    pushAudioPlayingState(am.isMusicActive)
                     MediaListenerService.instance?.pollActiveMediaSessions()
-                }, 350)
+                }, 250)
+                mainHandler.postDelayed({
+                    pushAudioPlayingState(am.isMusicActive)
+                }, 600)
             } catch (_: Throwable) {}
         }
 
@@ -472,46 +572,6 @@ class MainActivity : Activity(), LocationListener {
                 audioManager?.isMusicActive ?: false
             } catch (_: Throwable) {
                 false
-            }
-        }
-
-        @JavascriptInterface
-        fun openMusicApp(sourceType: String) {
-            runOnUiThread {
-                try {
-                    val pm = context.packageManager
-                    val candidates = when (sourceType.uppercase()) {
-                        "SPOTIFY" -> listOf("com.spotify.music", "com.google.android.apps.youtube.music")
-                        "RADIO" -> listOf("com.android.fmradio", "com.caf.fmradio", "com.sec.android.app.fm", "com.syu.radio")
-                        "BT" -> listOf("com.syu.bt", "com.android.bluetooth", "com.google.android.bluetooth")
-                        else -> listOf("com.spotify.music", "com.google.android.apps.youtube.music", "com.android.music", "com.sec.android.app.music", "com.miui.player")
-                    }
-                    for (pkg in candidates) {
-                        val launchIntent = pm.getLaunchIntentForPackage(pkg)
-                        if (launchIntent != null) {
-                            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            startActivity(launchIntent)
-                            return@runOnUiThread
-                        }
-                    }
-                    // Fallback ke pemutar musik default Android
-                    val musicIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MUSIC)
-                    musicIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    startActivity(musicIntent)
-                } catch (_: Throwable) {
-                    Toast.makeText(context, "Membuka aplikasi Musik...", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-
-        @JavascriptInterface
-        fun openNotificationListenerSettings() {
-            runOnUiThread {
-                try {
-                    val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    startActivity(intent)
-                } catch (_: Throwable) {}
             }
         }
 
@@ -527,7 +587,6 @@ class MainActivity : Activity(), LocationListener {
                         startActivity(mapIntent)
                         return@runOnUiThread
                     }
-                    // Cari aplikasi Maps/Navigasi yang terinstal di Headunit
                     val navPackages = listOf(
                         "com.google.android.apps.maps",
                         "com.waze",
@@ -547,7 +606,7 @@ class MainActivity : Activity(), LocationListener {
                     fallbackIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     startActivity(fallbackIntent)
                 } catch (_: Throwable) {
-                    Toast.makeText(context, "Tidak menemukan aplikasi Peta/Navigasi di perangkat ini", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Aplikasi Peta belum ditemukan", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -601,7 +660,7 @@ class MainActivity : Activity(), LocationListener {
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         startActivity(intent)
                     } else {
-                        Toast.makeText(context, "Aplikasi $appLabel tidak ditemukan", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Aplikasi $appLabel belum dipilih / tidak ditemukan", Toast.LENGTH_SHORT).show()
                     }
                 } catch (_: Throwable) {
                     Toast.makeText(context, "Gagal membuka $appLabel", Toast.LENGTH_SHORT).show()

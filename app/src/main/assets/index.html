@@ -68,25 +68,28 @@
             cursor: pointer;
         }
         @keyframes eqBar {
-            0%, 100% { height: 5px; }
+            0%, 100% { height: 4px; }
             50% { height: 20px; }
         }
         .eq-active span {
-            animation: eqBar 0.75s ease-in-out infinite;
+            animation: eqBar 0.65s ease-in-out infinite;
         }
         .eq-active span:nth-child(2) { animation-delay: 0.15s; }
         .eq-active span:nth-child(3) { animation-delay: 0.3s; }
         .eq-active span:nth-child(4) { animation-delay: 0.45s; }
 
-        /* Scrollbar halus untuk Grid Aplikasi jika >18 aplikasi terinstal */
-        #apps-grid::-webkit-scrollbar { width: 6px; }
-        #apps-grid::-webkit-scrollbar-track { background: rgba(15, 7, 34, 0.4); border-radius: 6px; }
-        #apps-grid::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.5); border-radius: 6px; }
+        /* Scrollbar halus */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 7, 34, 0.4); border-radius: 6px; }
+        ::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.55); border-radius: 6px; }
 
-        /* Leaflet Dark Customization */
+        /* Leaflet Map Dark Theme Filter agar peta Google Maps terlihat menyatu dengan tema Cyber Purple */
         .leaflet-container {
-            background: #0d061f !important;
+            background: #0f0722 !important;
             font-family: 'Space Grotesk', sans-serif;
+        }
+        .map-dark-tiles .leaflet-tile-pane {
+            filter: invert(92%) hue-rotate(190deg) brightness(95%) contrast(92%) saturate(130%);
         }
         .leaflet-control-attribution { display: none !important; }
 
@@ -108,8 +111,54 @@
         <div id="brightness-overlay" style="pointer-events:none; position:absolute; inset:0; background:#000; opacity:0; z-index:90; transition:opacity 0.15s;"></div>
 
         <!-- Toast Notifikasi -->
-        <div id="hu-toast" class="hidden" style="position:absolute; top:76px; left:50%; transform:translateX(-50%); z-index:95; background:rgba(18,9,43,0.96); border:1px solid #facc15; padding:10px 20px; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,0.7); display:flex; align-items:center; gap:10px;">
+        <div id="hu-toast" class="hidden" style="position:absolute; top:74px; left:50%; transform:translateX(-50%); z-index:98; background:rgba(18,9,43,0.96); border:1px solid #facc15; padding:10px 22px; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,0.75); display:flex; align-items:center; gap:10px;">
             <span style="color:#facc15; font-weight:800; font-size:13px;" id="hu-toast-text">Notifikasi</span>
+        </div>
+
+        <!-- MODAL 1: POPUP "JADIKAN LAYAR UTAMA" (MUNCUL OTOMATIS JIKA LAUNCHER BELUM DEFAULT) -->
+        <div id="default-launcher-modal" class="hidden" style="position:absolute; inset:0; z-index:96; background:rgba(7,3,18,0.82); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center;">
+            <div class="glass-card" style="width:480px; border-radius:22px; padding:26px; border:1px solid rgba(192,132,252,0.5); text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+                <div style="width:60px; height:60px; border-radius:18px; background:linear-gradient(135deg,#9333ea,#4f46e5); margin:0 auto 14px auto; display:flex; align-items:center; justify-content:center; font-size:28px; box-shadow:0 8px 24px rgba(147,51,234,0.5);">🏠</div>
+                <h3 style="font-size:20px; font-weight:900; color:#fff; margin:0 0 8px 0;">Jadikan GREYCOAT Sebagai Layar Utama?</h3>
+                <p style="font-size:13px; color:rgba(233,213,255,0.85); line-height:1.5; margin:0 0 22px 0;">
+                    Launcher ini belum diatur sebagai <strong>Layar Utama (Default Home)</strong>. Jadikan layar utama agar otomatis terbuka setiap kali headunit menyala atau saat tombol Home ditekan.
+                </p>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="dismissDefaultLauncherModal()" style="flex:1; padding:12px; border-radius:12px; background:rgba(88,28,135,0.45); border:1px solid rgba(168,85,247,0.35); color:#e9d5ff; font-size:13px; font-weight:800;">Nanti Saja</button>
+                    <button onclick="triggerSetDefaultLauncher()" style="flex:1.4; padding:12px; border-radius:12px; background:linear-gradient(90deg,#9333ea,#7c3aed); border:1px solid #c084fc; color:#fff; font-size:13px; font-weight:900; box-shadow:0 6px 20px rgba(147,51,234,0.5);">Jadikan Layar Utama</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL 2: PEMILIH APLIKASI (UNTUK UBAH PINTASAN CEPAT & PILIH MANUAL APLIKASI MUSIK/SPOTIFY) -->
+        <div id="app-picker-modal" class="hidden" style="position:absolute; inset:0; z-index:97; background:rgba(7,3,18,0.85); backdrop-filter:blur(12px); display:flex; align-items:center; justify-content:center; padding:28px;">
+            <div class="glass-card" style="width:920px; height:560px; border-radius:22px; padding:22px; border:1px solid rgba(192,132,252,0.45); display:flex; flex-direction:column; justify-content:space-between;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:1px solid rgba(168,85,247,0.25);">
+                    <div>
+                        <div id="picker-subtitle" style="font-size:11px; font-weight:800; color:#facc15; letter-spacing:0.08em;">KUSTOMISASI LAUNCHER</div>
+                        <h3 id="picker-title" style="font-size:18px; font-weight:900; color:#fff; margin:2px 0 0 0;">Pilih Aplikasi</h3>
+                    </div>
+                    <button onclick="closeAppPickerModal()" style="padding:8px 16px; border-radius:10px; background:rgba(220,38,38,0.25); border:1px solid rgba(248,113,113,0.4); color:#fca5a5; font-size:12px; font-weight:800;">✕ Tutup</button>
+                </div>
+
+                <!-- Pilihan Slot (Khusus saat klik tombol Ubah Pintasan Cepat) -->
+                <div id="shortcut-slot-tabs" class="hidden" style="display:flex; gap:8px; margin-top:12px;">
+                    <button onclick="selectShortcutSlotToEdit(0)" id="slot-tab-0" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:#9333ea; color:#fff; border:1px solid #c084fc;">Slot Pintasan 1</button>
+                    <button onclick="selectShortcutSlotToEdit(1)" id="slot-tab-1" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">Slot Pintasan 2</button>
+                    <button onclick="selectShortcutSlotToEdit(2)" id="slot-tab-2" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">Slot Pintasan 3</button>
+                    <button onclick="selectShortcutSlotToEdit(3)" id="slot-tab-3" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">Slot Pintasan 4</button>
+                </div>
+
+                <!-- Pilihan Tab Sumber Musik (Khusus saat pilih aplikasi untuk tab SPOTIFY / MUSIK / FM / BT) -->
+                <div id="music-source-tabs" class="hidden" style="display:flex; gap:8px; margin-top:12px;">
+                    <button onclick="selectMusicSourceToEdit('SPOTIFY')" id="msrc-tab-SPOTIFY" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:#9333ea; color:#fff; border:1px solid #c084fc;">Tab 1: SPOTIFY</button>
+                    <button onclick="selectMusicSourceToEdit('MUSIK')" id="msrc-tab-MUSIK" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">Tab 2: MUSIK</button>
+                    <button onclick="selectMusicSourceToEdit('FM')" id="msrc-tab-FM" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">Tab 3: RADIO FM</button>
+                    <button onclick="selectMusicSourceToEdit('BT')" id="msrc-tab-BT" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">Tab 4: BT AUDIO</button>
+                </div>
+
+                <div id="picker-apps-grid" style="display:grid; grid-template-columns:repeat(6,1fr); grid-auto-rows:100px; gap:12px; flex:1; margin-top:14px; overflow-y:auto; padding:8px; align-items:center; justify-items:center;"></div>
+            </div>
         </div>
 
         <!-- 1. STATUS BAR ATAS (52px) -->
@@ -142,15 +191,15 @@
             <!-- TAB 1: BERANDA (1280x720 Presisi) -->
             <section id="view-home" class="hu-home-grid">
                 
-                <!-- KOLOM KIRI (4 Kolom): Speedometer GPS Real-Time (Tanpa Tombol Simulasi & Tanpa Tombol Parkir Manual) -->
+                <!-- KOLOM KIRI (4 Kolom): Speedometer GPS Real-Time (Mulai dari 0,0 KM) -->
                 <div class="col-4 glass-card" style="border-radius:16px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; height:100%;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; color:rgba(216,180,254,0.85);">SPEEDOMETER GPS</span>
                         <span id="gps-badge" style="font-size:10px; font-weight:800; padding:3px 10px; border-radius:999px; background:rgba(16,185,129,0.2); color:#6ee7b7; border:1px solid rgba(16,185,129,0.35);">GPS REAL-TIME</span>
                     </div>
 
-                    <!-- Gauge SVG Speedometer Lebih Besar & Jelas -->
-                    <div style="position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; margin:8px 0;">
+                    <!-- Gauge SVG Speedometer -->
+                    <div style="position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; margin:6px 0;">
                         <svg viewBox="0 0 220 135" style="width:265px; height:160px;">
                             <defs>
                                 <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -184,45 +233,46 @@
                         </div>
                     </div>
 
-                    <!-- Kategori Perjalanan (Untuk Pemisahan Laporan di HP) -->
+                    <!-- Kategori Perjalanan -->
                     <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px;">
                         <button onclick="setTripCategory('PRIBADI')" id="cat-pribadi" style="padding:10px; border-radius:12px; font-size:12px; font-weight:800; background:#9333ea; color:#fff; border:none;">MODE PRIBADI</button>
                         <button onclick="setTripCategory('KERJA')" id="cat-kerja" style="padding:10px; border-radius:12px; font-size:12px; font-weight:800; background:rgba(20,9,42,0.6); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">MODE KERJA</button>
                     </div>
 
-                    <!-- Status Auto-Sync Otomatis (Tanpa Tombol Manual) -->
+                    <!-- Total Akumulasi Jarak (Dimulai dari 0,0 KM saat instalasi baru & Auto-Sync ke HP) -->
                     <div style="background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.28); border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between;">
                         <div style="display:flex; align-items:center; gap:8px;">
                             <span id="autosync-dot" style="width:8px; height:8px; border-radius:999px; background:#10b981;"></span>
-                            <span id="autosync-text" style="font-size:11px; font-weight:700; color:#a7f3d0;">Auto-Sync HP Aktif saat Online</span>
+                            <span id="autosync-text" style="font-size:11px; font-weight:700; color:#a7f3d0;">Total Jarak (Auto-Sync HP)</span>
                         </div>
-                        <span id="total-odo-mini" style="font-size:11px; font-weight:800; color:#facc15;">274,9 KM</span>
+                        <span id="total-odo-mini" style="font-size:12px; font-weight:900; color:#facc15;">0,0 KM</span>
                     </div>
                 </div>
 
-                <!-- KOLOM TENGAH (5 Kolom, Tinggi Penuh 552px): FULL TAMPILAN MAPS REAL-TIME TERINTEGRASI HEADUNIT -->
+                <!-- KOLOM TENGAH (5 Kolom, Tinggi Penuh 552px): FULL TAMPILAN MAPS REAL-TIME BEBAS WATERMARK API KEY -->
                 <div class="col-5 glass-card" style="height:552px; border-radius:16px; position:relative; overflow:hidden; display:flex; flex-direction:column; justify-content:space-between;">
                     
-                    <!-- Peta GPS Interaktif Real-Time (Full Area) -->
-                    <div id="live-map" style="position:absolute; inset:0; width:100%; height:100%; z-index:1;"></div>
+                    <!-- Peta GPS Interaktif Real-Time (Google Maps Road Tiles + Jejak Perjalanan) -->
+                    <div id="live-map" class="map-dark-tiles" style="position:absolute; inset:0; width:100%; height:100%; z-index:1;"></div>
 
-                    <!-- Bar Atas Peta: Status Koordinat GPS & Tombol Buka Maps Bawaan Headunit -->
-                    <div style="position:relative; z-index:10; margin:12px; padding:10px 14px; border-radius:14px; background:rgba(15,7,34,0.9); border:1px solid rgba(168,85,247,0.38); display:flex; justify-content:space-between; align-items:center; backdrop-filter:blur(12px);">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <span style="width:32px; height:32px; border-radius:10px; background:rgba(147,51,234,0.35); border:1px solid #a855f7; display:flex; align-items:center; justify-content:center; font-size:16px;">📍</span>
-                            <div>
-                                <div style="font-size:10px; font-weight:800; color:#c084fc; letter-spacing:0.08em;">PETA NAVIGASI GPS LIVE</div>
-                                <div id="map-coord-text" style="font-size:12px; font-weight:800; color:#fff;">Mengunci lokasi GPS Headunit...</div>
+                    <!-- Bar Atas Peta -->
+                    <div style="position:relative; z-index:10; margin:12px; padding:10px 12px; border-radius:14px; background:rgba(15,7,34,0.92); border:1px solid rgba(168,85,247,0.4); display:flex; justify-content:space-between; align-items:center; backdrop-filter:blur(12px);">
+                        <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
+                            <span style="width:30px; height:30px; border-radius:9px; background:rgba(147,51,234,0.35); border:1px solid #a855f7; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;">📍</span>
+                            <div style="overflow:hidden;">
+                                <div style="font-size:9px; font-weight:800; color:#c084fc; letter-spacing:0.06em;">PETA NAVIGASI GPS LIVE</div>
+                                <div id="map-coord-text" style="font-size:11px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Mengunci lokasi GPS...</div>
                             </div>
                         </div>
-                        <div style="display:flex; gap:6px;">
-                            <button onclick="centerMapOnCar()" style="padding:7px 11px; border-radius:10px; background:rgba(88,28,135,0.7); border:1px solid rgba(168,85,247,0.4); color:#fff; font-size:11px; font-weight:800;">🎯 Pusatkan</button>
-                            <button onclick="launchHeadunitMaps('')" style="padding:7px 12px; border-radius:10px; background:#9333ea; border:none; color:#fff; font-size:11px; font-weight:800;">🗺️ Buka Maps Headunit ↗</button>
+                        <div style="display:flex; gap:5px; flex-shrink:0;">
+                            <button onclick="toggleMapTheme()" id="btn-map-theme" style="padding:7px 9px; border-radius:9px; background:rgba(88,28,135,0.7); border:1px solid rgba(168,85,247,0.4); color:#fff; font-size:10px; font-weight:800;">🌙 Gelap</button>
+                            <button onclick="centerMapOnCar()" style="padding:7px 9px; border-radius:9px; background:rgba(88,28,135,0.7); border:1px solid rgba(168,85,247,0.4); color:#fff; font-size:10px; font-weight:800;">🎯 Pusatkan</button>
+                            <button onclick="launchHeadunitMaps('')" style="padding:7px 10px; border-radius:9px; background:#9333ea; border:none; color:#fff; font-size:10px; font-weight:800;">🗺️ Maps ↗</button>
                         </div>
                     </div>
 
-                    <!-- Bar Bawah Peta: Pintasan Tujuan Langsung ke Aplikasi Maps Bawaan Headunit -->
-                    <div style="position:relative; z-index:10; margin:12px; padding:10px; border-radius:14px; background:rgba(15,7,34,0.9); border:1px solid rgba(168,85,247,0.35); display:flex; gap:8px; backdrop-filter:blur(12px);">
+                    <!-- Bar Bawah Peta -->
+                    <div style="position:relative; z-index:10; margin:12px; padding:10px; border-radius:14px; background:rgba(15,7,34,0.92); border:1px solid rgba(168,85,247,0.35); display:flex; gap:8px; backdrop-filter:blur(12px);">
                         <button onclick="launchHeadunitMaps('Rumah')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;">🏠 Rute Rumah</button>
                         <button onclick="launchHeadunitMaps('Kantor')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;">🏢 Rute Kantor</button>
                         <button onclick="launchHeadunitMaps('SPBU Terdekat')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;">⛽ Cari SPBU</button>
@@ -230,46 +280,56 @@
                     </div>
                 </div>
 
-                <!-- KOLOM KANAN (3 Kolom): Media Player Real (272px) + Bar Volume (92px) + Pintasan Cepat (168px) -->
+                <!-- KOLOM KANAN (3 Kolom): Media Player (272px) + Bar Volume (92px) + Pintasan Cepat Icon+Nama (168px) -->
                 <div class="col-3" style="display:flex; flex-direction:column; gap:10px; height:100%;">
-                    <!-- Pemutar Musik Terintegrasi Sistem Musik Headunit -->
+                    
+                    <!-- Pemutar Musik Terintegrasi (Dengan Pemilih Aplikasi Manual untuk Tab SPOTIFY / MUSIK / FM / BT) -->
                     <div class="glass-card" style="height:272px; border-radius:16px; padding:14px; display:flex; flex-direction:column; justify-content:space-between;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span id="media-app-badge" style="font-size:10px; font-weight:800; letter-spacing:0.08em; color:#c084fc;">MUSIK HEADUNIT</span>
-                            <div style="display:flex; gap:4px;">
-                                <button onclick="openNativeMusicApp('SPOTIFY')" style="font-size:9px; font-weight:800; padding:3px 7px; border-radius:6px; background:#9333ea; color:#fff; border:none;">SPOTIFY</button>
-                                <button onclick="openNativeMusicApp('MUSIC')" style="font-size:9px; font-weight:800; padding:3px 7px; border-radius:6px; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">MUSIK</button>
-                                <button onclick="openNativeMusicApp('RADIO')" style="font-size:9px; font-weight:800; padding:3px 7px; border-radius:6px; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">FM</button>
-                                <button onclick="openNativeMusicApp('BT')" style="font-size:9px; font-weight:800; padding:3px 7px; border-radius:6px; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">BT</button>
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:4px;">
+                            <div style="display:flex; gap:4px; flex:1;">
+                                <button onclick="activateMusicSourceTab('SPOTIFY')" id="src-btn-SPOTIFY" style="flex:1; font-size:9px; font-weight:800; padding:4px 6px; border-radius:7px; background:#9333ea; color:#fff; border:1px solid #c084fc;">SPOTIFY</button>
+                                <button onclick="activateMusicSourceTab('MUSIK')" id="src-btn-MUSIK" style="flex:1; font-size:9px; font-weight:800; padding:4px 6px; border-radius:7px; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">MUSIK</button>
+                                <button onclick="activateMusicSourceTab('FM')" id="src-btn-FM" style="font-size:9px; font-weight:800; padding:4px 7px; border-radius:7px; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">FM</button>
+                                <button onclick="activateMusicSourceTab('BT')" id="src-btn-BT" style="font-size:9px; font-weight:800; padding:4px 7px; border-radius:7px; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">BT</button>
                             </div>
+                            <button onclick="openMusicSourcePickerModal()" title="Pilih Aplikasi Musik Manual" style="font-size:10px; font-weight:800; padding:4px 8px; border-radius:7px; background:rgba(250,204,21,0.18); color:#facc15; border:1px solid rgba(250,204,21,0.4);">⚙ Pilih</button>
                         </div>
 
-                        <!-- Info Lagu Real-Time dari Sistem Android (Klik untuk buka aplikasi musik) -->
-                        <div onclick="openNativeMusicApp('MUSIC')" style="display:flex; align-items:center; gap:12px; cursor:pointer; background:rgba(20,9,42,0.45); padding:10px; border-radius:14px; border:1px solid rgba(168,85,247,0.2);">
-                            <div style="width:50px; height:50px; border-radius:12px; background:linear-gradient(135deg,#a855f7,#4338ca); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;">♫</div>
+                        <!-- Kartu Info Aplikasi Musik & Status Audio Aktif (Klik untuk membuka aplikasi musik yang dipilih) -->
+                        <div onclick="openCurrentMusicSourceApp()" style="display:flex; align-items:center; gap:11px; cursor:pointer; background:rgba(20,9,42,0.52); padding:10px; border-radius:14px; border:1px solid rgba(168,85,247,0.24);">
+                            <div id="music-app-icon-box" style="width:48px; height:48px; border-radius:12px; background:linear-gradient(135deg,#a855f7,#4338ca); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; overflow:hidden;">♫</div>
                             <div style="overflow:hidden; flex:1;">
-                                <div id="song-title" style="font-size:13px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Ketuk Play / Buka Aplikasi Musik</div>
-                                <div id="song-artist" style="font-size:11px; color:rgba(216,180,254,0.8); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">Terhubung ke Audio Sistem Headunit</div>
+                                <div id="song-title" style="font-size:13px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Ketuk untuk Buka Musik</div>
+                                <div id="song-artist" style="font-size:11px; color:rgba(216,180,254,0.85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">Siap Memutar Audio</div>
                             </div>
                             <div id="eq-bars" style="display:flex; align-items:flex-end; gap:3px; height:20px;">
-                                <span style="width:3px; background:#c084fc; border-radius:2px; height:8px;"></span>
-                                <span style="width:3px; background:#facc15; border-radius:2px; height:14px;"></span>
                                 <span style="width:3px; background:#c084fc; border-radius:2px; height:6px;"></span>
-                                <span style="width:3px; background:#a855f7; border-radius:2px; height:10px;"></span>
+                                <span style="width:3px; background:#facc15; border-radius:2px; height:6px;"></span>
+                                <span style="width:3px; background:#c084fc; border-radius:2px; height:6px;"></span>
+                                <span style="width:3px; background:#a855f7; border-radius:2px; height:6px;"></span>
                             </div>
                         </div>
 
-                        <!-- Bar Info Sinkronisasi Media -->
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-size:10px; color:rgba(216,180,254,0.7);">Kontrol Media Sistem Aktif</span>
-                            <button onclick="requestMediaAccess()" style="background:none; border:none; color:#facc15; font-size:10px; font-weight:800; text-decoration:underline;">🔗 Izin Baca Judul Lagu</button>
+                        <!-- Bar Status Pemutaran -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:0 2px;">
+                            <span id="playback-status-text" style="font-size:10px; font-weight:700; color:rgba(216,180,254,0.75);">⏸ Audio Dijeda</span>
+                            <button onclick="openCurrentMusicSourceApp()" style="background:none; border:none; color:#c084fc; font-size:10px; font-weight:800;">Buka Aplikasi ↗</button>
                         </div>
 
-                        <!-- Tombol Kontrol Hardware Media Key Android Asli -->
+                        <!-- Tombol Kontrol Media dengan Ikon SVG Play / Pause yang Berubah Otomatis -->
                         <div style="display:flex; justify-content:space-around; align-items:center;">
-                            <button onclick="sendNativeMediaKey('prev')" style="width:42px; height:38px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:16px;">⏮</button>
-                            <button onclick="sendNativeMediaKey('play_pause')" id="btn-play" style="width:48px; height:48px; border-radius:999px; background:#a855f7; color:#fff; border:none; font-size:18px; font-weight:900; box-shadow:0 6px 18px rgba(168,85,247,0.5);">▶/❚❚</button>
-                            <button onclick="sendNativeMediaKey('next')" style="width:42px; height:38px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:16px;">⏭</button>
+                            <button onclick="sendNativeMediaKey('prev')" style="width:44px; height:40px; border-radius:12px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.32); color:#fff; display:flex; align-items:center; justify-content:center;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                            </button>
+                            <button onclick="sendNativeMediaKey('play_pause')" id="btn-play" style="width:52px; height:52px; border-radius:999px; background:linear-gradient(135deg,#a855f7,#7c3aed); color:#fff; border:2px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; box-shadow:0 6px 20px rgba(168,85,247,0.55); transition:all 0.2s;">
+                                <!-- Default SVG Play Icon -->
+                                <svg id="svg-play-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="margin-left:2px;"><path d="M8 5v14l11-7z"/></svg>
+                                <!-- SVG Pause Icon (Hidden when paused) -->
+                                <svg id="svg-pause-icon" class="hidden" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                            </button>
+                            <button onclick="sendNativeMediaKey('next')" style="width:44px; height:40px; border-radius:12px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.32); color:#fff; display:flex; align-items:center; justify-content:center;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                            </button>
                         </div>
                     </div>
 
@@ -287,15 +347,13 @@
                         </div>
                     </div>
 
-                    <!-- Pintasan Cepat 2x2 -->
+                    <!-- Pintasan Cepat: Murni Ikon + Nama Aplikasi & Bisa Diubah -->
                     <div class="glass-card" style="height:168px; border-radius:16px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">
-                        <div style="font-size:10px; font-weight:800; letter-spacing:0.08em; color:rgba(216,180,254,0.85);">PINTASAN CEPAT</div>
-                        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px; flex:1; margin-top:6px;">
-                            <button onclick="switchTab('apps')" style="border-radius:12px; background:rgba(88,28,135,0.45); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:700;">🎛️ Semua Aplikasi</button>
-                            <button onclick="switchTab('service')" style="border-radius:12px; background:rgba(88,28,135,0.45); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:700;">🔧 Pengingat Servis</button>
-                            <button onclick="launchHeadunitMaps('')" style="border-radius:12px; background:rgba(88,28,135,0.45); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:700;">🗺️ Navigasi Penuh</button>
-                            <button onclick="switchTab('settings')" style="border-radius:12px; background:rgba(88,28,135,0.45); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:700;">⚙️ Setelan Launcher</button>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:10px; font-weight:800; letter-spacing:0.08em; color:rgba(216,180,254,0.85);">PINTASAN CEPAT</span>
+                            <button onclick="openShortcutPickerModal(0)" style="font-size:10px; font-weight:800; padding:2px 8px; border-radius:6px; background:rgba(168,85,247,0.22); color:#e9d5ff; border:1px solid rgba(168,85,247,0.4);">✎ Ubah</button>
                         </div>
+                        <div id="quick-shortcuts-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; flex:1; margin-top:8px; align-items:center; justify-items:center;"></div>
                     </div>
                 </div>
             </section>
@@ -318,7 +376,7 @@
                     </div>
                     <div style="display:flex; align-items:center; gap:10px;">
                         <span style="font-size:12px; color:#e9d5ff; font-weight:700;">Odometer Mobil Aktual (KM):</span>
-                        <input id="odo-input" type="number" value="42850" style="width:120px; padding:8px 12px; border-radius:10px; background:#14082e; border:1px solid #a855f7; color:#fff; font-weight:800; font-size:14px;">
+                        <input id="odo-input" type="number" value="0" style="width:120px; padding:8px 12px; border-radius:10px; background:#14082e; border:1px solid #a855f7; color:#fff; font-weight:800; font-size:14px;">
                         <button onclick="updateOdometer()" style="padding:8px 14px; border-radius:10px; background:#a855f7; color:#fff; font-weight:800; font-size:12px; border:none;">Simpan Odometer</button>
                     </div>
                 </div>
@@ -327,20 +385,20 @@
                     <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px;">
                         <div style="font-size:11px; font-weight:800; color:#facc15;">SERVIS BERKALA</div>
                         <div style="font-size:16px; font-weight:800; color:#fff; margin-top:4px;">Ganti Oli Mesin & Filter</div>
-                        <div style="font-size:12px; color:#d8b4fe; margin-top:8px;">Target: <strong>45.000 KM</strong> atau <strong>17 Nov 2026</strong></div>
-                        <div style="font-size:12px; color:#6ee7b7; font-weight:800; margin-top:4px;">Sisa Jarak: <span id="rem-oli">2.150 KM</span></div>
+                        <div style="font-size:12px; color:#d8b4fe; margin-top:8px;">Interval: Setiap <strong>10.000 KM</strong></div>
+                        <div style="font-size:12px; color:#6ee7b7; font-weight:800; margin-top:4px;">Target Berikutnya: <span id="rem-oli">10.000 KM</span></div>
                     </div>
                     <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px;">
                         <div style="font-size:11px; font-weight:800; color:#c084fc;">TRANSMISI & REM</div>
                         <div style="font-size:16px; font-weight:800; color:#fff; margin-top:4px;">Oli Transmisi & Kampas Rem</div>
-                        <div style="font-size:12px; color:#d8b4fe; margin-top:8px;">Target: <strong>50.000 KM</strong> atau <strong>15 Jan 2027</strong></div>
-                        <div style="font-size:12px; color:#e9d5ff; font-weight:800; margin-top:4px;">Sisa Jarak: <span id="rem-trans">7.150 KM</span></div>
+                        <div style="font-size:12px; color:#d8b4fe; margin-top:8px;">Interval: Setiap <strong>20.000 KM</strong></div>
+                        <div style="font-size:12px; color:#e9d5ff; font-weight:800; margin-top:4px;">Target Berikutnya: <span id="rem-trans">20.000 KM</span></div>
                     </div>
                     <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px;">
                         <div style="font-size:11px; font-weight:800; color:#c084fc;">BAN & KAKI-KAKI</div>
                         <div style="font-size:16px; font-weight:800; color:#fff; margin-top:4px;">Spooring, Balancing & Rotasi</div>
-                        <div style="font-size:12px; color:#d8b4fe; margin-top:8px;">Target: <strong>48.000 KM</strong> atau <strong>20 Des 2026</strong></div>
-                        <div style="font-size:12px; color:#e9d5ff; font-weight:800; margin-top:4px;">Sisa Jarak: <span id="rem-ban">5.150 KM</span></div>
+                        <div style="font-size:12px; color:#d8b4fe; margin-top:8px;">Interval: Setiap <strong>15.000 KM</strong></div>
+                        <div style="font-size:12px; color:#e9d5ff; font-weight:800; margin-top:4px;">Target Berikutnya: <span id="rem-ban">15.000 KM</span></div>
                     </div>
                 </div>
 
@@ -349,11 +407,14 @@
                 </div>
             </section>
 
-            <!-- TAB 4: SETELAN LAUNCHER (Murni Pengaturan Aplikasi Launcher) -->
+            <!-- TAB 4: SETELAN LAUNCHER -->
             <section id="view-settings" class="hidden glass-card" style="border-radius:16px; padding:20px; height:100%; display:flex; flex-direction:column; justify-content:space-between;">
-                <div>
-                    <div style="font-size:12px; font-weight:700; color:#c084fc;">KONFIGURASI INTERNAL LAUNCHER (MURNI APLIKASI LAUNCHER)</div>
-                    <h2 style="font-size:20px; font-weight:900; color:#fff; margin:2px 0 0 0;">SETELAN GREYCOAT LAUNCHER</h2>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:12px; font-weight:700; color:#c084fc;">KONFIGURASI INTERNAL LAUNCHER</div>
+                        <h2 style="font-size:20px; font-weight:900; color:#fff; margin:2px 0 0 0;">SETELAN GREYCOAT LAUNCHER</h2>
+                    </div>
+                    <button onclick="triggerSetDefaultLauncher()" style="padding:10px 16px; border-radius:12px; background:linear-gradient(90deg,#9333ea,#4f46e5); color:#fff; font-size:12px; font-weight:800; border:1px solid #c084fc;">🏠 Atur Sebagai Layar Utama (Default Home)</button>
                 </div>
 
                 <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:auto 0;">
@@ -366,25 +427,29 @@
                     </div>
 
                     <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px;">
-                        <div style="font-size:12px; font-weight:800; color:#facc15; margin-bottom:10px;">2. TEMA WARNA LAUNCHER</div>
-                        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px;">
-                            <button onclick="applyTheme('#0d061f','#150932')" style="padding:10px; border-radius:10px; background:#2e1065; color:#fff; font-size:11px; font-weight:800; border:1px solid #a855f7;">Cyber Purple</button>
-                            <button onclick="applyTheme('#11052C','#1F0A4D')" style="padding:10px; border-radius:10px; background:#3b0764; color:#fff; font-size:11px; font-weight:800; border:1px solid #c084fc;">Deep Violet</button>
-                            <button onclick="applyTheme('#090414','#140826')" style="padding:10px; border-radius:10px; background:#1e1b4b; color:#fff; font-size:11px; font-weight:800; border:1px solid #818cf8;">Midnight Indigo</button>
-                            <button onclick="applyTheme('#1a0524','#2d093d')" style="padding:10px; border-radius:10px; background:#4a044e; color:#fff; font-size:11px; font-weight:800; border:1px solid #e879f9;">Neon Magenta</button>
+                        <div style="font-size:12px; font-weight:800; color:#facc15; margin-bottom:10px;">2. TEMA WARNA & PINTASAN</div>
+                        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:8px;">
+                            <button onclick="applyTheme('#0d061f','#150932')" style="padding:8px; border-radius:10px; background:#2e1065; color:#fff; font-size:11px; font-weight:800; border:1px solid #a855f7;">Cyber Purple</button>
+                            <button onclick="applyTheme('#11052C','#1F0A4D')" style="padding:8px; border-radius:10px; background:#3b0764; color:#fff; font-size:11px; font-weight:800; border:1px solid #c084fc;">Deep Violet</button>
+                            <button onclick="applyTheme('#090414','#140826')" style="padding:8px; border-radius:10px; background:#1e1b4b; color:#fff; font-size:11px; font-weight:800; border:1px solid #818cf8;">Midnight Indigo</button>
+                            <button onclick="applyTheme('#1a0524','#2d093d')" style="padding:8px; border-radius:10px; background:#4a044e; color:#fff; font-size:11px; font-weight:800; border:1px solid #e879f9;">Neon Magenta</button>
                         </div>
+                        <button onclick="openMusicSourcePickerModal()" style="width:100%; padding:8px; border-radius:10px; background:rgba(147,51,234,0.4); border:1px solid #a855f7; color:#fff; font-size:11px; font-weight:800;">🎵 Atur Aplikasi Tab Musik & Spotify</button>
                     </div>
 
                     <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px;">
-                        <div style="font-size:12px; font-weight:800; color:#facc15; margin-bottom:10px;">3. KALIBRASI GPS & IZIN</div>
+                        <div style="font-size:12px; font-weight:800; color:#facc15; margin-bottom:10px;">3. KALIBRASI GPS & RESET JARAK</div>
                         <div style="font-size:12px; color:#e9d5ff; margin-bottom:4px;">Kompensasi Kecepatan GPS: <strong id="gps-offset-label">+0 km/j</strong></div>
-                        <input type="range" min="0" max="5" value="0" oninput="document.getElementById('gps-offset-label').innerText='+'+this.value+' km/j'; gpsOffset=parseInt(this.value);" style="width:100%; margin-bottom:10px;">
-                        <button onclick="openAndroidSettings()" style="width:100%; padding:9px; border-radius:10px; background:#4f46e5; color:#fff; font-size:11px; font-weight:800; border:none;">Buka Setelan Android Perangkat</button>
+                        <input type="range" min="0" max="5" value="0" oninput="document.getElementById('gps-offset-label').innerText='+'+this.value+' km/j'; gpsOffset=parseInt(this.value);" style="width:100%; margin-bottom:8px;">
+                        <div style="display:flex; gap:6px;">
+                            <button onclick="resetTripDistance()" style="flex:1; padding:8px; border-radius:10px; background:rgba(220,38,38,0.3); border:1px solid rgba(248,113,113,0.4); color:#fca5a5; font-size:11px; font-weight:800;">Reset 0,0 KM</button>
+                            <button onclick="openAndroidSettings()" style="flex:1; padding:8px; border-radius:10px; background:#4f46e5; color:#fff; font-size:11px; font-weight:800; border:none;">Setelan Android</button>
+                        </div>
                     </div>
                 </div>
 
                 <div style="font-size:12px; color:rgba(216,180,254,0.7);">
-                    GREYCOAT Headunit Launcher v2.0 (Real Native Integration) • Resolusi 1280×720 HD
+                    GREYCOAT Headunit Launcher v2.2 • Resolusi Native 1280×720 HD
                 </div>
             </section>
         </main>
@@ -411,12 +476,46 @@
     window.addEventListener('orientationchange', () => setTimeout(autoScaleHeadunit, 150));
     autoScaleHeadunit();
 
-    // 2. PETA INTERAKTIF GPS REAL-TIME (LEAFLET DARK MODE) + INTEGRASI KE MAPS BAWAAN HEADUNIT
+    // 2. CEK STATUS DEFAULT HOME LAUNCHER & TAMPILKAN POPUP "JADIKAN LAYAR UTAMA"
+    let defaultModalDismissed = false;
+    function checkDefaultLauncherStatus() {
+        if (defaultModalDismissed) return;
+        if (window.AndroidBridge && window.AndroidBridge.isDefaultLauncher) {
+            const isDef = window.AndroidBridge.isDefaultLauncher();
+            const modal = document.getElementById('default-launcher-modal');
+            if (!isDef) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+    }
+    function dismissDefaultLauncherModal() {
+        defaultModalDismissed = true;
+        document.getElementById('default-launcher-modal').classList.add('hidden');
+    }
+    function triggerSetDefaultLauncher() {
+        document.getElementById('default-launcher-modal').classList.add('hidden');
+        if (window.AndroidBridge && window.AndroidBridge.promptSetDefaultLauncher) {
+            window.AndroidBridge.promptSetDefaultLauncher();
+        } else {
+            showToast('Membuka pemilihan Aplikasi Layar Utama (Default Home)...');
+        }
+    }
+    window.onNativeResumeCheck = function() {
+        checkDefaultLauncherStatus();
+        syncAudioStateFromBridge();
+    };
+
+    // 3. PETA INTERAKTIF GPS REAL-TIME (MENGGUNAKAN GOOGLE MAPS TILES BEBAS API KEY + FALLBACK OSM)
     let mapInstance = null;
     let carMarker = null;
+    let routePolyline = null;
+    let routeCoords = [];
     let currentLat = -6.2297;
     let currentLng = 106.8096;
     let hasFirstGpsFix = false;
+    let isDarkMap = true;
 
     function initLiveMap() {
         try {
@@ -424,29 +523,53 @@
             mapInstance = L.map('live-map', {
                 zoomControl: false,
                 attributionControl: false
-            }).setView([currentLat, currentLng], 15);
+            }).setView([currentLat, currentLng], 16);
 
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                maxZoom: 19,
-                subdomains: 'abcd'
+            // Gunakan Google Maps Standard Road Tiles (Bebas API Key Required & Lengkap Seluruh Jalan Indonesia)
+            const googleLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&hl=id&x={x}&y={y}&z={z}', {
+                maxZoom: 20
+            });
+            // Fallback ke OpenStreetMap jika koneksi membatasi domain tertentu
+            googleLayer.on('tileerror', function() {
+                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(mapInstance);
+            });
+            googleLayer.addTo(mapInstance);
+
+            routePolyline = L.polyline([], {
+                color: '#c084fc',
+                weight: 5,
+                opacity: 0.9
             }).addTo(mapInstance);
 
             const carIcon = L.divIcon({
                 className: 'custom-car-marker',
-                html: `<div style="width:26px;height:26px;border-radius:999px;background:#facc15;border:3px solid #fff;box-shadow:0 0 18px #facc15;display:flex;align-items:center;justify-content:center;font-size:12px;color:#000;font-weight:900;">▲</div>`,
-                iconSize: [26, 26],
-                iconAnchor: [13, 13]
+                html: `<div id="car-arrow" style="width:28px;height:28px;border-radius:999px;background:#facc15;border:3px solid #fff;box-shadow:0 0 18px #facc15;display:flex;align-items:center;justify-content:center;font-size:13px;color:#000;font-weight:900;">▲</div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
             });
 
             carMarker = L.marker([currentLat, currentLng], { icon: carIcon }).addTo(mapInstance);
         } catch (e) {
-            console.warn("Map init fallback:", e);
+            console.warn("Map init error:", e);
+        }
+    }
+
+    function toggleMapTheme() {
+        isDarkMap = !isDarkMap;
+        const mapEl = document.getElementById('live-map');
+        const btn = document.getElementById('btn-map-theme');
+        if (isDarkMap) {
+            mapEl.classList.add('map-dark-tiles');
+            btn.innerText = '🌙 Gelap';
+        } else {
+            mapEl.classList.remove('map-dark-tiles');
+            btn.innerText = '☀️ Terang';
         }
     }
 
     function centerMapOnCar() {
         if (mapInstance) {
-            mapInstance.setView([currentLat, currentLng], 16, { animate: true });
+            mapInstance.setView([currentLat, currentLng], 17, { animate: true });
         }
         showToast('🎯 Peta dipusatkan ke posisi GPS saat ini');
     }
@@ -459,7 +582,7 @@
         }
     }
 
-    // 3. GPS REAL-TIME & AUTO-SYNC OTOMATIS KE CLOUD / APLIKASI HP (TANPA TOMBOL SYNC MANUAL)
+    // 4. GPS REAL-TIME & TOTAL JARAK DIMULAI DARI 0,0 KM (BUKAN 274,9 KM)
     let sessionDistKm = 0.0;
     let sessionSeconds = 0;
     let sessionMaxSpeed = 0;
@@ -467,8 +590,26 @@
     let lastLat = null;
     let lastLng = null;
     let tripCategory = localStorage.getItem('gc_trip_cat') || 'PRIBADI';
-    let totalMonthlyKm = parseFloat(localStorage.getItem('gc_monthly_km') || '274.9');
+    // Key baru 'gc_total_km_v6' default 0.0 agar saat baru instal mulai dari 0,0 KM
+    let totalMonthlyKm = parseFloat(localStorage.getItem('gc_total_km_v6') || '0.0');
     let gpsOffset = 0;
+
+    function renderTotalKm() {
+        document.getElementById('total-odo-mini').innerText = totalMonthlyKm.toFixed(1).replace('.', ',') + ' KM';
+    }
+
+    function resetTripDistance() {
+        sessionDistKm = 0.0;
+        sessionSeconds = 0;
+        sessionMaxSpeed = 0;
+        totalMonthlyKm = 0.0;
+        localStorage.setItem('gc_total_km_v6', '0.0');
+        document.getElementById('session-dist').innerText = '0.0 km';
+        document.getElementById('session-time').innerText = '00:00';
+        document.getElementById('session-max').innerText = '0 km/j';
+        renderTotalKm();
+        showToast('🔄 Total Jarak direset kembali ke 0,0 KM');
+    }
 
     function haversineKm(lat1, lon1, lat2, lon2) {
         const R = 6371;
@@ -497,22 +638,30 @@
 
         if (mapInstance && carMarker) {
             carMarker.setLatLng([lat, lng]);
-            if (!hasFirstGpsFix || speedKmh > 2) {
+            const arrowEl = document.getElementById('car-arrow');
+            if (arrowEl && bearing) {
+                arrowEl.style.transform = 'rotate(' + bearing + 'deg)';
+            }
+            if (!hasFirstGpsFix || speedKmh >= 1) {
                 mapInstance.panTo([lat, lng], { animate: true });
                 hasFirstGpsFix = true;
             }
+            if (routePolyline) {
+                routeCoords.push([lat, lng]);
+                if (routeCoords.length > 500) routeCoords.shift();
+                routePolyline.setLatLngs(routeCoords);
+            }
         }
 
-        // Hitung jarak & durasi perjalanan secara otomatis dari pergerakan GPS asli
         const now = Date.now();
         if (lastLat !== null && lastLng !== null) {
             const deltaKm = haversineKm(lastLat, lastLng, lat, lng);
             if (deltaKm > 0.003 && deltaKm < 2.0) {
                 sessionDistKm += deltaKm;
                 totalMonthlyKm += deltaKm;
-                localStorage.setItem('gc_monthly_km', totalMonthlyKm.toFixed(2));
+                localStorage.setItem('gc_total_km_v6', totalMonthlyKm.toFixed(2));
                 document.getElementById('session-dist').innerText = sessionDistKm.toFixed(1) + ' km';
-                document.getElementById('total-odo-mini').innerText = totalMonthlyKm.toFixed(1).replace('.', ',') + ' KM';
+                renderTotalKm();
             }
         }
         if (speedKmh >= 2 && lastGpsTime !== null) {
@@ -528,7 +677,6 @@
         lastLng = lng;
         lastGpsTime = now;
 
-        // Simpan lokasi terakhir & antrekan untuk Auto-Sync otomatis ke HP
         queueAutoSyncPayload();
     };
 
@@ -559,23 +707,19 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: payloadRaw
             });
-            document.getElementById('autosync-text').innerText = 'Tersinkron Otomatis ke HP';
         } catch (_e) {}
     }
 
     window.onNativeNetworkChange = function(isOnline) {
         const dot = document.getElementById('net-dot');
         const syncDot = document.getElementById('autosync-dot');
-        const syncText = document.getElementById('autosync-text');
         if (isOnline) {
             dot.style.background = '#10b981';
             syncDot.style.background = '#10b981';
-            syncText.innerText = 'Internet Aktif • Auto-Sync Berjalan';
             triggerSilentCloudSync();
         } else {
             dot.style.background = '#f59e0b';
             syncDot.style.background = '#f59e0b';
-            syncText.innerText = 'Offline • Data Disimpan & Sync Saat Online';
         }
     };
     setInterval(triggerSilentCloudSync, 30000);
@@ -589,51 +733,299 @@
         queueAutoSyncPayload();
     }
 
-    // 4. INTEGRASI REAL PEMUTAR MUSIK HEADUNIT
+    // 5. KONTROL MUSIK (TOMBOL PLAY/PAUSE DINAMIS SVG + PILIH MANUAL APLIKASI UNTUK TAB SPOTIFY/MUSIK/FM/BT)
+    let isAudioCurrentlyPlaying = false;
+    let activeMusicTab = localStorage.getItem('gc_active_music_tab') || 'SPOTIFY';
+    let customMusicSources = JSON.parse(localStorage.getItem('gc_custom_music_sources_v6') || '{}');
+
+    function setPlayPauseButtonUI(playing) {
+        isAudioCurrentlyPlaying = !!playing;
+        const playSvg = document.getElementById('svg-play-icon');
+        const pauseSvg = document.getElementById('svg-pause-icon');
+        const eq = document.getElementById('eq-bars');
+        const statusTxt = document.getElementById('playback-status-text');
+        const btnPlay = document.getElementById('btn-play');
+
+        if (isAudioCurrentlyPlaying) {
+            playSvg.classList.add('hidden');
+            pauseSvg.classList.remove('hidden');
+            eq.classList.add('eq-active');
+            statusTxt.innerText = '▶ Sedang Memutar Audio';
+            statusTxt.style.color = '#6ee7b7';
+            btnPlay.style.background = 'linear-gradient(135deg,#facc15,#f59e0b)';
+            btnPlay.style.color = '#000';
+        } else {
+            playSvg.classList.remove('hidden');
+            pauseSvg.classList.add('hidden');
+            eq.classList.remove('eq-active');
+            statusTxt.innerText = '⏸ Audio Dijeda';
+            statusTxt.style.color = 'rgba(216,180,254,0.75)';
+            btnPlay.style.background = 'linear-gradient(135deg,#a855f7,#7c3aed)';
+            btnPlay.style.color = '#fff';
+        }
+    }
+
+    function syncAudioStateFromBridge() {
+        if (window.AndroidBridge && window.AndroidBridge.isMusicPlaying) {
+            const playing = window.AndroidBridge.isMusicPlaying();
+            setPlayPauseButtonUI(playing);
+        }
+    }
+    setInterval(syncAudioStateFromBridge, 1500);
+
+    window.onNativeAudioStateChanged = function(playing) {
+        setPlayPauseButtonUI(playing);
+    };
+
+    window.onNativeMediaUpdate = function(title, artist, pkg, playing) {
+        if (title) document.getElementById('song-title').innerText = title;
+        if (artist) document.getElementById('song-artist').innerText = artist;
+        setPlayPauseButtonUI(playing);
+    };
+
     function sendNativeMediaKey(action) {
+        if (action === 'play_pause') {
+            // Toggle visual secara responsif terlebih dahulu lalu disinkronkan oleh callback AudioManager
+            setPlayPauseButtonUI(!isAudioCurrentlyPlaying);
+        }
         if (window.AndroidBridge && window.AndroidBridge.sendMediaControl) {
             window.AndroidBridge.sendMediaControl(action);
         } else {
-            showToast('Perintah Media: ' + action);
+            showToast('Kontrol Media: ' + action);
         }
     }
 
-    function openNativeMusicApp(sourceType) {
-        if (window.AndroidBridge && window.AndroidBridge.openMusicApp) {
-            window.AndroidBridge.openMusicApp(sourceType);
+    function renderMusicSourceCard() {
+        ['SPOTIFY', 'MUSIK', 'FM', 'BT'].forEach(tab => {
+            const btn = document.getElementById('src-btn-' + tab);
+            if (!btn) return;
+            if (tab === activeMusicTab) {
+                btn.style.background = '#9333ea';
+                btn.style.color = '#fff';
+                btn.style.borderColor = '#c084fc';
+            } else {
+                btn.style.background = 'rgba(20,9,42,0.7)';
+                btn.style.color = '#d8b4fe';
+                btn.style.borderColor = 'rgba(168,85,247,0.3)';
+            }
+        });
+
+        const assigned = customMusicSources[activeMusicTab];
+        const iconBox = document.getElementById('music-app-icon-box');
+        const titleEl = document.getElementById('song-title');
+        const artistEl = document.getElementById('song-artist');
+
+        if (assigned && assigned.pkg) {
+            // Cari ikon terbaru dari daftar aplikasi terinstal
+            const foundApp = installedAppsList.find(a => a.pkg === assigned.pkg);
+            const iconSrc = (foundApp && foundApp.icon) ? foundApp.icon : assigned.icon;
+            if (iconSrc && iconSrc.startsWith('data:image')) {
+                iconBox.innerHTML = `<img src="${iconSrc}" style="width:100%;height:100%;object-fit:contain;" />`;
+                iconBox.style.background = 'rgba(255,255,255,0.08)';
+            } else {
+                iconBox.innerHTML = assigned.name.charAt(0).toUpperCase();
+                iconBox.style.background = 'linear-gradient(135deg,#a855f7,#4338ca)';
+            }
+            titleEl.innerText = assigned.name;
+            artistEl.innerText = 'Ketuk untuk membuka ' + assigned.name;
         } else {
-            showToast('Membuka aplikasi ' + sourceType);
+            iconBox.innerHTML = '♫';
+            iconBox.style.background = 'linear-gradient(135deg,#a855f7,#4338ca)';
+            titleEl.innerText = 'Tab ' + activeMusicTab + ' (Belum Dipilih)';
+            artistEl.innerText = 'Ketuk ⚙ Pilih untuk mengatur aplikasi ' + activeMusicTab;
         }
     }
 
-    function requestMediaAccess() {
-        if (window.AndroidBridge && window.AndroidBridge.openNotificationListenerSettings) {
-            window.AndroidBridge.openNotificationListenerSettings();
-        } else {
-            showToast('Aktifkan izin notifikasi untuk GREYCOAT Launcher di pengaturan Android');
+    function activateMusicSourceTab(tab) {
+        if (activeMusicTab === tab && customMusicSources[tab] && customMusicSources[tab].pkg) {
+            openCurrentMusicSourceApp();
+            return;
+        }
+        activeMusicTab = tab;
+        localStorage.setItem('gc_active_music_tab', tab);
+        renderMusicSourceCard();
+        if (!customMusicSources[tab] || !customMusicSources[tab].pkg) {
+            openMusicSourcePickerModal(tab);
         }
     }
 
-    window.onNativeMediaUpdate = function(title, artist, pkg, playing) {
-        document.getElementById('song-title').innerText = title || 'Musik Headunit';
-        document.getElementById('song-artist').innerText = artist || '';
-        const eq = document.getElementById('eq-bars');
-        if (playing) {
-            eq.classList.add('eq-active');
+    function openCurrentMusicSourceApp() {
+        const assigned = customMusicSources[activeMusicTab];
+        if (assigned && assigned.pkg) {
+            openApp(assigned.pkg, assigned.name);
         } else {
-            eq.classList.remove('eq-active');
+            openMusicSourcePickerModal(activeMusicTab);
         }
-        if (pkg) {
-            const p = pkg.toLowerCase();
-            const badge = document.getElementById('media-app-badge');
-            if (p.includes('spotify')) badge.innerText = 'SPOTIFY AKTIF';
-            else if (p.includes('youtube')) badge.innerText = 'YOUTUBE MUSIC';
-            else if (p.includes('radio') || p.includes('fm')) badge.innerText = 'RADIO FM';
-            else badge.innerText = 'MUSIK HEADUNIT';
-        }
-    };
+    }
 
-    // 5. MENU APLIKASI REAL YANG TERINSTAL DI PERANGKAT (DENGAN IKON ASLI)
+    // 6. PINTASAN CEPAT (MURNI IKON + NAMA APLIKASI & BISA DIUBAH SESUKA HATI)
+    let customShortcuts = JSON.parse(localStorage.getItem('gc_custom_shortcuts_v6') || 'null');
+
+    function ensureDefaultShortcuts() {
+        if (Array.isArray(customShortcuts) && customShortcuts.length === 4) return;
+        // Ambil 4 aplikasi pertama yang relevan dari perangkat jika belum diatur
+        const defaults = [];
+        const preferred = ['maps', 'spotify', 'youtube', 'chrome', 'music', 'settings'];
+        for (const kw of preferred) {
+            if (defaults.length >= 4) break;
+            const match = installedAppsList.find(a =>
+                (a.pkg.toLowerCase().includes(kw) || a.name.toLowerCase().includes(kw)) &&
+                !defaults.some(d => d.pkg === a.pkg)
+            );
+            if (match) defaults.push({ name: match.name, pkg: match.pkg, icon: match.icon });
+        }
+        for (const app of installedAppsList) {
+            if (defaults.length >= 4) break;
+            if (!defaults.some(d => d.pkg === app.pkg)) {
+                defaults.push({ name: app.name, pkg: app.pkg, icon: app.icon });
+            }
+        }
+        while (defaults.length < 4) {
+            defaults.push({ name: 'Pilih App', pkg: '', icon: '' });
+        }
+        customShortcuts = defaults;
+        localStorage.setItem('gc_custom_shortcuts_v6', JSON.stringify(customShortcuts));
+    }
+
+    function renderQuickShortcuts() {
+        ensureDefaultShortcuts();
+        const grid = document.getElementById('quick-shortcuts-grid');
+        grid.innerHTML = customShortcuts.map((item, idx) => {
+            const liveApp = installedAppsList.find(a => a.pkg === item.pkg);
+            const iconData = (liveApp && liveApp.icon) ? liveApp.icon : item.icon;
+            const label = (liveApp && liveApp.name) ? liveApp.name : (item.name || 'Pilih App');
+            const iconHtml = (iconData && iconData.startsWith('data:image'))
+                ? `<img src="${iconData}" style="width:48px; height:48px; border-radius:13px; object-fit:contain; filter:drop-shadow(0 4px 10px rgba(0,0,0,0.45));" />`
+                : `<div style="width:48px; height:48px; border-radius:13px; background:linear-gradient(135deg,#7c3aed,#4338ca); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:900; color:#fff; border:1px solid rgba(255,255,255,0.2);">${label.charAt(0).toUpperCase()}</div>`;
+            return `
+                <button onclick="handleShortcutClick(${idx})" oncontextmenu="openShortcutPickerModal(${idx}); return false;" style="background:rgba(20,9,42,0.5); border:1px solid rgba(168,85,247,0.24); border-radius:14px; padding:8px 4px; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:#fff; overflow:hidden;">
+                    ${iconHtml}
+                    <span style="font-size:10px; font-weight:700; color:#f3e8ff; width:95%; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${label}</span>
+                </button>
+            `;
+        }).join('');
+    }
+
+    function handleShortcutClick(idx) {
+        const item = customShortcuts[idx];
+        if (!item || !item.pkg) {
+            openShortcutPickerModal(idx);
+            return;
+        }
+        openApp(item.pkg, item.name);
+    }
+
+    // 7. MODAL PEMILIH APLIKASI (UNTUK PINTASAN CEPAT MAUPUN SUMBER MUSIK)
+    let pickerMode = 'SHORTCUT'; // 'SHORTCUT' | 'MUSIC'
+    let editingShortcutSlot = 0;
+    let editingMusicSourceTab = 'SPOTIFY';
+
+    function openShortcutPickerModal(slotIndex) {
+        pickerMode = 'SHORTCUT';
+        editingShortcutSlot = slotIndex || 0;
+        document.getElementById('picker-subtitle').innerText = 'UBAH PINTASAN CEPAT BERANDA';
+        document.getElementById('shortcut-slot-tabs').classList.remove('hidden');
+        document.getElementById('music-source-tabs').classList.add('hidden');
+        document.getElementById('app-picker-modal').classList.remove('hidden');
+        selectShortcutSlotToEdit(editingShortcutSlot);
+    }
+
+    function selectShortcutSlotToEdit(slotIdx) {
+        editingShortcutSlot = slotIdx;
+        document.getElementById('picker-title').innerText = 'Pilih Aplikasi untuk Pintasan Cepat #' + (slotIdx + 1);
+        [0, 1, 2, 3].forEach(i => {
+            const btn = document.getElementById('slot-tab-' + i);
+            if (i === slotIdx) {
+                btn.style.background = '#9333ea';
+                btn.style.color = '#fff';
+                btn.style.borderColor = '#c084fc';
+            } else {
+                btn.style.background = 'rgba(20,9,42,0.7)';
+                btn.style.color = '#d8b4fe';
+                btn.style.borderColor = 'rgba(168,85,247,0.3)';
+            }
+        });
+        renderPickerAppsGrid();
+    }
+
+    function openMusicSourcePickerModal(tabName) {
+        pickerMode = 'MUSIC';
+        editingMusicSourceTab = tabName || activeMusicTab || 'SPOTIFY';
+        document.getElementById('picker-subtitle').innerText = 'ATUR SUMBER APLIKASI PEMUTAR MUSIK';
+        document.getElementById('shortcut-slot-tabs').classList.add('hidden');
+        document.getElementById('music-source-tabs').classList.remove('hidden');
+        document.getElementById('app-picker-modal').classList.remove('hidden');
+        selectMusicSourceToEdit(editingMusicSourceTab);
+    }
+
+    function selectMusicSourceToEdit(tabName) {
+        editingMusicSourceTab = tabName;
+        document.getElementById('picker-title').innerText = 'Pilih Aplikasi untuk Tab [' + tabName + ']';
+        ['SPOTIFY', 'MUSIK', 'FM', 'BT'].forEach(t => {
+            const btn = document.getElementById('msrc-tab-' + t);
+            if (t === tabName) {
+                btn.style.background = '#9333ea';
+                btn.style.color = '#fff';
+                btn.style.borderColor = '#c084fc';
+            } else {
+                btn.style.background = 'rgba(20,9,42,0.7)';
+                btn.style.color = '#d8b4fe';
+                btn.style.borderColor = 'rgba(168,85,247,0.3)';
+            }
+        });
+        renderPickerAppsGrid();
+    }
+
+    function renderPickerAppsGrid() {
+        const grid = document.getElementById('picker-apps-grid');
+        grid.innerHTML = installedAppsList.map((a, idx) => {
+            const iconHtml = a.icon && a.icon.startsWith('data:image')
+                ? `<img src="${a.icon}" style="width:54px; height:54px; border-radius:14px; object-fit:contain;" />`
+                : `<div style="width:54px; height:54px; border-radius:14px; background:linear-gradient(135deg,#7c3aed,#4338ca); display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:900; color:#fff;">${a.name.charAt(0).toUpperCase()}</div>`;
+            return `
+                <button onclick="assignAppFromPicker(${idx})" style="background:rgba(20,9,42,0.55); border:1px solid rgba(168,85,247,0.25); border-radius:14px; padding:8px; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:#fff;">
+                    ${iconHtml}
+                    <span style="font-size:11px; font-weight:700; color:#f3e8ff; max-width:110px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.name}</span>
+                </button>
+            `;
+        }).join('');
+    }
+
+    function assignAppFromPicker(appIndex) {
+        const chosen = installedAppsList[appIndex];
+        if (!chosen) return;
+
+        if (pickerMode === 'SHORTCUT') {
+            ensureDefaultShortcuts();
+            customShortcuts[editingShortcutSlot] = {
+                name: chosen.name,
+                pkg: chosen.pkg,
+                icon: chosen.icon
+            };
+            localStorage.setItem('gc_custom_shortcuts_v6', JSON.stringify(customShortcuts));
+            renderQuickShortcuts();
+            showToast('✅ Pintasan #' + (editingShortcutSlot + 1) + ' diatur ke ' + chosen.name);
+            closeAppPickerModal();
+        } else {
+            customMusicSources[editingMusicSourceTab] = {
+                name: chosen.name,
+                pkg: chosen.pkg,
+                icon: chosen.icon
+            };
+            localStorage.setItem('gc_custom_music_sources_v6', JSON.stringify(customMusicSources));
+            activeMusicTab = editingMusicSourceTab;
+            localStorage.setItem('gc_active_music_tab', activeMusicTab);
+            renderMusicSourceCard();
+            showToast('🎵 Tab ' + editingMusicSourceTab + ' dihubungkan ke ' + chosen.name);
+            closeAppPickerModal();
+        }
+    }
+
+    function closeAppPickerModal() {
+        document.getElementById('app-picker-modal').classList.add('hidden');
+    }
+
+    // 8. DAFTAR APLIKASI REAL YANG TERINSTAL DI PERANGKAT
     const CATEGORIES = [
         { id: 'Semua', icon: '⊞' },
         { id: 'Navigasi', icon: '△' },
@@ -645,14 +1037,38 @@
     let activeCategory = 'Semua';
     let installedAppsList = [];
 
-    // Fallback hanya jika dijalankan di browser PC biasa (di APK akan ditimpa 100% oleh aplikasi asli perangkat)
     const BROWSER_FALLBACK_APPS = [
         { name: 'Google Maps', cat: 'Navigasi', pkg: 'com.google.android.apps.maps', icon: '' },
         { name: 'Spotify', cat: 'Media', pkg: 'com.spotify.music', icon: '' },
         { name: 'YouTube', cat: 'Media', pkg: 'com.google.android.youtube', icon: '' },
         { name: 'Chrome', cat: 'Sistem', pkg: 'com.android.chrome', icon: '' },
+        { name: 'Musik', cat: 'Media', pkg: 'com.android.music', icon: '' },
+        { name: 'Radio FM', cat: 'Media', pkg: 'com.android.fmradio', icon: '' },
         { name: 'Setelan', cat: 'Sistem', pkg: 'com.android.settings', icon: '' }
     ];
+
+    function autoInitDefaultMusicSources() {
+        if (!customMusicSources['SPOTIFY']) {
+            const sp = installedAppsList.find(a => a.pkg.toLowerCase().includes('spotify') || a.name.toLowerCase().includes('spotify'));
+            if (sp) customMusicSources['SPOTIFY'] = { name: sp.name, pkg: sp.pkg, icon: sp.icon };
+        }
+        if (!customMusicSources['MUSIK']) {
+            const mu = installedAppsList.find(a =>
+                (a.pkg.toLowerCase().includes('music') || a.name.toLowerCase().includes('musik') || a.name.toLowerCase().includes('music')) &&
+                !a.pkg.toLowerCase().includes('spotify')
+            );
+            if (mu) customMusicSources['MUSIK'] = { name: mu.name, pkg: mu.pkg, icon: mu.icon };
+        }
+        if (!customMusicSources['FM']) {
+            const fm = installedAppsList.find(a => a.pkg.toLowerCase().includes('radio') || a.pkg.toLowerCase().includes('fm') || a.name.toLowerCase().includes('radio'));
+            if (fm) customMusicSources['FM'] = { name: fm.name, pkg: fm.pkg, icon: fm.icon };
+        }
+        if (!customMusicSources['BT']) {
+            const bt = installedAppsList.find(a => a.pkg.toLowerCase().includes('bt') || a.pkg.toLowerCase().includes('bluetooth') || a.name.toLowerCase().includes('bluetooth'));
+            if (bt) customMusicSources['BT'] = { name: bt.name, pkg: bt.pkg, icon: bt.icon };
+        }
+        localStorage.setItem('gc_custom_music_sources_v6', JSON.stringify(customMusicSources));
+    }
 
     function loadRealInstalledApps(forceRefresh) {
         if (window.AndroidBridge && window.AndroidBridge.getInstalledAppsJson) {
@@ -670,6 +1086,9 @@
             installedAppsList = BROWSER_FALLBACK_APPS;
         }
         document.getElementById('app-count-badge').innerText = installedAppsList.length;
+        autoInitDefaultMusicSources();
+        renderMusicSourceCard();
+        renderQuickShortcuts();
         renderCategories();
         filterApps(activeCategory);
     }
@@ -725,7 +1144,7 @@
         }
     }
 
-    // 6. BRIGHTNESS & VOLUME HEADUNIT
+    // 9. BRIGHTNESS & VOLUME HEADUNIT
     function setBrightness(val) {
         const v = Math.min(100, Math.max(20, parseInt(val)));
         document.getElementById('brightness-slider').value = v;
@@ -763,15 +1182,15 @@
         }
     }
 
-    // 7. SERVIS & SETELAN LAUNCHER
+    // 10. SERVIS & SETELAN LAUNCHER
     function updateOdometer() {
-        const val = parseInt(document.getElementById('odo-input').value) || 42850;
-        document.getElementById('rem-oli').innerText = Math.max(0, 45000 - val).toLocaleString('id-ID') + ' KM';
-        document.getElementById('rem-trans').innerText = Math.max(0, 50000 - val).toLocaleString('id-ID') + ' KM';
-        document.getElementById('rem-ban').innerText = Math.max(0, 48000 - val).toLocaleString('id-ID') + ' KM';
-        localStorage.setItem('gc_odo_km', String(val));
+        const val = parseInt(document.getElementById('odo-input').value) || 0;
+        document.getElementById('rem-oli').innerText = (val + 10000).toLocaleString('id-ID') + ' KM';
+        document.getElementById('rem-trans').innerText = (val + 20000).toLocaleString('id-ID') + ' KM';
+        document.getElementById('rem-ban').innerText = (val + 15000).toLocaleString('id-ID') + ' KM';
+        localStorage.setItem('gc_odo_km_v6', String(val));
         queueAutoSyncPayload();
-        showToast('🔧 Odometer disimpan & otomatis disinkronkan ke HP');
+        showToast('🔧 Odometer disimpan & disinkronkan ke HP');
     }
     function updateVehicleName(name) {
         const clean = name || 'GREYCOAT';
@@ -826,12 +1245,14 @@
     updateClock();
 
     window.addEventListener('DOMContentLoaded', () => {
+        renderTotalKm();
         initLiveMap();
         setTripCategory(tripCategory);
         loadRealInstalledApps(false);
+        checkDefaultLauncherStatus();
+        syncAudioStateFromBridge();
         if (window.AndroidBridge && window.AndroidBridge.getSystemVolume) {
-            const sysVol = window.AndroidBridge.getSystemVolume();
-            setVolume(sysVol);
+            setVolume(window.AndroidBridge.getSystemVolume());
         }
     });
 </script>
