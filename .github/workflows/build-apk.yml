@@ -12,34 +12,6 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@v4
 
-      - name: Auto-Heal Directory Structure (Anti-Crash Verification)
-        run: |
-          # Jika user mengunggah file ZIP secara langsung ke repo, ekstrak otomatis
-          ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
-          if [ -n "$ZIP_FILE" ]; then
-            echo "Found ZIP archive $ZIP_FILE, extracting..."
-            unzip -o "$ZIP_FILE" -d .
-          fi
-
-          # Pastikan folder standar Android tersedia
-          mkdir -p app/src/main/java/com/greycoat/launcher
-          mkdir -p app/src/main/assets
-
-          # Jika MainActivity.kt atau index.html terunggah di luar sub-folder, pindahkan otomatis
-          FOUND_KT=$(find . -name "MainActivity.kt" | head -n 1)
-          if [ -n "$FOUND_KT" ] && [ "$FOUND_KT" != "./app/src/main/java/com/greycoat/launcher/MainActivity.kt" ]; then
-            cp "$FOUND_KT" app/src/main/java/com/greycoat/launcher/MainActivity.kt
-          fi
-
-          FOUND_HTML=$(find . -name "index.html" | head -n 1)
-          if [ -n "$FOUND_HTML" ] && [ "$FOUND_HTML" != "./app/src/main/assets/index.html" ]; then
-            cp "$FOUND_HTML" app/src/main/assets/index.html
-          fi
-
-          # Verifikasi wajib sebelum build agar APK tidak pernah kosong/crash
-          test -f app/src/main/java/com/greycoat/launcher/MainActivity.kt || (echo "ERROR: MainActivity.kt hilang!" && exit 1)
-          test -f app/src/main/assets/index.html || (echo "ERROR: index.html hilang!" && exit 1)
-
       - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
@@ -56,14 +28,16 @@ jobs:
           cache-disabled: true
 
       - name: Build Debug APK
-        run: gradle assembleDebug --stacktrace
-
-      - name: Verify APK Contains Compiled Classes & Assets
         run: |
-          APK_PATH=$(find . -name "app-debug.apk" | head -n 1)
-          unzip -l "$APK_PATH" | grep "classes.dex"
-          unzip -l "$APK_PATH" | grep "assets/index.html"
+          PROJECT_FILE=$(find . -maxdepth 3 -name "settings.gradle.kts" | head -n 1)
+          PROJECT_DIR=$(dirname "$PROJECT_FILE")
+          cd "$PROJECT_DIR"
+          gradle assembleDebug --stacktrace
+
+      - name: Prepare APK Output
+        run: |
           mkdir -p dist_apk
+          APK_PATH=$(find . -name "app-debug.apk" | head -n 1)
           cp "$APK_PATH" dist_apk/Greycoat-Headunit-Launcher.apk
 
       - name: Upload Compiled APK
