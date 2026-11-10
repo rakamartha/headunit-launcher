@@ -10,7 +10,6 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.media.AudioManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -35,7 +34,6 @@ class MainActivity : Activity(), LocationListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Jaga layar headunit tetap menyala selama berkendara
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         hideSystemUI()
 
@@ -50,6 +48,8 @@ class MainActivity : Activity(), LocationListener {
         settings.domStorageEnabled = true
         settings.databaseEnabled = true
         settings.mediaPlaybackRequiresUserGesture = false
+        settings.allowFileAccess = true
+        settings.allowContentAccess = true
 
         webView.webViewClient = WebViewClient()
         webView.webChromeClient = WebChromeClient()
@@ -71,6 +71,13 @@ class MainActivity : Activity(), LocationListener {
         }
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1001 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            startGpsTracking()
+        }
+    }
+
     @SuppressLint("MissingPermission")
     private fun startGpsTracking() {
         try {
@@ -88,6 +95,11 @@ class MainActivity : Activity(), LocationListener {
             webView.evaluateJavascript("if(window.onNativeGpsUpdate) window.onNativeGpsUpdate($speedKmh, $lat, $lng);", null)
         }
     }
+
+    @Deprecated("Deprecated in Java")
+    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+    override fun onProviderEnabled(provider: String) {}
+    override fun onProviderDisabled(provider: String) {}
 
     private fun hideSystemUI() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -118,24 +130,36 @@ class MainActivity : Activity(), LocationListener {
                 lp.screenBrightness = clamped / 100f
                 window.attributes = lp
             }
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.System.canWrite(context)) {
-                val sysVal = ((clamped / 100.0) * 255).toInt()
-                Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, sysVal)
+            try {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.System.canWrite(context)) {
+                    val sysVal = ((clamped / 100.0) * 255).toInt()
+                    Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, sysVal)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
 
         @JavascriptInterface
         fun setSystemVolume(percent: Int) {
-            val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-            val targetVol = ((percent.coerceIn(0, 100) / 100.0) * maxVol).toInt()
-            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVol, 0)
+            try {
+                val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                val targetVol = ((percent.coerceIn(0, 100) / 100.0) * maxVol).toInt()
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVol, 0)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
 
         @JavascriptInterface
         fun getSystemVolume(): Int {
-            val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-            val curVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-            return if (maxVol > 0) ((curVol * 100.0) / maxVol).toInt() else 70
+            return try {
+                val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                val curVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                if (maxVol > 0) ((curVol * 100.0) / maxVol).toInt() else 75
+            } catch (e: Exception) {
+                75
+            }
         }
 
         @JavascriptInterface
@@ -155,7 +179,11 @@ class MainActivity : Activity(), LocationListener {
 
         @JavascriptInterface
         fun openSystemSettings() {
-            startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            try {
+                startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }
