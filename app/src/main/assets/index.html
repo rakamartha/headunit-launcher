@@ -103,6 +103,35 @@
         .col-3 { grid-column: span 3 / span 3; }
         .hidden { display: none !important; }
     </style>
+
+<!-- ======================= CSS KHUSUS MODUL SERVIS 17 KOMPONEN ======================= -->
+<style>
+    .srv-scroll::-webkit-scrollbar { width: 5px; }
+    .srv-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); border-radius: 6px; }
+    .srv-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 6px; }
+
+    .srv-range {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 6px;
+        border-radius: 999px;
+        outline: none;
+        cursor: pointer;
+    }
+    .srv-range::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        background: #ffffff;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.65);
+        cursor: pointer;
+        border: 2px solid #e4e4e7;
+    }
+</style>
+
 </head>
 <body>
 <div id="viewport-scaler">
@@ -367,44 +396,222 @@
                 <div id="apps-grid" style="display:grid; grid-template-columns:repeat(6,1fr); grid-auto-rows:110px; gap:14px; flex:1; margin-top:14px; overflow-y:auto; padding:6px 4px; align-items:center; justify-items:center;"></div>
             </section>
 
-            <!-- TAB 3: PENGINGAT SERVIS & SINKRONISASI ODOMETER -->
-            <section id="view-service" class="hidden glass-card" style="border-radius:16px; padding:20px; height:100%; display:flex; flex-direction:column; justify-content:space-between;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-size:12px; font-weight:700; color:#c084fc;">SINKRONISASI ODOMETER & JADWAL PERAWATAN</div>
-                        <h2 style="font-size:20px; font-weight:900; color:#fff; margin:2px 0 0 0;">PENGINGAT SERVIS (NOTIFIKASI H-7 PUKUL 09:00)</h2>
+                        <!-- TAB 3: PENGINGAT SERVIS 17 KATEGORI + DETAIL & SESUAIKAN UMUR (SESUAI GAMBAR REFERENSI) -->
+            <section id="view-service" class="hidden glass-card" style="border-radius:16px; padding:16px 20px; height:100%; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; position:relative;">
+
+                <!-- TAMPILAN 1: DASHBOARD DAFTAR KATEGORI KOMPONEN (PERLU PERHATIAN / PERIKSA SEGERA / SEHAT) -->
+                <div id="srv-dashboard-view" style="display:flex; flex-direction:column; height:100%; justify-content:space-between;">
+                    <!-- Header Atas Dashboard Servis -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:1px solid rgba(168,85,247,0.22); flex-shrink:0;">
+                        <div>
+                            <div style="font-size:10px; font-weight:800; color:#c084fc; letter-spacing:0.08em;">PEMANTAU KONDISI 17 KOMPONEN KENDARAAN</div>
+                            <h2 style="font-size:18px; font-weight:900; color:#fff; margin:2px 0 0 0;">PENGINGAT SERVIS & UMUR KOMPONEN</h2>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:11px; color:#e9d5ff; font-weight:700;">Odometer Aktual (KM):</span>
+                            <input id="odo-input" type="number" value="0" style="width:110px; padding:6px 10px; border-radius:10px; background:#120726; border:1px solid #a855f7; color:#fff; font-weight:800; font-size:13px;">
+                            <button onclick="updateOdometer()" style="padding:7px 12px; border-radius:10px; background:#9333ea; color:#fff; font-weight:800; font-size:11px; border:none;">Simpan Odo</button>
+                            <button onclick="openAddServiceCompModal()" style="padding:7px 12px; border-radius:10px; background:rgba(59,130,246,0.25); border:1px solid #3b82f6; color:#93c5fd; font-weight:800; font-size:11px;">+ Tambah Komponen</button>
+                        </div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="font-size:12px; color:#e9d5ff; font-weight:700;">Odometer Mobil Aktual (KM):</span>
-                        <input id="odo-input" type="number" value="0" style="width:120px; padding:8px 12px; border-radius:10px; background:#14082e; border:1px solid #a855f7; color:#fff; font-weight:800; font-size:14px;">
-                        <button onclick="updateOdometer()" style="padding:8px 14px; border-radius:10px; background:#a855f7; color:#fff; font-weight:800; font-size:12px; border:none;">Simpan Odometer</button>
+
+                    <!-- Area Scroll Daftar Kategori (Perlu Perhatian, Periksa Segera, Sehat) -->
+                    <div id="srv-categories-scroll" class="srv-scroll" style="flex:1; overflow-y:auto; padding:10px 6px 10px 2px; display:flex; flex-direction:column; gap:18px;">
                     </div>
                 </div>
 
-                <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:auto 0;">
-                    <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px;">
-                        <div style="font-size:11px; font-weight:800; color:#facc15;">SERVIS BERKALA</div>
-                        <div style="font-size:16px; font-weight:800; color:#fff; margin-top:4px;">Ganti Oli Mesin & Filter</div>
-                        <div style="font-size:12px; color:#d8b4fe; margin-top:8px;">Interval: Setiap <strong>10.000 KM</strong></div>
-                        <div style="font-size:12px; color:#6ee7b7; font-weight:800; margin-top:4px;">Target Berikutnya: <span id="rem-oli">10.000 KM</span></div>
+                <!-- TAMPILAN 2: DETAIL KOMPONEN & MENU SESUAIKAN UMUR / EDIT INTERVAL (SAAT SALAH SATU KATEGORI DIPENCET) -->
+                <div id="srv-detail-view" class="hidden" style="display:flex; flex-direction:column; height:100%; overflow:hidden;">
+                    <!-- Top Bar Detail Komponen -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1); flex-shrink:0;">
+                        <div style="display:flex; align-items:center; gap:14px;">
+                            <button onclick="closeServiceCompDetail()" style="width:38px; height:38px; border-radius:12px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#fff; font-size:18px; font-weight:900; display:flex; align-items:center; justify-content:center;">&larr;</button>
+                            <div id="srv-detail-icon" style="width:46px; height:46px; display:flex; align-items:center; justify-content:center;"></div>
+                            <div>
+                                <h2 id="srv-detail-title" style="font-size:20px; font-weight:900; color:#fff; margin:0;">Filter Udara</h2>
+                                <div id="srv-detail-last" style="font-size:12px; color:#a1a1aa; margin-top:2px;">Servis Terakhir: <strong style="color:#fff;">Tidak tersedia</strong></div>
+                            </div>
+                        </div>
+
+                        <!-- Segmented Tab: Saat Ini | Riwayat -->
+                        <div style="display:flex; background:#1c1c1e; padding:4px; border-radius:999px; border:1px solid rgba(255,255,255,0.1); width:260px;">
+                            <button onclick="switchServiceDetailTab('CURRENT')" id="srv-tab-current" style="flex:1; padding:7px 0; border-radius:999px; background:#636366; color:#fff; font-size:12px; font-weight:800; border:none;">Saat Ini</button>
+                            <button onclick="switchServiceDetailTab('HISTORY')" id="srv-tab-history" style="flex:1; padding:7px 0; border-radius:999px; background:transparent; color:#a1a1aa; font-size:12px; font-weight:700; border:none;">Riwayat</button>
+                        </div>
                     </div>
-                    <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px;">
-                        <div style="font-size:11px; font-weight:800; color:#c084fc;">TRANSMISI & REM</div>
-                        <div style="font-size:16px; font-weight:800; color:#fff; margin-top:4px;">Oli Transmisi & Kampas Rem</div>
-                        <div style="font-size:12px; color:#d8b4fe; margin-top:8px;">Interval: Setiap <strong>20.000 KM</strong></div>
-                        <div style="font-size:12px; color:#e9d5ff; font-weight:800; margin-top:4px;">Target Berikutnya: <span id="rem-trans">20.000 KM</span></div>
+
+                    <!-- Isi Konten Detail (Scrollable) -->
+                    <div id="srv-detail-body-current" class="srv-scroll" style="flex:1; overflow-y:auto; padding:12px 4px; display:grid; grid-template-columns:repeat(12, 1fr); gap:14px; align-items:start;">
+                        
+                        <!-- Kolom Kiri (7 Kolom): Kartu Status / Edit Sesuaikan Umur -->
+                        <div style="grid-column: span 7 / span 7; display:flex; flex-direction:column; gap:12px;">
+                            
+                            <!-- MODE LIHAT (SEBELUM TEKAN SESUAIKAN UMUR) -->
+                            <div id="srv-card-view-mode" style="background:#1c1c1e; border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:18px; display:flex; flex-direction:column; gap:14px;">
+                                <!-- Bagian Sisa Penggunaan KM (Muncul jika komponen memiliki interval KM) -->
+                                <div id="srv-view-km-block">
+                                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+                                        <span style="font-size:14px; color:#a1a1aa; font-weight:600;">Sisa Penggunaan: <strong id="srv-view-rem-km" style="color:#fff; font-size:16px; font-weight:800;">45.635 km</strong></span>
+                                        <span id="srv-view-km-pct" style="font-size:14px; color:#a1a1aa; font-weight:700;">91%</span>
+                                    </div>
+                                    <div style="width:100%; height:7px; background:#2c2c2e; border-radius:999px; overflow:hidden;">
+                                        <div id="srv-view-km-bar" style="width:91%; height:100%; background:#22c55e; border-radius:999px; transition:width 0.25s;"></div>
+                                    </div>
+                                    <div style="height:1px; background:rgba(255,255,255,0.08); margin-top:14px;"></div>
+                                </div>
+
+                                <!-- Bagian Terbaik Hingga (Tanggal & Sisa Hari) -->
+                                <div>
+                                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+                                        <span style="font-size:14px; color:#a1a1aa; font-weight:600;">📅 Terbaik Hingga <strong id="srv-view-best-date" style="color:#fff; font-size:15px; font-weight:800;">23 Jun 2027 &bull; 224hr</strong></span>
+                                        <span id="srv-view-time-pct" style="font-size:14px; color:#a1a1aa; font-weight:700;">31%</span>
+                                    </div>
+                                    <div style="width:100%; height:7px; background:#2c2c2e; border-radius:999px; overflow:hidden;">
+                                        <div id="srv-view-time-bar" style="width:31%; height:100%; background:#facc15; border-radius:999px; transition:width 0.25s;"></div>
+                                    </div>
+                                </div>
+
+                                <div style="display:flex; align-items:flex-start; gap:8px; font-size:11px; color:#a1a1aa; line-height:1.4;">
+                                    <span style="background:#a1a1aa; color:#000; border-radius:999px; width:15px; height:15px; display:inline-flex; align-items:center; justify-content:center; font-weight:900; font-size:10px; flex-shrink:0; margin-top:1px;">i</span>
+                                    <span>Kami meninjau metrik terendah di dashboard untuk menentukan kondisi komponen.</span>
+                                </div>
+
+                                <button onclick="openAdjustAgeEditor()" style="width:100%; padding:11px; border-radius:999px; background:#2c2c2e; border:1px solid rgba(255,255,255,0.08); color:#38bdf8; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;">
+                                    <span>Sesuaikan Umur</span>
+                                    <span style="font-size:11px;">&#9662;</span>
+                                </button>
+                            </div>
+
+                            <!-- MODE EDIT: SESUAIKAN UMUR & EDIT INTERVAL (MUNCUL SAAT TOMBOL SESUAIKAN UMUR DITEKAN) -->
+                            <div id="srv-card-edit-mode" class="hidden" style="background:#1c1c1e; border:1px solid rgba(56,189,248,0.4); border-radius:20px; padding:18px; display:flex; flex-direction:column; gap:14px;">
+                                
+                                <!-- Edit Interval Servis (KM) & Slider Sisa KM -->
+                                <div id="srv-edit-km-block" style="display:flex; flex-direction:column; gap:10px; padding-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.08);">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <div>
+                                            <div style="font-size:14px; font-weight:800; color:#fff;">Interval Servis</div>
+                                            <div id="srv-edit-rec-km" style="font-size:11px; color:#a1a1aa;">Direkomendasikan: 50.000 km</div>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <input id="srv-input-interval-km" type="number" step="500" min="1000" oninput="onEditIntervalKmInput(this.value)" style="width:96px; padding:7px 10px; border-radius:10px; background:#09090b; border:1px solid #3f3f46; color:#fff; font-weight:800; font-size:14px; text-align:center;">
+                                            <span style="font-size:13px; color:#a1a1aa; font-weight:700;">km</span>
+                                        </div>
+                                    </div>
+
+                                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                                        <span style="font-size:13px; color:#a1a1aa;">Sisa Penggunaan: <strong id="srv-edit-rem-km-label" style="color:#fff; font-size:15px; font-weight:800;">45.600 km</strong></span>
+                                        <span id="srv-edit-km-pct-label" style="font-size:13px; color:#a1a1aa; font-weight:700;">91%</span>
+                                    </div>
+
+                                    <div style="font-size:11px; color:#a1a1aa;">Sesuaikan sisa penggunaan agar cocok dengan kondisi komponen Anda.</div>
+
+                                    <div style="padding:4px 0;">
+                                        <input id="srv-slider-rem-km" type="range" min="0" max="50000" step="100" oninput="onSlideRemainingKm(this.value)" class="srv-range">
+                                    </div>
+                                </div>
+
+                                <!-- Edit Interval Waktu (Bulan) & Slider Terbaik Hingga (Hari/Tanggal) -->
+                                <div style="display:flex; flex-direction:column; gap:10px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <div>
+                                            <div style="font-size:14px; font-weight:800; color:#fff;">Interval Waktu</div>
+                                            <div id="srv-edit-rec-months" style="font-size:11px; color:#a1a1aa;">Direkomendasikan: 24 bulan</div>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <input id="srv-input-interval-months" type="number" step="1" min="1" max="180" oninput="onEditIntervalMonthsInput(this.value)" style="width:78px; padding:7px 10px; border-radius:10px; background:#09090b; border:1px solid #3f3f46; color:#fff; font-weight:800; font-size:14px; text-align:center;">
+                                            <span style="font-size:13px; color:#a1a1aa; font-weight:700;">bln</span>
+                                        </div>
+                                    </div>
+
+                                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                                        <span style="font-size:13px; color:#a1a1aa;">📅 Terbaik Hingga <strong id="srv-edit-best-date-label" onclick="document.getElementById('srv-hidden-date-picker').showPicker ? document.getElementById('srv-hidden-date-picker').showPicker() : null" style="color:#38bdf8; font-size:14px; font-weight:800; text-decoration:underline; cursor:pointer;">23 Jun 2027 &bull; 224hr</strong></span>
+                                        <input id="srv-hidden-date-picker" type="date" onchange="onPickTargetDate(this.value)" style="position:absolute; opacity:0; pointer-events:none; width:1px; height:1px;">
+                                        <span id="srv-edit-time-pct-label" style="font-size:13px; color:#a1a1aa; font-weight:700;">31%</span>
+                                    </div>
+
+                                    <div style="font-size:11px; color:#a1a1aa;">Sesuaikan sisa penggunaan agar cocok dengan kondisi komponen Anda.</div>
+
+                                    <div style="padding:4px 0;">
+                                        <input id="srv-slider-rem-days" type="range" min="0" max="730" step="1" oninput="onSlideRemainingDays(this.value)" class="srv-range">
+                                    </div>
+                                </div>
+
+                                <div style="display:flex; align-items:flex-start; gap:8px; font-size:11px; color:#a1a1aa; line-height:1.4; margin-top:2px;">
+                                    <span style="background:#a1a1aa; color:#000; border-radius:999px; width:15px; height:15px; display:inline-flex; align-items:center; justify-content:center; font-weight:900; font-size:10px; flex-shrink:0; margin-top:1px;">i</span>
+                                    <span>Umur komponen adalah perkiraan umum. Rujuk manual untuk informasi akurat.</span>
+                                </div>
+
+                                <!-- Tombol Urungkan & Simpan -->
+                                <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-top:4px;">
+                                    <button onclick="cancelAdjustAgeEditor()" style="padding:11px; border-radius:999px; background:#2c2c2e; border:1px solid rgba(255,255,255,0.08); color:#a1a1aa; font-size:13px; font-weight:800; cursor:pointer;">Urungkan</button>
+                                    <button onclick="saveAdjustAgeEditor()" style="padding:11px; border-radius:999px; background:#0ea5e9; border:none; color:#fff; font-size:13px; font-weight:900; cursor:pointer; box-shadow:0 4px 16px rgba(14,165,233,0.4);">Simpan</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Kolom Kanan (5 Kolom): Saran Perawatan, Catatan, & Tombol Servis Komponen -->
+                        <div style="grid-column: span 5 / span 5; display:flex; flex-direction:column; gap:12px;">
+                            <!-- Kartu Saran Perawatan -->
+                            <div style="background:#1c1c1e; border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:16px;">
+                                <div style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:900; color:#38bdf8; letter-spacing:0.06em; margin-bottom:6px;">
+                                    <span>💡</span>
+                                    <span>SARAN PERAWATAN</span>
+                                </div>
+                                <p id="srv-detail-advice" style="font-size:12px; color:#d4d4d8; line-height:1.5; margin:0;">
+                                    Periksa komponen secara berkala di setiap servis dan ganti jika melewati batas pemakaian.
+                                </p>
+                            </div>
+
+                            <!-- Kartu Catatan -->
+                            <div style="background:#1c1c1e; border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:16px;">
+                                <div style="display:flex; align-items:center; gap:8px; font-size:14px; font-weight:800; color:#fff; margin-bottom:8px;">
+                                    <span>📄</span>
+                                    <span>Catatan</span>
+                                </div>
+                                <textarea id="srv-detail-note" rows="3" oninput="saveCurrentServiceNote(this.value)" placeholder="Tambah catatan tentang komponen ini..." style="width:100%; padding:10px 12px; border-radius:12px; background:#09090b; border:1px solid #27272a; color:#fff; font-size:12px; resize:none; outline:none;"></textarea>
+                            </div>
+
+                            <!-- Tombol Utama: Servis Komponen -->
+                            <button onclick="markComponentServicedNow()" style="width:100%; padding:14px; border-radius:999px; background:#0ea5e9; border:none; color:#fff; font-size:14px; font-weight:900; cursor:pointer; box-shadow:0 6px 22px rgba(14,165,233,0.45);">
+                                Servis Komponen
+                            </button>
+                        </div>
                     </div>
-                    <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px;">
-                        <div style="font-size:11px; font-weight:800; color:#c084fc;">BAN & KAKI-KAKI</div>
-                        <div style="font-size:16px; font-weight:800; color:#fff; margin-top:4px;">Spooring, Balancing & Rotasi</div>
-                        <div style="font-size:12px; color:#d8b4fe; margin-top:8px;">Interval: Setiap <strong>15.000 KM</strong></div>
-                        <div style="font-size:12px; color:#e9d5ff; font-weight:800; margin-top:4px;">Target Berikutnya: <span id="rem-ban">15.000 KM</span></div>
+
+                    <!-- Tab Riwayat Servis Komponen -->
+                    <div id="srv-detail-body-history" class="hidden srv-scroll" style="flex:1; overflow-y:auto; padding:14px 4px;">
+                        <div id="srv-history-list" style="display:flex; flex-direction:column; gap:10px;"></div>
                     </div>
                 </div>
 
-                <div style="font-size:12px; color:rgba(216,180,254,0.8);">
-                    * Seluruh jadwal servis dan nilai odometer tersinkronisasi otomatis di latar belakang ke aplikasi HP setiap kali headunit terhubung ke internet.
+                <!-- MODAL TAMBAH KOMPONEN BARU -->
+                <div id="srv-add-comp-modal" class="hidden" style="position:absolute; inset:0; z-index:80; background:rgba(7,3,18,0.88); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center;">
+                    <div class="glass-card" style="width:440px; border-radius:20px; padding:22px; border:1px solid rgba(56,189,248,0.4); display:flex; flex-direction:column; gap:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h3 style="font-size:16px; font-weight:900; color:#fff; margin:0;">Tambah Komponen Servis</h3>
+                            <button onclick="closeAddServiceCompModal()" style="background:none; border:none; color:#a1a1aa; font-size:16px; font-weight:800;">✕</button>
+                        </div>
+                        <div>
+                            <label style="font-size:11px; color:#d8b4fe; display:block; margin-bottom:4px;">Nama Komponen:</label>
+                            <input id="new-comp-name" type="text" placeholder="Contoh: Oli Gardan / V-Belt" style="width:100%; padding:8px 10px; border-radius:10px; background:#09090b; border:1px solid #3f3f46; color:#fff; font-size:12px; font-weight:700;">
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px;">
+                            <div>
+                                <label style="font-size:11px; color:#d8b4fe; display:block; margin-bottom:4px;">Interval KM (0 = Hanya Waktu):</label>
+                                <input id="new-comp-km" type="number" value="20000" step="1000" style="width:100%; padding:8px 10px; border-radius:10px; background:#09090b; border:1px solid #3f3f46; color:#fff; font-size:12px; font-weight:700;">
+                            </div>
+                            <div>
+                                <label style="font-size:11px; color:#d8b4fe; display:block; margin-bottom:4px;">Interval Waktu (Bulan):</label>
+                                <input id="new-comp-months" type="number" value="12" min="1" max="120" style="width:100%; padding:8px 10px; border-radius:10px; background:#09090b; border:1px solid #3f3f46; color:#fff; font-size:12px; font-weight:700;">
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px; margin-top:6px;">
+                            <button onclick="closeAddServiceCompModal()" style="flex:1; padding:10px; border-radius:999px; background:#27272a; color:#a1a1aa; border:none; font-size:12px; font-weight:800;">Batal</button>
+                            <button onclick="confirmAddServiceComp()" style="flex:1; padding:10px; border-radius:999px; background:#0ea5e9; color:#fff; border:none; font-size:12px; font-weight:900;">Tambahkan</button>
+                        </div>
+                    </div>
                 </div>
+
             </section>
 
             <!-- TAB 4: SETELAN LAUNCHER -->
@@ -757,6 +964,7 @@
             if (deltaKm > 0.003 && deltaKm < 2.0) {
                 sessionDistKm += deltaKm;
                 totalMonthlyKm += deltaKm;
+                if (typeof deductServiceComponentsKm === 'function') deductServiceComponentsKm(deltaKm);
                 if (sessionDistKm > longestTripKm) {
                     longestTripKm = sessionDistKm;
                     localStorage.setItem('gc_longest_km_v8', longestTripKm.toFixed(2));
@@ -828,6 +1036,7 @@
             lastLat: currentLat,
             lastLng: currentLng,
             tripHistory: tripHistoryArr.slice(0, 35),
+            serviceComponents: typeof serviceComponents !== 'undefined' ? serviceComponents : [],
             updatedAt: Date.now()
         };
         localStorage.setItem('gc_latest_sync_payload', JSON.stringify(payload));
@@ -1380,15 +1589,741 @@
         }
     }
 
-    // 10. SERVIS & SETELAN LAUNCHER
+
+    // =========================================================================
+    // 10. SISTEM PENGINGAT SERVIS 17 KOMPONEN + SESUAIKAN UMUR & EDIT INTERVAL
+    // =========================================================================
+    const DEFAULT_SERVICE_COMPONENTS = [
+        // Perlu Perhatian (2)
+        {
+            id: 'filter_oli', name: 'Filter Oli Mesin', iconKey: 'filter_oli',
+            hasKm: true, recKm: 20000, intervalKm: 20000, remKm: 15635,
+            recMonths: 6, intervalMonths: 6, remDays: 34,
+            advice: 'Ganti filter oli bersamaan dengan penggantian oli mesin agar sirkulasi pelumasan tetap bersih dari endapan logam.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        {
+            id: 'wiper', name: 'Wiper', iconKey: 'wiper',
+            hasKm: false, recKm: 0, intervalKm: 0, remKm: 0,
+            recMonths: 12, intervalMonths: 12, remDays: 42,
+            advice: 'Periksa karet bilah wiper secara berkala. Ganti jika sapuan air mulai meninggalkan garis atau berdecit di kaca.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        // Periksa Segera (10)
+        {
+            id: 'aki_12v', name: 'Aki 12V', iconKey: 'aki',
+            hasKm: false, recKm: 0, intervalKm: 0, remKm: 0,
+            recMonths: 24, intervalMonths: 24, remDays: 224,
+            advice: 'Periksa tegangan aki dan kebersihan terminal kutub positif/negatif di setiap servis berkala.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        {
+            id: 'filter_udara', name: 'Filter Udara', iconKey: 'filter_udara',
+            hasKm: true, recKm: 50000, intervalKm: 50000, remKm: 45635,
+            recMonths: 24, intervalMonths: 24, remDays: 224,
+            advice: 'Periksa filter di setiap servis dan ganti jika kotor. Filter udara yang bersih menjaga efisiensi pembakaran mesin.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        {
+            id: 'filter_kabin', name: 'Filter Udara Kabin', iconKey: 'filter_kabin',
+            hasKm: false, recKm: 0, intervalKm: 0, remKm: 0,
+            recMonths: 24, intervalMonths: 24, remDays: 224,
+            advice: 'Ganti filter AC kabin secara berkala agar hembusan udara AC tetap segar, dingin, dan bebas debu/bakteri.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        {
+            id: 'air_radiator', name: 'Air Radiator', iconKey: 'radiator',
+            hasKm: true, recKm: 50000, intervalKm: 50000, remKm: 45635,
+            recMonths: 24, intervalMonths: 24, remDays: 224,
+            advice: 'Pastikan level cairan pendingin (coolant) berada di batas aman dan kuras sesuai interval agar mesin bebas overheat.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        {
+            id: 'filter_bbm', name: 'Filter Bahan Bakar', iconKey: 'filter_bbm',
+            hasKm: true, recKm: 50000, intervalKm: 50000, remKm: 45635,
+            recMonths: 24, intervalMonths: 24, remDays: 224,
+            advice: 'Filter bahan bakar menyaring kotoran & karat dari tangki sebelum masuk ke injektor. Ganti sesuai jadwal.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        {
+            id: 'power_steering', name: 'Cairan Power Steering', iconKey: 'power_steering',
+            hasKm: true, recKm: 80000, intervalKm: 80000, remKm: 75635,
+            recMonths: 36, intervalMonths: 36, remDays: 405,
+            advice: 'Periksa level minyak power steering dan pastikan tidak ada kebocoran pada selang maupun rack steer.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        {
+            id: 'busi', name: 'Busi', iconKey: 'busi',
+            hasKm: true, recKm: 80000, intervalKm: 80000, remKm: 75635,
+            recMonths: 36, intervalMonths: 36, remDays: 405,
+            advice: 'Periksa celah elektroda busi. Busi yang aus membuat tarikan mesin berat dan konsumsi BBM lebih boros.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        {
+            id: 'ban', name: 'Ban', iconKey: 'ban',
+            hasKm: true, recKm: 55000, intervalKm: 55000, remKm: 50635,
+            recMonths: 36, intervalMonths: 36, remDays: 405,
+            advice: 'Lakukan rotasi ban, spooring, dan balancing secara berkala serta periksa batas keausan alur ban (TWI).',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        {
+            id: 'oli_sokbreaker', name: 'Oli Sokbreaker', iconKey: 'sokbreaker',
+            hasKm: true, recKm: 120000, intervalKm: 120000, remKm: 115635,
+            recMonths: 48, intervalMonths: 48, remDays: 588,
+            advice: 'Periksa kebocoran oli pada tabung sokbreaker dan kondisi karet support agar bantingan suspensi tetap stabil.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        {
+            id: 'oli_mesin', name: 'Oli Mesin', iconKey: 'oli_mesin',
+            hasKm: true, recKm: 10000, intervalKm: 10000, remKm: 5630,
+            recMonths: 6, intervalMonths: 6, remDays: 92,
+            advice: 'Ganti oli mesin tepat waktu sesuai spesifikasi viskositas pabrikan untuk menjaga keawetan komponen internal mesin.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        // Sehat (5)
+        {
+            id: 'minyak_rem', name: 'Minyak Rem', iconKey: 'minyak_rem',
+            hasKm: true, recKm: 20000, intervalKm: 20000, remKm: 15635,
+            recMonths: 24, intervalMonths: 24, remDays: 615,
+            advice: 'Kuras minyak rem setiap 2 tahun karena sifatnya menyerap uap air yang dapat menurunkan titik didih pengereman.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        {
+            id: 'kampas_rem', name: 'Kampas Rem', iconKey: 'kampas_rem',
+            hasKm: true, recKm: 50000, intervalKm: 50000, remKm: 45635,
+            recMonths: 60, intervalMonths: 60, remDays: 1825,
+            advice: 'Periksa ketebalan kampas rem depan dan belakang di setiap servis berkala dan bersihkan dari debu residu.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        {
+            id: 'cakram_rem', name: 'Cakram Rem', iconKey: 'cakram_rem',
+            hasKm: true, recKm: 60000, intervalKm: 60000, remKm: 55635,
+            recMonths: 72, intervalMonths: 72, remDays: 2220,
+            advice: 'Pastikan permukaan piringan cakram rem rata, tidak bergelombang, dan masih di atas batas ketebalan minimum.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        {
+            id: 'oli_transmisi', name: 'Oli Transmisi', iconKey: 'oli_transmisi',
+            hasKm: true, recKm: 75000, intervalKm: 75000, remKm: 67635,
+            recMonths: 90, intervalMonths: 90, remDays: 2710,
+            advice: 'Ganti fluida transmisi (ATF/CVTF/MTF) secara berkala agar perpindahan gigi tetap halus dan responsif.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
+        {
+            id: 'timing_belt', name: 'Timing Belt', iconKey: 'timing_belt',
+            hasKm: true, recKm: 100000, intervalKm: 100000, remKm: 95635,
+            recMonths: 120, intervalMonths: 120, remDays: 3830,
+            advice: 'Periksa kondisi ketegangan dan retakan pada sabuk penggerak (Timing Belt / Fan Belt) beserta tensionernya.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        }
+    ];
+
+    let serviceComponents = JSON.parse(localStorage.getItem('gc_service_components_v11') || 'null');
+    if (!Array.isArray(serviceComponents) || serviceComponents.length === 0) {
+        serviceComponents = JSON.parse(JSON.stringify(DEFAULT_SERVICE_COMPONENTS));
+        localStorage.setItem('gc_service_components_v11', JSON.stringify(serviceComponents));
+    }
+
+    let selectedServiceCompId = null;
+    let editTempIntervalKm = 50000;
+    let editTempRemKm = 45600;
+    let editTempIntervalMonths = 24;
+    let editTempRemDays = 224;
+
+    function saveServiceComponentsToStorage() {
+        localStorage.setItem('gc_service_components_v11', JSON.stringify(serviceComponents));
+    }
+
+    function getCompMetrics(comp) {
+        const totalDays = Math.max(1, Math.round((comp.intervalMonths || 12) * 30.4375));
+        const rDays = Math.max(0, Math.round(comp.remDays ?? totalDays));
+        const timePct = Math.min(100, Math.max(0, Math.round((rDays / totalDays) * 100)));
+
+        let kmPct = 100;
+        let rKm = 0;
+        if (comp.hasKm && comp.intervalKm > 0) {
+            rKm = Math.max(0, Math.round(comp.remKm ?? comp.intervalKm));
+            kmPct = Math.min(100, Math.max(0, Math.round((rKm / comp.intervalKm) * 100)));
+        }
+
+        const lowestPct = comp.hasKm ? Math.min(kmPct, timePct) : timePct;
+        let status = 'GOOD'; // 'URGENT' | 'SOON' | 'GOOD'
+        let color = '#22c55e';
+        if (lowestPct <= 20) {
+            status = 'URGENT';
+            color = '#ef4444';
+        } else if (lowestPct <= 55) {
+            status = 'SOON';
+            color = '#eab308';
+        }
+
+        // Hitung tanggal estimasi dari rDays
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + rDays);
+        const monthsId = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        const estMonthYear = `est. ${monthsId[targetDate.getMonth()]} ${targetDate.getFullYear()}`;
+        const fullBestDate = `${targetDate.getDate()} ${monthsId[targetDate.getMonth()]} ${targetDate.getFullYear()}`;
+        const isoDate = targetDate.getFullYear() + '-' + String(targetDate.getMonth() + 1).padStart(2, '0') + '-' + String(targetDate.getDate()).padStart(2, '0');
+
+        return {
+            rKm, kmPct,
+            rDays, totalDays, timePct,
+            lowestPct, status, color,
+            estMonthYear, fullBestDate, isoDate
+        };
+    }
+
+    function getBarColorByPct(pct) {
+        if (pct <= 20) return '#ef4444';
+        if (pct <= 55) return '#eab308';
+        return '#22c55e';
+    }
+
+    function getServiceComponentSvg(iconKey, fillHex) {
+        const baseGray = '#3f3f46';
+        switch (iconKey) {
+            case 'filter_oli':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <rect x="13" y="8" width="22" height="24" rx="3" fill="${baseGray}"/>
+                    <path d="M13 30 H35 V35 C35 38.3 32.3 41 29 41 H19 C15.7 41 13 38.3 13 35 V30 Z" fill="${fillHex}"/>
+                    <line x1="17" y1="33" x2="17" y2="38" stroke="#18181b" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="24" y1="33" x2="24" y2="39" stroke="#18181b" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="31" y1="33" x2="31" y2="38" stroke="#18181b" stroke-width="2" stroke-linecap="round"/>
+                </svg>`;
+            case 'wiper':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <path d="M8 18 Q24 6 40 18 L34 36 Q24 29 14 36 Z" stroke="${baseGray}" stroke-width="3.5" fill="none"/>
+                    <line x1="24" y1="37" x2="33" y2="14" stroke="${fillHex}" stroke-width="3.5" stroke-linecap="round"/>
+                    <circle cx="24" cy="37" r="4" fill="${fillHex}"/>
+                </svg>`;
+            case 'aki':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <rect x="14" y="10" width="5" height="4" rx="1" fill="${baseGray}"/>
+                    <rect x="29" y="10" width="5" height="4" rx="1" fill="${baseGray}"/>
+                    <rect x="8" y="14" width="32" height="24" rx="3" fill="${baseGray}"/>
+                    <rect x="8" y="29" width="32" height="9" rx="2" fill="${fillHex}"/>
+                </svg>`;
+            case 'filter_udara':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <path d="M12 14 C18 10, 26 18, 36 14" stroke="${baseGray}" stroke-width="3.2" stroke-linecap="round"/>
+                    <path d="M12 22 C18 18, 26 26, 36 22" stroke="${baseGray}" stroke-width="3.2" stroke-linecap="round"/>
+                    <rect x="13" y="28" width="22" height="10" rx="3" stroke="${fillHex}" stroke-width="3" fill="none"/>
+                    <path d="M17 33 H31" stroke="${fillHex}" stroke-width="3" stroke-linecap="round"/>
+                </svg>`;
+            case 'filter_kabin':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <circle cx="24" cy="17" r="7" fill="${baseGray}"/>
+                    <text x="24" y="39" text-anchor="middle" fill="${fillHex}" font-size="14" font-weight="900" font-family="sans-serif">A/C</text>
+                </svg>`;
+            case 'radiator':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <rect x="19" y="9" width="10" height="4" rx="1" fill="${baseGray}"/>
+                    <rect x="9" y="14" width="30" height="24" rx="3" fill="${baseGray}"/>
+                    <rect x="9" y="29" width="30" height="9" rx="2" fill="${fillHex}"/>
+                </svg>`;
+            case 'filter_bbm':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <path d="M12 12 H36 L27 25 V35 H21 V25 L12 12 Z" fill="${baseGray}"/>
+                    <circle cx="24" cy="36" r="4.5" stroke="${fillHex}" stroke-width="3" fill="none"/>
+                </svg>`;
+            case 'power_steering':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <rect x="12" y="10" width="24" height="28" rx="4" fill="${baseGray}"/>
+                    <path d="M12 29 H36 V34 C36 36.2 34.2 38 32 38 H16 C13.8 38 12 36.2 12 34 V29 Z" fill="${fillHex}"/>
+                    <circle cx="24" cy="24" r="6" stroke="#18181b" stroke-width="2.5" fill="none"/>
+                </svg>`;
+            case 'busi':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <rect x="20" y="8" width="8" height="16" rx="2" fill="${baseGray}"/>
+                    <rect x="18" y="24" width="12" height="7" rx="1" fill="${baseGray}"/>
+                    <path d="M21 31 H27 L25 39 H23 Z" fill="${fillHex}"/>
+                </svg>`;
+            case 'ban':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <circle cx="24" cy="24" r="14" stroke="${baseGray}" stroke-width="6" fill="none"/>
+                    <path d="M12 31 A14 14 0 0 0 36 31" stroke="${fillHex}" stroke-width="6" stroke-linecap="round" fill="none"/>
+                </svg>`;
+            case 'sokbreaker':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <rect x="18" y="9" width="12" height="18" rx="3" fill="${baseGray}"/>
+                    <path d="M16 28 H32 L29 38 H19 Z" fill="${fillHex}"/>
+                    <circle cx="24" cy="39" r="3" fill="${fillHex}"/>
+                </svg>`;
+            case 'oli_mesin':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <path d="M10 22 H30 L38 18 L40 21 L32 32 H12 Z" fill="${fillHex}"/>
+                    <rect x="17" y="16" width="8" height="4" rx="1" fill="${baseGray}"/>
+                    <circle cx="41" cy="28" r="2.5" fill="${fillHex}"/>
+                </svg>`;
+            case 'minyak_rem':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <circle cx="24" cy="24" r="10" stroke="${fillHex}" stroke-width="3" fill="none"/>
+                    <path d="M16 24 A8 8 0 0 0 32 24 Z" fill="${fillHex}"/>
+                    <path d="M10 15 A16 16 0 0 0 10 33" stroke="${fillHex}" stroke-width="3" stroke-linecap="round" fill="none"/>
+                    <path d="M38 15 A16 16 0 0 1 38 33" stroke="${fillHex}" stroke-width="3" stroke-linecap="round" fill="none"/>
+                </svg>`;
+            case 'kampas_rem':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <path d="M21 10 C28 14, 28 34, 21 38 L17 34 C22 30, 22 18, 17 14 Z" fill="${fillHex}"/>
+                    <path d="M26 12 C32 17, 32 31, 26 36" stroke="${fillHex}" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                </svg>`;
+            case 'cakram_rem':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <circle cx="24" cy="24" r="14" fill="${fillHex}"/>
+                    <circle cx="24" cy="24" r="5" fill="#18181b"/>
+                    <circle cx="24" cy="24" r="2" fill="${fillHex}"/>
+                </svg>`;
+            case 'oli_transmisi':
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <circle cx="22" cy="22" r="10" fill="${fillHex}"/>
+                    <path d="M34 26 C34 26, 39 32, 39 35 A5 5 0 0 1 29 35 C29 32, 34 26, 34 26 Z" fill="${fillHex}"/>
+                </svg>`;
+            case 'timing_belt':
+            default:
+                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                    <rect x="9" y="15" width="30" height="18" rx="9" stroke="${fillHex}" stroke-width="4" stroke-dasharray="5 2" fill="none"/>
+                </svg>`;
+        }
+    }
+
+    function formatDotNumber(num) {
+        return Math.round(Number(num || 0)).toLocaleString('id-ID');
+    }
+
+    // Kurangi sisa KM pada seluruh komponen saat mobil berjalan
+    function deductServiceComponentsKm(deltaKm) {
+        if (!deltaKm || deltaKm <= 0) return;
+        for (const comp of serviceComponents) {
+            if (comp.hasKm && comp.remKm > 0) {
+                comp.remKm = Math.max(0, Number((comp.remKm - deltaKm).toFixed(2)));
+            }
+        }
+        saveServiceComponentsToStorage();
+    }
+
+    function renderServiceDashboard() {
+        const container = document.getElementById('srv-categories-scroll');
+        if (!container) return;
+
+        const urgentList = [];
+        const soonList = [];
+        const goodList = [];
+
+        for (const comp of serviceComponents) {
+            const m = getCompMetrics(comp);
+            const itemWithMeta = { comp, m };
+            if (m.status === 'URGENT') urgentList.push(itemWithMeta);
+            else if (m.status === 'SOON') soonList.push(itemWithMeta);
+            else goodList.push(itemWithMeta);
+        }
+
+        const groups = [
+            {
+                title: 'Perlu perhatian',
+                badgeBg: 'rgba(239,68,68,0.22)',
+                badgeColor: '#f87171',
+                iconHtml: `<span style="width:22px;height:22px;border-radius:999px;background:#ef4444;color:#000;font-weight:900;font-size:13px;display:inline-flex;align-items:center;justify-content:center;">!</span>`,
+                items: urgentList
+            },
+            {
+                title: 'Periksa Segera',
+                badgeBg: 'rgba(234,179,8,0.22)',
+                badgeColor: '#facc15',
+                iconHtml: `<span style="width:22px;height:22px;border-radius:6px;background:#eab308;color:#000;font-weight:900;font-size:13px;display:inline-flex;align-items:center;justify-content:center;">&#9888;</span>`,
+                items: soonList
+            },
+            {
+                title: 'Sehat',
+                badgeBg: 'rgba(34,197,94,0.22)',
+                badgeColor: '#4ade80',
+                iconHtml: `<span style="width:22px;height:22px;border-radius:999px;background:#22c55e;color:#000;font-weight:900;font-size:13px;display:inline-flex;align-items:center;justify-content:center;">&#10003;</span>`,
+                items: goodList
+            }
+        ];
+
+        const gridCols = window.innerWidth >= 900 ? 'repeat(6, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))';
+
+        container.innerHTML = groups.filter(g => g.items.length > 0).map(g => {
+            const cardsHtml = g.items.map(({ comp, m }) => {
+                const mainRemainingText = comp.hasKm
+                    ? `Sisa ${formatDotNumber(m.rKm)} km`
+                    : `Sisa ${formatDotNumber(m.rDays)} hari`;
+                return `
+                    <div onclick="openServiceCompDetail('${comp.id}')" style="background:#1c1c1e; border:1px solid rgba(255,255,255,0.08); border-radius:20px; padding:14px 10px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; min-height:148px; cursor:pointer; transition:transform 0.15s;" onmouseover="this.style.borderColor='rgba(168,85,247,0.5)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                        <div style="font-size:13px; font-weight:800; color:#fff; text-align:center; line-height:1.25; height:32px; display:flex; align-items:center; justify-content:center;">${comp.name}</div>
+                        <div style="margin:6px 0;">
+                            ${getServiceComponentSvg(comp.iconKey, m.color)}
+                        </div>
+                        <div style="text-align:center;">
+                            <div style="font-size:12px; font-weight:800; color:#e4e4e7;">${mainRemainingText}</div>
+                            <div style="font-size:10px; font-weight:600; color:#71717a; margin-top:2px;">${m.estMonthYear}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding:0 4px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            ${g.iconHtml}
+                            <span style="font-size:14px; font-weight:800; color:#fff;">${g.title}</span>
+                        </div>
+                        <span style="padding:2px 10px; border-radius:999px; background:${g.badgeBg}; color:${g.badgeColor}; font-size:12px; font-weight:800;">${g.items.length}</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns:${gridCols}; gap:10px;">
+                        ${cardsHtml}
+                    </div>
+                </div>
+            `;
+        }).join('') + `
+            <div style="padding-top:6px;">
+                <button onclick="openAddServiceCompModal()" style="width:100%; padding:12px; border-radius:999px; background:#1c1c1e; border:1px solid rgba(255,255,255,0.1); color:#fff; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
+                    <span>Tambah Komponen</span>
+                    <span style="color:#38bdf8;">&#9662;</span>
+                </button>
+            </div>
+        `;
+    }
+
+    function openServiceCompDetail(compId) {
+        const comp = serviceComponents.find(c => c.id === compId);
+        if (!comp) return;
+        selectedServiceCompId = compId;
+
+        document.getElementById('srv-dashboard-view').classList.add('hidden');
+        document.getElementById('srv-detail-view').classList.remove('hidden');
+
+        // Pastikan masuk ke mode Lihat & tab Saat Ini terlebih dahulu
+        document.getElementById('srv-card-view-mode').classList.remove('hidden');
+        document.getElementById('srv-card-edit-mode').classList.add('hidden');
+        switchServiceDetailTab('CURRENT');
+        refreshServiceDetailUI();
+    }
+
+    function closeServiceCompDetail() {
+        selectedServiceCompId = null;
+        document.getElementById('srv-detail-view').classList.add('hidden');
+        document.getElementById('srv-dashboard-view').classList.remove('hidden');
+        renderServiceDashboard();
+    }
+
+    function switchServiceDetailTab(tab) {
+        const btnCur = document.getElementById('srv-tab-current');
+        const btnHis = document.getElementById('srv-tab-history');
+        const bodyCur = document.getElementById('srv-detail-body-current');
+        const bodyHis = document.getElementById('srv-detail-body-history');
+
+        if (tab === 'CURRENT') {
+            btnCur.style.background = '#636366';
+            btnCur.style.color = '#fff';
+            btnHis.style.background = 'transparent';
+            btnHis.style.color = '#a1a1aa';
+            bodyCur.classList.remove('hidden');
+            bodyHis.classList.add('hidden');
+        } else {
+            btnHis.style.background = '#636366';
+            btnHis.style.color = '#fff';
+            btnCur.style.background = 'transparent';
+            btnCur.style.color = '#a1a1aa';
+            bodyHis.classList.remove('hidden');
+            bodyCur.classList.add('hidden');
+            renderServiceHistoryList();
+        }
+    }
+
+    function refreshServiceDetailUI() {
+        const comp = serviceComponents.find(c => c.id === selectedServiceCompId);
+        if (!comp) return;
+        const m = getCompMetrics(comp);
+
+        document.getElementById('srv-detail-icon').innerHTML = getServiceComponentSvg(comp.iconKey, m.color);
+        document.getElementById('srv-detail-title').innerText = comp.name;
+        document.getElementById('srv-detail-last').innerHTML = `Servis Terakhir: <strong style="color:#fff;">${comp.lastService || 'Tidak tersedia'}</strong>`;
+        document.getElementById('srv-detail-advice').innerText = comp.advice || 'Periksa komponen ini secara berkala di setiap jadwal servis.';
+        document.getElementById('srv-detail-note').value = comp.note || '';
+
+        const kmBlock = document.getElementById('srv-view-km-block');
+        if (comp.hasKm) {
+            kmBlock.classList.remove('hidden');
+            document.getElementById('srv-view-rem-km').innerText = formatDotNumber(m.rKm) + ' km';
+            document.getElementById('srv-view-km-pct').innerText = m.kmPct + '%';
+            const kmBar = document.getElementById('srv-view-km-bar');
+            kmBar.style.width = m.kmPct + '%';
+            kmBar.style.background = getBarColorByPct(m.kmPct);
+        } else {
+            kmBlock.classList.add('hidden');
+        }
+
+        document.getElementById('srv-view-best-date').innerHTML = `${m.fullBestDate} &bull; ${m.rDays}hr`;
+        document.getElementById('srv-view-time-pct').innerText = m.timePct + '%';
+        const timeBar = document.getElementById('srv-view-time-bar');
+        timeBar.style.width = m.timePct + '%';
+        timeBar.style.background = getBarColorByPct(m.timePct);
+    }
+
+    // Buka Editor "Sesuaikan Umur" & Edit Interval (Gambar 28)
+    function openAdjustAgeEditor() {
+        const comp = serviceComponents.find(c => c.id === selectedServiceCompId);
+        if (!comp) return;
+        const m = getCompMetrics(comp);
+
+        editTempIntervalKm = comp.intervalKm || comp.recKm || 50000;
+        editTempRemKm = m.rKm;
+        editTempIntervalMonths = comp.intervalMonths || comp.recMonths || 24;
+        editTempRemDays = m.rDays;
+
+        const editKmBlock = document.getElementById('srv-edit-km-block');
+        if (comp.hasKm) {
+            editKmBlock.classList.remove('hidden');
+            document.getElementById('srv-edit-rec-km').innerText = `Direkomendasikan: ${formatDotNumber(comp.recKm || comp.intervalKm)} km`;
+            document.getElementById('srv-input-interval-km').value = editTempIntervalKm;
+            const kmSlider = document.getElementById('srv-slider-rem-km');
+            kmSlider.max = editTempIntervalKm;
+            kmSlider.value = editTempRemKm;
+        } else {
+            editKmBlock.classList.add('hidden');
+        }
+
+        document.getElementById('srv-edit-rec-months').innerText = `Direkomendasikan: ${comp.recMonths || comp.intervalMonths} bulan`;
+        document.getElementById('srv-input-interval-months').value = editTempIntervalMonths;
+
+        const maxDays = Math.max(1, Math.round(editTempIntervalMonths * 30.4375));
+        const daySlider = document.getElementById('srv-slider-rem-days');
+        daySlider.max = maxDays;
+        daySlider.value = Math.min(maxDays, editTempRemDays);
+
+        updateAdjustEditorLiveLabels();
+
+        document.getElementById('srv-card-view-mode').classList.add('hidden');
+        document.getElementById('srv-card-edit-mode').classList.remove('hidden');
+    }
+
+    function updateAdjustEditorLiveLabels() {
+        const comp = serviceComponents.find(c => c.id === selectedServiceCompId);
+        if (!comp) return;
+
+        // 1. Update KM Labels & Slider Fill
+        if (comp.hasKm) {
+            const maxKm = Math.max(500, parseInt(editTempIntervalKm || 50000));
+            const curKm = Math.min(maxKm, Math.max(0, parseInt(editTempRemKm || 0)));
+            const kmPct = Math.round((curKm / maxKm) * 100);
+            document.getElementById('srv-edit-rem-km-label').innerText = formatDotNumber(curKm) + ' km';
+            document.getElementById('srv-edit-km-pct-label').innerText = kmPct + '%';
+
+            const kmSlider = document.getElementById('srv-slider-rem-km');
+            kmSlider.max = maxKm;
+            kmSlider.value = curKm;
+            const cKm = getBarColorByPct(kmPct);
+            kmSlider.style.background = `linear-gradient(to right, ${cKm} 0%, ${cKm} ${kmPct}%, #2c2c2e ${kmPct}%, #2c2c2e 100%)`;
+        }
+
+        // 2. Update Time Labels & Slider Fill
+        const maxDays = Math.max(1, Math.round((editTempIntervalMonths || 12) * 30.4375));
+        const curDays = Math.min(maxDays, Math.max(0, parseInt(editTempRemDays || 0)));
+        const timePct = Math.round((curDays / maxDays) * 100);
+
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + curDays);
+        const monthsId = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        const dateStr = `${targetDate.getDate()} ${monthsId[targetDate.getMonth()]} ${targetDate.getFullYear()}`;
+
+        document.getElementById('srv-edit-best-date-label').innerHTML = `${dateStr} &bull; ${curDays}hr`;
+        document.getElementById('srv-edit-time-pct-label').innerText = timePct + '%';
+
+        const daySlider = document.getElementById('srv-slider-rem-days');
+        daySlider.max = maxDays;
+        daySlider.value = curDays;
+        const cTime = getBarColorByPct(timePct);
+        daySlider.style.background = `linear-gradient(to right, ${cTime} 0%, ${cTime} ${timePct}%, #2c2c2e ${timePct}%, #2c2c2e 100%)`;
+    }
+
+    function onEditIntervalKmInput(val) {
+        const parsed = parseInt(val);
+        if (!isNaN(parsed) && parsed >= 500) {
+            editTempIntervalKm = parsed;
+            if (editTempRemKm > editTempIntervalKm) {
+                editTempRemKm = editTempIntervalKm;
+            }
+            updateAdjustEditorLiveLabels();
+        }
+    }
+
+    function onSlideRemainingKm(val) {
+        editTempRemKm = parseInt(val) || 0;
+        updateAdjustEditorLiveLabels();
+    }
+
+    function onEditIntervalMonthsInput(val) {
+        const parsed = parseInt(val);
+        if (!isNaN(parsed) && parsed >= 1) {
+            editTempIntervalMonths = parsed;
+            const maxDays = Math.round(editTempIntervalMonths * 30.4375);
+            if (editTempRemDays > maxDays) {
+                editTempRemDays = maxDays;
+            }
+            updateAdjustEditorLiveLabels();
+        }
+    }
+
+    function onSlideRemainingDays(val) {
+        editTempRemDays = parseInt(val) || 0;
+        updateAdjustEditorLiveLabels();
+    }
+
+    function onPickTargetDate(isoVal) {
+        if (!isoVal) return;
+        const picked = new Date(isoVal);
+        const now = new Date();
+        const diffDays = Math.max(0, Math.ceil((picked.getTime() - now.getTime()) / (1000 * 3600 * 24)));
+        const maxDays = Math.round((editTempIntervalMonths || 12) * 30.4375);
+        if (diffDays > maxDays) {
+            editTempIntervalMonths = Math.max(1, Math.ceil(diffDays / 30.4375));
+            document.getElementById('srv-input-interval-months').value = editTempIntervalMonths;
+        }
+        editTempRemDays = diffDays;
+        updateAdjustEditorLiveLabels();
+    }
+
+    function cancelAdjustAgeEditor() {
+        document.getElementById('srv-card-edit-mode').classList.add('hidden');
+        document.getElementById('srv-card-view-mode').classList.remove('hidden');
+    }
+
+    function saveAdjustAgeEditor() {
+        const comp = serviceComponents.find(c => c.id === selectedServiceCompId);
+        if (!comp) return;
+
+        if (comp.hasKm) {
+            comp.intervalKm = Math.max(500, parseInt(editTempIntervalKm || comp.intervalKm));
+            comp.remKm = Math.min(comp.intervalKm, Math.max(0, parseInt(editTempRemKm || 0)));
+        }
+        comp.intervalMonths = Math.max(1, parseInt(editTempIntervalMonths || comp.intervalMonths));
+        const maxDays = Math.round(comp.intervalMonths * 30.4375);
+        comp.remDays = Math.min(maxDays, Math.max(0, parseInt(editTempRemDays || 0)));
+
+        saveServiceComponentsToStorage();
+        document.getElementById('srv-card-edit-mode').classList.add('hidden');
+        document.getElementById('srv-card-view-mode').classList.remove('hidden');
+        refreshServiceDetailUI();
+        if (typeof queueAutoSyncPayload === 'function') queueAutoSyncPayload(true);
+        showToast('✅ Interval & sisa umur ' + comp.name + ' berhasil disimpan');
+    }
+
+    function saveCurrentServiceNote(val) {
+        const comp = serviceComponents.find(c => c.id === selectedServiceCompId);
+        if (!comp) return;
+        comp.note = val;
+        saveServiceComponentsToStorage();
+    }
+
+    function markComponentServicedNow() {
+        const comp = serviceComponents.find(c => c.id === selectedServiceCompId);
+        if (!comp) return;
+
+        const now = new Date();
+        const monthsId = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        const dateFormatted = `${now.getDate()} ${monthsId[now.getMonth()]} ${now.getFullYear()}`;
+        const curOdo = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
+
+        if (comp.hasKm) {
+            comp.remKm = comp.intervalKm;
+        }
+        comp.remDays = Math.round((comp.intervalMonths || 12) * 30.4375);
+        comp.lastService = `${dateFormatted} (${formatDotNumber(curOdo)} km)`;
+
+        if (!Array.isArray(comp.history)) comp.history = [];
+        comp.history.unshift({
+            date: dateFormatted,
+            odometerKm: curOdo,
+            note: comp.note || 'Servis berkala / penggantian komponen selesai (Reset 100%)'
+        });
+
+        saveServiceComponentsToStorage();
+        refreshServiceDetailUI();
+        if (typeof queueAutoSyncPayload === 'function') queueAutoSyncPayload(true);
+        showToast('🔧 ' + comp.name + ' telah diservis (Umur direset ke 100%)');
+    }
+
+    function renderServiceHistoryList() {
+        const comp = serviceComponents.find(c => c.id === selectedServiceCompId);
+        const listEl = document.getElementById('srv-history-list');
+        if (!comp || !listEl) return;
+
+        const hist = Array.isArray(comp.history) ? comp.history : [];
+        if (hist.length === 0) {
+            listEl.innerHTML = `
+                <div style="background:#1c1c1e; border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:28px; text-align:center; color:#a1a1aa; font-size:13px;">
+                    Belum ada riwayat servis tercatat untuk <strong>${comp.name}</strong>.<br>
+                    <span style="font-size:11px; color:#71717a;">Tekan tombol "Servis Komponen" saat Anda mengganti atau menyervis komponen ini.</span>
+                </div>
+            `;
+            return;
+        }
+
+        listEl.innerHTML = hist.map(h => `
+            <div style="background:#1c1c1e; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:14px 18px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:14px; font-weight:800; color:#fff;">${h.date}</div>
+                    <div style="font-size:12px; color:#a1a1aa; margin-top:2px;">${h.note}</div>
+                </div>
+                <span style="font-size:12px; font-weight:800; color:#38bdf8; background:rgba(56,189,248,0.12); padding:4px 10px; border-radius:999px;">Odo: ${formatDotNumber(h.odometerKm)} km</span>
+            </div>
+        `).join('');
+    }
+
+    function openAddServiceCompModal() {
+        document.getElementById('new-comp-name').value = '';
+        document.getElementById('srv-add-comp-modal').classList.remove('hidden');
+    }
+
+    function closeAddServiceCompModal() {
+        document.getElementById('srv-add-comp-modal').classList.add('hidden');
+    }
+
+    function confirmAddServiceComp() {
+        const name = (document.getElementById('new-comp-name').value || '').trim();
+        if (!name) {
+            showToast('Masukkan nama komponen terlebih dahulu');
+            return;
+        }
+        const kmVal = parseInt(document.getElementById('new-comp-km').value) || 0;
+        const moVal = Math.max(1, parseInt(document.getElementById('new-comp-months').value) || 12);
+        const hasKm = kmVal > 0;
+        const newComp = {
+            id: 'comp_' + Date.now(),
+            name: name,
+            iconKey: 'timing_belt',
+            hasKm: hasKm,
+            recKm: kmVal,
+            intervalKm: kmVal,
+            remKm: kmVal,
+            recMonths: moVal,
+            intervalMonths: moVal,
+            remDays: Math.round(moVal * 30.4375),
+            advice: 'Periksa kondisi ' + name + ' di setiap servis berkala dan ganti sesuai interval.',
+            lastService: 'Tidak tersedia',
+            note: '',
+            history: []
+        };
+        serviceComponents.push(newComp);
+        saveServiceComponentsToStorage();
+        closeAddServiceCompModal();
+        renderServiceDashboard();
+        if (typeof queueAutoSyncPayload === 'function') queueAutoSyncPayload(true);
+        showToast('✅ Komponen ' + name + ' ditambahkan');
+    }
+
     function updateOdometer() {
+        const prevOdo = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
         const val = parseInt(document.getElementById('odo-input').value) || 0;
-        document.getElementById('rem-oli').innerText = (val + 10000).toLocaleString('id-ID') + ' KM';
-        document.getElementById('rem-trans').innerText = (val + 20000).toLocaleString('id-ID') + ' KM';
-        document.getElementById('rem-ban').innerText = (val + 15000).toLocaleString('id-ID') + ' KM';
+        if (prevOdo > 0 && val > prevOdo) {
+            deductServiceComponentsKm(val - prevOdo);
+        }
         localStorage.setItem('gc_odo_km_v6', String(val));
+        renderServiceDashboard();
         queueAutoSyncPayload(true);
-        showToast('🔧 Odometer disimpan & disinkronkan ke HP');
+        showToast('🔧 Odometer (' + val.toLocaleString('id-ID') + ' KM) disimpan & disinkronkan ke HP');
     }
     function updateVehicleName(name) {
         const clean = name || 'GREYCOAT';
@@ -1433,6 +2368,9 @@
         if (tab === 'apps') {
             loadRealInstalledApps(false);
         }
+        if (tab === 'service') {
+            renderServiceDashboard();
+        }
         if (tab === 'home' && mapInstance) {
             setTimeout(() => mapInstance.invalidateSize(), 100);
         }
@@ -1465,9 +2403,7 @@
         document.getElementById('setting-gmail-input').value = savedGmail;
         const savedOdo = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
         document.getElementById('odo-input').value = savedOdo;
-        document.getElementById('rem-oli').innerText = (savedOdo + 10000).toLocaleString('id-ID') + ' KM';
-        document.getElementById('rem-trans').innerText = (savedOdo + 20000).toLocaleString('id-ID') + ' KM';
-        document.getElementById('rem-ban').innerText = (savedOdo + 15000).toLocaleString('id-ID') + ' KM';
+        renderServiceDashboard();
         renderTotalKm();
         initLiveMap();
         setTripCategory(tripCategory);
