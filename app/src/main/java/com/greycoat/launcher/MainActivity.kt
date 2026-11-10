@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -12,12 +13,15 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.media.AudioManager
+import android.media.MediaMetadata
+import android.media.session.MediaController
+import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.Uri
@@ -25,6 +29,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
+import android.service.notification.NotificationListenerService
+import android.service.notification.StatusBarNotification
 import android.util.Base64
 import android.view.KeyEvent
 import android.view.View
@@ -43,6 +49,43 @@ import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+
+class MediaListenerService : NotificationListenerService() {
+    companion object {
+        var instance: MediaListenerService? = null
+        var onMediaChangedCallback: ((title: String, artist: String, pkg: String, playing: Boolean) -> Unit)? = null
+    }
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        instance = this
+        pollActiveMediaSessions()
+    }
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        instance = null
+    }
+    override fun onNotificationPosted(sbn: StatusBarNotification?) { pollActiveMediaSessions() }
+    override fun onNotificationRemoved(sbn: StatusBarNotification?) { pollActiveMediaSessions() }
+    fun pollActiveMediaSessions() {
+        try {
+            val msm = getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager ?: return
+            val comp = ComponentName(this, MediaListenerService::class.java)
+            val controllers: List<MediaController> = msm.getActiveSessions(comp)
+            if (controllers.isNotEmpty()) {
+                val active = controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING } ?: controllers.first()
+                val meta = active.metadata
+                val title = meta?.getString(MediaMetadata.METADATA_KEY_TITLE)
+                    ?: meta?.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
+                    ?: "Musik Headunit Aktif"
+                val artist = meta?.getString(MediaMetadata.METADATA_KEY_ARTIST)
+                    ?: meta?.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST)
+                    ?: active.packageName
+                val isPlaying = active.playbackState?.state == PlaybackState.STATE_PLAYING
+                onMediaChangedCallback?.invoke(title, artist, active.packageName, isPlaying)
+            }
+        } catch (_: Throwable) {}
+    }
+}
 
 class MainActivity : Activity(), LocationListener {
 
