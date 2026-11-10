@@ -11,8 +11,8 @@ android {
         applicationId = "com.greycoat.launcher"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.2.0"
     }
 
     buildTypes {
@@ -40,5 +40,4 @@ android {
 }
 
 dependencies {
-    // Murni menggunakan Android SDK bawaan agar proses build cepat dan bebas konflik library
 }
