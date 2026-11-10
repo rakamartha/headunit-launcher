@@ -2,7 +2,7 @@ name: Build Greycoat Headunit APK
 
 on:
   push:
-    branches: [ "**" ]
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
@@ -18,27 +18,45 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.5'
-          cache-disabled: true
 
       - name: Build Debug APK
         run: |
-          PROJECT_FILE=$(find . -maxdepth 3 -name "settings.gradle.kts" | head -n 1)
-          PROJECT_DIR=$(dirname "$PROJECT_FILE")
-          cd "$PROJECT_DIR"
+          # 1. Jika ada file ZIP yang diupload utuh, ekstrak otomatis
+          LATEST_ZIP=$(ls -t *.zip 2>/dev/null | head -n 1 || true)
+          if [ -n "$LATEST_ZIP" ]; then
+            unzip -o "$LATEST_ZIP" -d .
+          fi
+
+          # 2. Hanya pindah folder jika di root tidak ada settings.gradle.kts
+          if [ ! -f "settings.gradle.kts" ]; then
+            SUBDIR=$(ls -dt Greycoat-Headunit-Launcher-APK-Project* 2>/dev/null | grep -v "\.zip$" | head -n 1 || true)
+            if [ -n "$SUBDIR" ] && [ -d "$SUBDIR" ]; then
+              cd "$SUBDIR"
+            fi
+          fi
+
+          # 3. Pastikan gradle.properties selalu tersedia
+          if [ ! -f "gradle.properties" ]; then
+            printf "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\nandroid.useAndroidX=true\nkotlin.code.style=official\nandroid.nonTransitiveRClass=true\n" > gradle.properties
+          fi
+
+          # 4. Buat otomatis MediaListenerService.kt jika belum terupload
+          mkdir -p app/src/main/java/com/greycoat/launcher
+          if grep -q "class MediaListenerService" app/src/main/java/com/greycoat/launcher/MainActivity.kt 2>/dev/null; then
+            rm -f app/src/main/java/com/greycoat/launcher/MediaListenerService.kt
+          elif grep -q "MediaListenerService" app/src/main/java/com/greycoat/launcher/MainActivity.kt 2>/dev/null && [ ! -f "app/src/main/java/com/greycoat/launcher/MediaListenerService.kt" ]; then
+            echo "cGFja2FnZSBjb20uZ3JleWNvYXQubGF1bmNoZXIKCmltcG9ydCBhbmRyb2lkLmNvbnRlbnQuQ29tcG9uZW50TmFtZQppbXBvcnQgYW5kcm9pZC5jb250ZW50LkNvbnRleHQKaW1wb3J0IGFuZHJvaWQubWVkaWEuTWVkaWFNZXRhZGF0YQppbXBvcnQgYW5kcm9pZC5tZWRpYS5zZXNzaW9uLk1lZGlhQ29udHJvbGxlcgppbXBvcnQgYW5kcm9pZC5tZWRpYS5zZXNzaW9uLk1lZGlhU2Vzc2lvbk1hbmFnZXIKaW1wb3J0IGFuZHJvaWQubWVkaWEuc2Vzc2lvbi5QbGF5YmFja1N0YXRlCmltcG9ydCBhbmRyb2lkLnNlcnZpY2Uubm90aWZpY2F0aW9uLk5vdGlmaWNhdGlvbkxpc3RlbmVyU2VydmljZQppbXBvcnQgYW5kcm9pZC5zZXJ2aWNlLm5vdGlmaWNhdGlvbi5TdGF0dXNCYXJOb3RpZmljYXRpb24KCmNsYXNzIE1lZGlhTGlzdGVuZXJTZXJ2aWNlIDogTm90aWZpY2F0aW9uTGlzdGVuZXJTZXJ2aWNlKCkgewogICAgY29tcGFuaW9uIG9iamVjdCB7CiAgICAgICAgdmFyIGluc3RhbmNlOiBNZWRpYUxpc3RlbmVyU2VydmljZT8gPSBudWxsCiAgICAgICAgdmFyIG9uTWVkaWFDaGFuZ2VkQ2FsbGJhY2s6ICgodGl0bGU6IFN0cmluZywgYXJ0aXN0OiBTdHJpbmcsIHBrZzogU3RyaW5nLCBwbGF5aW5nOiBCb29sZWFuKSAtPiBVbml0KT8gPSBudWxsCiAgICB9CiAgICBvdmVycmlkZSBmdW4gb25MaXN0ZW5lckNvbm5lY3RlZCgpIHsKICAgICAgICBzdXBlci5vbkxpc3RlbmVyQ29ubmVjdGVkKCkKICAgICAgICBpbnN0YW5jZSA9IHRoaXMKICAgICAgICBwb2xsQWN0aXZlTWVkaWFTZXNzaW9ucygpCiAgICB9CiAgICBvdmVycmlkZSBmdW4gb25MaXN0ZW5lckRpc2Nvbm5lY3RlZCgpIHsKICAgICAgICBzdXBlci5vbkxpc3RlbmVyRGlzY29ubmVjdGVkKCkKICAgICAgICBpbnN0YW5jZSA9IG51bGwKICAgIH0KICAgIG92ZXJyaWRlIGZ1biBvbk5vdGlmaWNhdGlvblBvc3RlZChzYm46IFN0YXR1c0Jhck5vdGlmaWNhdGlvbj8pIHsgcG9sbEFjdGl2ZU1lZGlhU2Vzc2lvbnMoKSB9CiAgICBvdmVycmlkZSBmdW4gb25Ob3RpZmljYXRpb25SZW1vdmVkKHNibjogU3RhdHVzQmFyTm90aWZpY2F0aW9uPykgeyBwb2xsQWN0aXZlTWVkaWFTZXNzaW9ucygpIH0KICAgIGZ1biBwb2xsQWN0aXZlTWVkaWFTZXNzaW9ucygpIHsKICAgICAgICB0cnkgewogICAgICAgICAgICB2YWwgbXNtID0gZ2V0U3lzdGVtU2VydmljZShDb250ZXh0Lk1FRElBX1NFU1NJT05fU0VSVklDRSkgYXM/IE1lZGlhU2Vzc2lvbk1hbmFnZXIgPzogcmV0dXJuCiAgICAgICAgICAgIHZhbCBjb21wID0gQ29tcG9uZW50TmFtZSh0aGlzLCBNZWRpYUxpc3RlbmVyU2VydmljZTo6Y2xhc3MuamF2YSkKICAgICAgICAgICAgdmFsIGNvbnRyb2xsZXJzOiBMaXN0PE1lZGlhQ29udHJvbGxlcj4gPSBtc20uZ2V0QWN0aXZlU2Vzc2lvbnMoY29tcCkKICAgICAgICAgICAgaWYgKGNvbnRyb2xsZXJzLmlzTm90RW1wdHkoKSkgewogICAgICAgICAgICAgICAgdmFsIGFjdGl2ZSA9IGNvbnRyb2xsZXJzLmZpcnN0T3JOdWxsIHsgaXQucGxheWJhY2tTdGF0ZT8uc3RhdGUgPT0gUGxheWJhY2tTdGF0ZS5TVEFURV9QTEFZSU5HIH0gPzogY29udHJvbGxlcnMuZmlyc3QoKQogICAgICAgICAgICAgICAgdmFsIG1ldGEgPSBhY3RpdmUubWV0YWRhdGEKICAgICAgICAgICAgICAgIHZhbCB0aXRsZSA9IG1ldGE/LmdldFN0cmluZyhNZWRpYU1ldGFkYXRhLk1FVEFEQVRBX0tFWV9USVRMRSkgPzogbWV0YT8uZ2V0U3RyaW5nKE1lZGlhTWV0YWRhdGEuTUVUQURBVEFfS0VZX0RJU1BMQVlfVElUTEUpID86ICJNdXNpayBIZWFkdW5pdCBBa3RpZiIKICAgICAgICAgICAgICAgIHZhbCBhcnRpc3QgPSBtZXRhPy5nZXRTdHJpbmcoTWVkaWFNZXRhZGF0YS5NRVRBREFUQV9LRVlfQVJUSVNUKSA/OiBtZXRhPy5nZXRTdHJpbmcoTWVkaWFNZXRhZGF0YS5NRVRBREFUQV9LRVlfQUxCVU1fQVJUSVNUKSA/OiBhY3RpdmUucGFja2FnZU5hbWUKICAgICAgICAgICAgICAgIHZhbCBpc1BsYXlpbmcgPSBhY3RpdmUucGxheWJhY2tTdGF0ZT8uc3RhdGUgPT0gUGxheWJhY2tTdGF0ZS5TVEFURV9QTEFZSU5HCiAgICAgICAgICAgICAgICBvbk1lZGlhQ2hhbmdlZENhbGxiYWNrPy5pbnZva2UodGl0bGUsIGFydGlzdCwgYWN0aXZlLnBhY2thZ2VOYW1lLCBpc1BsYXlpbmcpCiAgICAgICAgICAgIH0KICAgICAgICB9IGNhdGNoIChfOiBUaHJvd2FibGUpIHt9CiAgICB9Cn0K" | base64 -d > app/src/main/java/com/greycoat/launcher/MediaListenerService.kt
+          fi
+
           gradle assembleDebug --stacktrace
 
-      - name: Prepare APK Output
-        run: |
-          mkdir -p dist_apk
-          APK_PATH=$(find . -name "app-debug.apk" | head -n 1)
-          cp "$APK_PATH" dist_apk/Greycoat-Headunit-Launcher.apk
+          mkdir -p "$GITHUB_WORKSPACE/dist_apk"
+          APK_OUT=$(find . -name "app-debug.apk" | head -n 1)
+          cp "$APK_OUT" "$GITHUB_WORKSPACE/dist_apk/Greycoat-Headunit-Launcher.apk"
 
       - name: Upload Compiled APK
         uses: actions/upload-artifact@v4
