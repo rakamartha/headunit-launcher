@@ -342,7 +342,7 @@
                         <div style="display:flex; align-items:center; gap:8px;">
                             <button onclick="toggleMute()" id="btn-mute" style="width:28px; height:28px; border-radius:8px; background:rgba(88,28,135,0.7); color:#fff; border:none;">🔊</button>
                             <button onclick="adjustVolume(-10)" style="width:28px; height:28px; border-radius:8px; background:rgba(88,28,135,0.7); color:#fff; border:none; font-weight:800;">-</button>
-                            <input id="volume-slider" type="range" min="0" max="100" value="75" oninput="setVolume(this.value)" style="flex:1; height:6px;">
+                            <input id="volume-slider" type="range" min="0" max="100" value="75" ontouchstart="isUserDraggingVolume=true" ontouchend="isUserDraggingVolume=false" onmousedown="isUserDraggingVolume=true" onmouseup="isUserDraggingVolume=false" oninput="setVolume(this.value)" onchange="isUserDraggingVolume=false; setVolume(this.value)" style="flex:1; height:6px;">
                             <button onclick="adjustVolume(10)" style="width:28px; height:28px; border-radius:8px; background:rgba(88,28,135,0.7); color:#fff; border:none; font-weight:800;">+</button>
                         </div>
                     </div>
@@ -588,11 +588,15 @@
         }
     }
 
-    // 4. GPS REAL-TIME, MULTI-VEHICLE ID & ZERO-CONFIG GMAIL CLOUD SYNC (MULAI DARI 0,0 KM)
+    // 4. GPS REAL-TIME, PENCATAT SESI PER JAM (START-STOP MESIN) & GMAIL CLOUD SYNC
+    let currentSessionId = 'TRIP-' + Date.now();
+    let sessionStartClock = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
+    let sessionDateIso = new Date().toISOString().split('T')[0];
     let sessionDistKm = 0.0;
     let sessionSeconds = 0;
     let sessionMaxSpeed = 0;
     let sessionTripRecorded = false;
+    let lastMovingTimestamp = null;
     let lastGpsTime = null;
     let lastLat = null;
     let lastLng = null;
@@ -603,7 +607,58 @@
     let totalDrivingSeconds = parseInt(localStorage.getItem('gc_total_sec_v8') || '0');
     let longestTripKm = parseFloat(localStorage.getItem('gc_longest_km_v8') || '0.0');
     let activeDaysArr = JSON.parse(localStorage.getItem('gc_active_days_v8') || '[]');
+    let tripHistoryArr = JSON.parse(localStorage.getItem('gc_trip_history_v9') || '[]');
     let gpsOffset = 0;
+
+    function startNewDrivingSession() {
+        const now = new Date();
+        currentSessionId = 'TRIP-' + now.getTime();
+        sessionStartClock = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
+        sessionDateIso = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        sessionDistKm = 0.0;
+        sessionSeconds = 0;
+        sessionMaxSpeed = 0;
+        sessionTripRecorded = false;
+        document.getElementById('session-dist').innerText = '0.0 km';
+        document.getElementById('session-time').innerText = '00:00';
+        document.getElementById('session-max').innerText = '0 km/j';
+    }
+
+    function upsertCurrentSessionToHistory() {
+        if (sessionDistKm < 0.05 && sessionSeconds < 30) return;
+        const now = new Date();
+        const endClock = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
+        const durMin = Math.max(1, Math.round(sessionSeconds / 60));
+        const avgSpd = sessionSeconds > 30 ? Math.round(sessionDistKm / (sessionSeconds / 3600)) : 0;
+
+        const sessionObj = {
+            tripId: currentSessionId,
+            dateIso: sessionDateIso,
+            startTime: sessionStartClock,
+            endTime: endClock,
+            distanceKm: Number(sessionDistKm.toFixed(2)),
+            durationMinutes: durMin,
+            avgSpeedKmh: avgSpd,
+            maxSpeedKmh: sessionMaxSpeed,
+            category: tripCategory,
+            timestamp: now.getTime()
+        };
+
+        const idx = tripHistoryArr.findIndex(t => t.tripId === currentSessionId);
+        if (idx >= 0) {
+            tripHistoryArr[idx] = sessionObj;
+        } else {
+            tripHistoryArr.unshift(sessionObj);
+            if (tripHistoryArr.length > 60) tripHistoryArr = tripHistoryArr.slice(0, 60);
+        }
+        localStorage.setItem('gc_trip_history_v9', JSON.stringify(tripHistoryArr));
+    }
+
+    // Dipanggil otomatis saat Headunit mati / ACC OFF / Sleep
+    window.onNativeHeadunitSleep = function() {
+        upsertCurrentSessionToHistory();
+        queueAutoSyncPayload(true);
+    };
 
     // Generate Kode Pairing Unik 6 karakter khusus untuk Headunit mobil ini (contoh: GC-4829)
     let vehiclePairingCode = localStorage.getItem('gc_pairing_code_v8');
@@ -638,6 +693,9 @@
         totalDrivingSeconds = 0;
         longestTripKm = 0.0;
         activeDaysArr = [];
+        tripHistoryArr = [];
+        localStorage.setItem('gc_trip_history_v9', '[]');
+        startNewDrivingSession();
         localStorage.setItem('gc_total_km_v6', '0.0');
         localStorage.setItem('gc_trips_count_v8', '0');
         localStorage.setItem('gc_total_sec_v8', '0');
@@ -729,14 +787,28 @@
                 document.getElementById('session-time').innerText = mins + ':' + secs;
             }
         }
+        if (speedKmh >= 2) {
+            // Jika sebelumnya mobil sudah berhenti lebih dari 5 menit lalu jalan lagi, mulai sesi perjalanan baru
+            if (lastMovingTimestamp && (now - lastMovingTimestamp > 300000) && sessionTripRecorded) {
+                upsertCurrentSessionToHistory();
+                startNewDrivingSession();
+            }
+            if (!sessionTripRecorded && sessionSeconds <= 2) {
+                sessionStartClock = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
+            }
+            lastMovingTimestamp = now;
+        }
+
         lastLat = lat;
         lastLng = lng;
         lastGpsTime = now;
 
+        upsertCurrentSessionToHistory();
         queueAutoSyncPayload(false);
     };
 
     function queueAutoSyncPayload(forceImmediate) {
+        upsertCurrentSessionToHistory();
         const odoBase = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
         const avgSpd = totalDrivingSeconds > 60 ? Math.round((totalMonthlyKm / (totalDrivingSeconds / 3600))) : 0;
         const payload = {
@@ -746,7 +818,7 @@
             category: tripCategory,
             sessionDistKm: Number(sessionDistKm.toFixed(2)),
             totalMonthlyKm: Number(totalMonthlyKm.toFixed(2)),
-            tripsCount: totalTripsCount,
+            tripsCount: Math.max(totalTripsCount, tripHistoryArr.length),
             totalDurationSec: totalDrivingSeconds,
             activeDaysCount: activeDaysArr.length,
             longestTripKm: Number(longestTripKm.toFixed(2)),
@@ -755,6 +827,7 @@
             odometerKm: odoBase,
             lastLat: currentLat,
             lastLng: currentLng,
+            tripHistory: tripHistoryArr.slice(0, 35),
             updatedAt: Date.now()
         };
         localStorage.setItem('gc_latest_sync_payload', JSON.stringify(payload));
@@ -879,8 +952,10 @@
             // Toggle visual secara responsif terlebih dahulu lalu disinkronkan oleh callback AudioManager
             setPlayPauseButtonUI(!isAudioCurrentlyPlaying);
         }
+        const assigned = customMusicSources[activeMusicTab];
+        const targetPkg = (assigned && assigned.pkg) ? assigned.pkg : '';
         if (window.AndroidBridge && window.AndroidBridge.sendMediaControl) {
-            window.AndroidBridge.sendMediaControl(action);
+            window.AndroidBridge.sendMediaControl(action, targetPkg);
         } else {
             showToast('Kontrol Media: ' + action);
         }
@@ -1239,25 +1314,69 @@
 
     let isMuted = false;
     let prevVol = 75;
-    function setVolume(val) {
-        const v = Math.min(100, Math.max(0, parseInt(val)));
-        document.getElementById('volume-slider').value = v;
+    let isUserDraggingVolume = false;
+    let lastUserVolumeActionTime = 0;
+
+    // Update tampilan bar volume tanpa mengirim balik ke AndroidBridge (mencegah loop saat Steer Control ditekan)
+    function updateVolumeUIFromNative(val) {
+        const parsed = parseInt(val);
+        if (isNaN(parsed)) return;
+        const v = Math.min(100, Math.max(0, parsed));
+        const slider = document.getElementById('volume-slider');
+        if (slider && parseInt(slider.value) !== v) {
+            slider.value = v;
+        }
         document.getElementById('volume-val').innerText = v + '%';
         isMuted = (v === 0);
         document.getElementById('btn-mute').innerText = isMuted ? '🔇' : '🔊';
+        if (v > 0) prevVol = v;
+    }
+
+    // Dipanggil otomatis dari Native Android saat tombol Steer Control (SWC) / Volume sistem berubah
+    window.onNativeVolumeChanged = function(pct) {
+        if (!isUserDraggingVolume && (Date.now() - lastUserVolumeActionTime > 400)) {
+            updateVolumeUIFromNative(pct);
+        }
+    };
+
+    // Polling ringan 350ms sebagai jaring pengaman untuk MCU Headunit yang mengubah volume tanpa broadcast standar
+    setInterval(() => {
+        if (!isUserDraggingVolume && (Date.now() - lastUserVolumeActionTime > 450)) {
+            if (window.AndroidBridge && window.AndroidBridge.getSystemVolume) {
+                const sysPct = window.AndroidBridge.getSystemVolume();
+                updateVolumeUIFromNative(sysPct);
+            }
+        }
+    }, 350);
+
+    // Dipanggil saat pengguna menggeser slider volume di layar
+    function setVolume(val) {
+        lastUserVolumeActionTime = Date.now();
+        const v = Math.min(100, Math.max(0, parseInt(val)));
+        updateVolumeUIFromNative(v);
         if (window.AndroidBridge && window.AndroidBridge.setSystemVolume) {
             window.AndroidBridge.setSystemVolume(v);
         }
     }
+
+    // Dipanggil saat pengguna menekan tombol - atau + di layar (menggunakan step native AudioManager)
     function adjustVolume(delta) {
-        setVolume(parseInt(document.getElementById('volume-slider').value) + delta);
+        lastUserVolumeActionTime = Date.now();
+        if (window.AndroidBridge && window.AndroidBridge.stepSystemVolume) {
+            const newPct = window.AndroidBridge.stepSystemVolume(delta > 0 ? 1 : -1);
+            updateVolumeUIFromNative(newPct);
+        } else {
+            setVolume(parseInt(document.getElementById('volume-slider').value) + delta);
+        }
     }
+
     function toggleMute() {
+        lastUserVolumeActionTime = Date.now();
         if (!isMuted) {
             prevVol = parseInt(document.getElementById('volume-slider').value) || 75;
             setVolume(0);
         } else {
-            setVolume(prevVol);
+            setVolume(prevVol > 0 ? prevVol : 50);
         }
     }
 
@@ -1356,7 +1475,7 @@
         checkDefaultLauncherStatus();
         syncAudioStateFromBridge();
         if (window.AndroidBridge && window.AndroidBridge.getSystemVolume) {
-            setVolume(window.AndroidBridge.getSystemVolume());
+            updateVolumeUIFromNative(window.AndroidBridge.getSystemVolume());
         }
     });
 </script>

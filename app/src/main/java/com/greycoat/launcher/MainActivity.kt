@@ -11,6 +11,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -36,6 +37,8 @@ import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Base64
+import android.view.InputDevice
+import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -53,6 +56,8 @@ import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class MediaListenerService : NotificationListenerService() {
     companion object {
@@ -70,23 +75,30 @@ class MediaListenerService : NotificationListenerService() {
     }
     override fun onNotificationPosted(sbn: StatusBarNotification?) { pollActiveMediaSessions() }
     override fun onNotificationRemoved(sbn: StatusBarNotification?) { pollActiveMediaSessions() }
+
+    fun getActiveController(): MediaController? {
+        return try {
+            val msm = getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager ?: return null
+            val comp = ComponentName(this, MediaListenerService::class.java)
+            val controllers = msm.getActiveSessions(comp)
+            controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING } ?: controllers.firstOrNull()
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
     fun pollActiveMediaSessions() {
         try {
-            val msm = getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager ?: return
-            val comp = ComponentName(this, MediaListenerService::class.java)
-            val controllers: List<MediaController> = msm.getActiveSessions(comp)
-            if (controllers.isNotEmpty()) {
-                val active = controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING } ?: controllers.first()
-                val meta = active.metadata
-                val title = meta?.getString(MediaMetadata.METADATA_KEY_TITLE)
-                    ?: meta?.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
-                    ?: "Musik Headunit Aktif"
-                val artist = meta?.getString(MediaMetadata.METADATA_KEY_ARTIST)
-                    ?: meta?.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST)
-                    ?: active.packageName
-                val isPlaying = active.playbackState?.state == PlaybackState.STATE_PLAYING
-                onMediaChangedCallback?.invoke(title, artist, active.packageName, isPlaying)
-            }
+            val active = getActiveController() ?: return
+            val meta = active.metadata
+            val title = meta?.getString(MediaMetadata.METADATA_KEY_TITLE)
+                ?: meta?.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
+                ?: "Musik Headunit Aktif"
+            val artist = meta?.getString(MediaMetadata.METADATA_KEY_ARTIST)
+                ?: meta?.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST)
+                ?: active.packageName
+            val isPlaying = active.playbackState?.state == PlaybackState.STATE_PLAYING
+            onMediaChangedCallback?.invoke(title, artist, active.packageName, isPlaying)
         } catch (_: Throwable) {}
     }
 }
@@ -99,7 +111,9 @@ class MainActivity : Activity(), LocationListener {
     private var connectivityManager: ConnectivityManager? = null
     private var cachedAppsJson: String? = null
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var lastPushedVolumePercent: Int = -1
 
+    // 1. BroadcastReceiver untuk Metadata Musik
     private val mediaReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent == null) return
@@ -108,12 +122,16 @@ class MainActivity : Activity(), LocationListener {
                     ?: intent.getStringExtra("title")
                     ?: intent.getStringExtra("EXTRA_TRACK")
                     ?: intent.getStringExtra("music_title")
+                    ?: intent.getStringExtra("song_name")
                 val artist = intent.getStringExtra("artist")
                     ?: intent.getStringExtra("album")
                     ?: intent.getStringExtra("music_artist")
+                    ?: intent.getStringExtra("singer_name")
                     ?: ""
                 val playing = if (intent.hasExtra("playing")) {
                     intent.getBooleanExtra("playing", true)
+                } else if (intent.hasExtra("playstate")) {
+                    intent.getBooleanExtra("playstate", true)
                 } else {
                     audioManager?.isMusicActive ?: true
                 }
@@ -124,6 +142,21 @@ class MainActivity : Activity(), LocationListener {
                     pushAudioPlayingState(playing)
                 }
             } catch (_: Throwable) {}
+        }
+    }
+
+    // 2. BroadcastReceiver Khusus Volume Sistem & Steer Control (SWC) Headunit
+    private val volumeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            pushCurrentSystemVolumeToWeb(force = false)
+        }
+    }
+
+    // 3. ContentObserver untuk memantau perubahan volume level MCU / Settings.System
+    private val settingsVolumeObserver = object : ContentObserver(mainHandler) {
+        override fun onChange(selfChange: Boolean) {
+            super.onChange(selfChange)
+            pushCurrentSystemVolumeToWeb(force = false)
         }
     }
 
@@ -140,6 +173,8 @@ class MainActivity : Activity(), LocationListener {
             audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
             locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
             connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            // Pastikan tombol volume fisik / Steer Control selalu mengatur STREAM_MUSIC
+            volumeControlStream = AudioManager.STREAM_MUSIC
         } catch (_: Throwable) {}
 
         val container = FrameLayout(this).apply {
@@ -167,7 +202,6 @@ class MainActivity : Activity(), LocationListener {
             settings.mediaPlaybackRequiresUserGesture = false
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
-            // User-Agent standar Chrome agar server peta (Google Maps / OSM) tidak pernah memblokir tile
             settings.userAgentString = "Mozilla/5.0 (Linux; Android 13; Headunit) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
@@ -192,14 +226,91 @@ class MainActivity : Activity(), LocationListener {
         }
 
         registerMediaBroadcasts()
+        registerVolumeSyncWatchers()
         registerAudioPlaybackWatcher()
         registerAutoNetworkSync()
 
         window?.decorView?.post {
             hideSystemUI()
             requestGpsPermissionsSafely()
+            pushCurrentSystemVolumeToWeb(force = true)
             MediaListenerService.instance?.pollActiveMediaSessions()
         }
+    }
+
+    // Tangkap langsung tombol Steer Control (SWC) Volume & Media ketika Launcher sedang tampil di layar
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val keyCode = event.keyCode
+        when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP,
+            KeyEvent.KEYCODE_VOLUME_DOWN,
+            KeyEvent.KEYCODE_VOLUME_MUTE -> {
+                val handled = super.dispatchKeyEvent(event)
+                // Segera sinkronkan posisi slider volume di layar WebView mengikuti Steer Control
+                mainHandler.postDelayed({ pushCurrentSystemVolumeToWeb(force = true) }, 15)
+                mainHandler.postDelayed({ pushCurrentSystemVolumeToWeb(force = true) }, 120)
+                return handled
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    private fun registerVolumeSyncWatchers() {
+        try {
+            val volFilter = IntentFilter().apply {
+                addAction("android.media.VOLUME_CHANGED_ACTION")
+                addAction("android.media.MASTER_VOLUME_CHANGED_ACTION")
+                addAction("android.media.STREAM_MUTE_CHANGED_ACTION")
+                addAction("android.media.MASTER_MUTE_CHANGED_ACTION")
+                addAction("android.media.RINGER_MODE_CHANGED")
+                // Broadcast khusus berbagai merek Headunit Android (SYU / FYT / Microntek / Topway)
+                addAction("com.microntek.volume")
+                addAction("com.syu.ms.vol")
+                addAction("com.syu.ms")
+                addAction("android.intent.action.VOLUME_CHANGED")
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(volumeReceiver, volFilter, Context.RECEIVER_EXPORTED)
+            } else {
+                registerReceiver(volumeReceiver, volFilter)
+            }
+        } catch (_: Throwable) {}
+
+        try {
+            contentResolver.registerContentObserver(
+                Settings.System.CONTENT_URI,
+                true,
+                settingsVolumeObserver
+            )
+        } catch (_: Throwable) {}
+    }
+
+    private fun readCurrentSystemVolumePercent(): Int {
+        return try {
+            val am = audioManager ?: return 75
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && am.isStreamMute(AudioManager.STREAM_MUSIC)) {
+                return 0
+            }
+            val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            val curVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+            if (maxVol > 0) ((curVol * 100.0) / maxVol).roundToInt().coerceIn(0, 100) else 75
+        } catch (_: Throwable) {
+            75
+        }
+    }
+
+    private fun pushCurrentSystemVolumeToWeb(force: Boolean) {
+        try {
+            val pct = readCurrentSystemVolumePercent()
+            if (!force && pct == lastPushedVolumePercent) return
+            lastPushedVolumePercent = pct
+            runOnUiThread {
+                webView?.evaluateJavascript(
+                    "if(window.onNativeVolumeChanged) window.onNativeVolumeChanged($pct);",
+                    null
+                )
+            }
+        } catch (_: Throwable) {}
     }
 
     private fun registerAudioPlaybackWatcher() {
@@ -212,7 +323,7 @@ class MainActivity : Activity(), LocationListener {
                         pushAudioPlayingState(active)
                         mainHandler.postDelayed({
                             pushAudioPlayingState(audioManager?.isMusicActive ?: false)
-                        }, 400)
+                        }, 350)
                     }
                 }, mainHandler)
             }
@@ -245,6 +356,7 @@ class MainActivity : Activity(), LocationListener {
             val filter = IntentFilter().apply {
                 addAction("com.android.music.metachanged")
                 addAction("com.android.music.playstatechanged")
+                addAction("com.android.music.playbackcomplete")
                 addAction("com.spotify.music.metadatachanged")
                 addAction("com.spotify.music.playbackstatechanged")
                 addAction("com.sec.android.app.music.metachanged")
@@ -261,6 +373,7 @@ class MainActivity : Activity(), LocationListener {
                 addAction("com.maxmpz.audioplayer.TRACK_CHANGED")
                 addAction("com.syu.music.metachanged")
                 addAction("com.syu.bt.metachanged")
+                addAction("com.microntek.music.metachanged")
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 registerReceiver(mediaReceiver, filter, Context.RECEIVER_EXPORTED)
@@ -289,11 +402,19 @@ class MainActivity : Activity(), LocationListener {
         } catch (_: Throwable) {}
     }
 
+    override fun onPause() {
+        super.onPause()
+        runOnUiThread {
+            webView?.evaluateJavascript("if(window.onNativeHeadunitSleep) window.onNativeHeadunitSleep();", null)
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         hideSystemUI()
         val playing = audioManager?.isMusicActive ?: false
         pushAudioPlayingState(playing)
+        pushCurrentSystemVolumeToWeb(force = true)
         runOnUiThread {
             webView?.evaluateJavascript("if(window.onNativeResumeCheck) window.onNativeResumeCheck();", null)
         }
@@ -301,9 +422,9 @@ class MainActivity : Activity(), LocationListener {
 
     override fun onDestroy() {
         super.onDestroy()
-        try {
-            unregisterReceiver(mediaReceiver)
-        } catch (_: Throwable) {}
+        try { unregisterReceiver(mediaReceiver) } catch (_: Throwable) {}
+        try { unregisterReceiver(volumeReceiver) } catch (_: Throwable) {}
+        try { contentResolver.unregisterContentObserver(settingsVolumeObserver) } catch (_: Throwable) {}
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -311,6 +432,7 @@ class MainActivity : Activity(), LocationListener {
         if (hasFocus) {
             hideSystemUI()
             pushAudioPlayingState(audioManager?.isMusicActive ?: false)
+            pushCurrentSystemVolumeToWeb(force = false)
             MediaListenerService.instance?.pollActiveMediaSessions()
         }
     }
@@ -428,7 +550,7 @@ class MainActivity : Activity(), LocationListener {
             p.contains("here") || p.contains("gps") || l.contains("maps") || l.contains("navigasi") || l.contains("navi")) {
             return "Navigasi"
         }
-        if (p.contains("spotify") || p.contains("music") || p.contains("youtube") || p.contains("netflix") ||
+        if (p.contains("spotify") || p.contains("music") || p.contains("bitchord") || p.contains("youtube") || p.contains("netflix") ||
             p.contains("disney") || p.contains("radio") || p.contains("video") || p.contains("gallery") ||
             p.contains("galeri") || p.contains("vlc") || p.contains("player") || p.contains("audio") ||
             l.contains("musik") || l.contains("music") || l.contains("radio") || l.contains("video") || l.contains("galeri")) {
@@ -453,6 +575,99 @@ class MainActivity : Activity(), LocationListener {
             }
         }
         return "Lainnya"
+    }
+
+    // Helper: Buat pasangan KeyEvent DOWN & UP standar sistem
+    private fun buildSystemMediaKeyEvents(keyCode: Int): Pair<KeyEvent, KeyEvent> {
+        val now = SystemClock.uptimeMillis()
+        val down = KeyEvent(
+            now, now,
+            KeyEvent.ACTION_DOWN,
+            keyCode, 0, 0,
+            KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
+            KeyEvent.FLAG_FROM_SYSTEM or KeyEvent.FLAG_KEEP_TOUCH_MODE,
+            InputDevice.SOURCE_KEYBOARD
+        )
+        val up = KeyEvent(
+            now, now + 10,
+            KeyEvent.ACTION_UP,
+            keyCode, 0, 0,
+            KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
+            KeyEvent.FLAG_FROM_SYSTEM or KeyEvent.FLAG_KEEP_TOUCH_MODE,
+            InputDevice.SOURCE_KEYBOARD
+        )
+        return Pair(down, up)
+    }
+
+    // Helper: Kirim Intent ACTION_MEDIA_BUTTON langsung ke MediaButtonReceiver milik aplikasi musik target
+    private fun dispatchTargetedMediaButtonBroadcast(keyCode: Int, targetPkg: String?) {
+        try {
+            val pm = packageManager
+            val queryIntent = Intent(Intent.ACTION_MEDIA_BUTTON)
+            if (!targetPkg.isNullOrBlank()) {
+                queryIntent.setPackage(targetPkg)
+            }
+            val receivers = pm.queryBroadcastReceivers(queryIntent, 0)
+            val (downEvent, upEvent) = buildSystemMediaKeyEvents(keyCode)
+
+            if (receivers.isNotEmpty()) {
+                for (ri in receivers) {
+                    val ai = ri.activityInfo ?: continue
+                    val comp = ComponentName(ai.packageName, ai.name)
+                    val downIntent = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
+                        component = comp
+                        putExtra(Intent.EXTRA_KEY_EVENT, downEvent)
+                        addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES or Intent.FLAG_RECEIVER_FOREGROUND)
+                    }
+                    val upIntent = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
+                        component = comp
+                        putExtra(Intent.EXTRA_KEY_EVENT, upEvent)
+                        addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES or Intent.FLAG_RECEIVER_FOREGROUND)
+                    }
+                    sendBroadcast(downIntent)
+                    sendBroadcast(upIntent)
+                }
+            } else if (!targetPkg.isNullOrBlank()) {
+                val downIntent = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
+                    setPackage(targetPkg)
+                    putExtra(Intent.EXTRA_KEY_EVENT, downEvent)
+                    addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES or Intent.FLAG_RECEIVER_FOREGROUND)
+                }
+                val upIntent = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
+                    setPackage(targetPkg)
+                    putExtra(Intent.EXTRA_KEY_EVENT, upEvent)
+                    addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES or Intent.FLAG_RECEIVER_FOREGROUND)
+                }
+                sendBroadcast(downIntent)
+                sendBroadcast(upIntent)
+            }
+        } catch (_: Throwable) {}
+    }
+
+    // Helper: Kirim command broadcast ke aplikasi musik bawaan Android & Headunit (SYU/FYT/Topway/AOSP)
+    private fun dispatchLegacyMusicServiceCommand(action: String, wasPlaying: Boolean, targetPkg: String?) {
+        try {
+            val cmd = when (action) {
+                "next" -> "next"
+                "prev" -> "previous"
+                "play_pause" -> if (wasPlaying) "pause" else "play"
+                else -> "togglepause"
+            }
+            val serviceIntent = Intent("com.android.music.musicservicecommand").apply {
+                putExtra("command", cmd)
+                addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
+            }
+            sendBroadcast(serviceIntent)
+
+            if (!targetPkg.isNullOrBlank()) {
+                val targetedServiceIntent = Intent("com.android.music.musicservicecommand").apply {
+                    setPackage(targetPkg)
+                    putExtra("command", cmd)
+                    addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
+                }
+                sendBroadcast(targetedServiceIntent)
+            }
+        } catch (_: Throwable) {}
     }
 
     inner class HeadunitBridge(private val context: Context) {
@@ -539,31 +754,73 @@ class MainActivity : Activity(), LocationListener {
             }
         }
 
+        // Kontrol Media Multi-Jalur (AudioManager + MediaController + Targeted Broadcast ke Aplikasi Musik)
         @JavascriptInterface
-        fun sendMediaControl(action: String) {
-            try {
-                val am = audioManager ?: return
-                val keyCode = when (action) {
-                    "play_pause" -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                    "next" -> KeyEvent.KEYCODE_MEDIA_NEXT
-                    "prev" -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
-                    else -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                }
-                val eventTime = SystemClock.uptimeMillis()
-                val downEvent = KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, keyCode, 0)
-                val upEvent = KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0)
-                am.dispatchMediaKeyEvent(downEvent)
-                am.dispatchMediaKeyEvent(upEvent)
+        fun sendMediaControl(action: String, targetPkg: String?) {
+            runOnUiThread {
+                try {
+                    val am = audioManager ?: return@runOnUiThread
+                    val wasPlaying = am.isMusicActive
 
-                // Periksa status audio 250ms dan 600ms setelah tombol ditekan
-                mainHandler.postDelayed({
-                    pushAudioPlayingState(am.isMusicActive)
-                    MediaListenerService.instance?.pollActiveMediaSessions()
-                }, 250)
-                mainHandler.postDelayed({
-                    pushAudioPlayingState(am.isMusicActive)
-                }, 600)
-            } catch (_: Throwable) {}
+                    // 1. Jika MediaListenerService aktif, gunakan TransportControls langsung
+                    val activeController = MediaListenerService.instance?.getActiveController()
+                    if (activeController != null) {
+                        try {
+                            when (action) {
+                                "next" -> activeController.transportControls.skipToNext()
+                                "prev" -> activeController.transportControls.skipToPrevious()
+                                "play_pause" -> {
+                                    if (wasPlaying) activeController.transportControls.pause()
+                                    else activeController.transportControls.play()
+                                }
+                            }
+                        } catch (_: Throwable) {}
+                    }
+
+                    // 2. Kirim KeyEvent via AudioManager.dispatchMediaKeyEvent pada Main Thread
+                    // Gunakan kode spesifik PLAY atau PAUSE (idempotent) selain PLAY_PAUSE agar pasti direspons oleh headunit
+                    val primaryKeyCode = when (action) {
+                        "next" -> KeyEvent.KEYCODE_MEDIA_NEXT
+                        "prev" -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+                        "play_pause" -> if (wasPlaying) KeyEvent.KEYCODE_MEDIA_PAUSE else KeyEvent.KEYCODE_MEDIA_PLAY
+                        else -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                    }
+                    val (down1, up1) = buildSystemMediaKeyEvents(primaryKeyCode)
+                    am.dispatchMediaKeyEvent(down1)
+                    am.dispatchMediaKeyEvent(up1)
+
+                    // Untuk Next & Prev, langsung kirim juga broadcast ke receiver aplikasi musik target & MusicService
+                    if (action == "next" || action == "prev") {
+                        dispatchTargetedMediaButtonBroadcast(primaryKeyCode, targetPkg)
+                        dispatchLegacyMusicServiceCommand(action, wasPlaying, targetPkg)
+                    } else if (action == "play_pause") {
+                        // Kirim command eksplisit "play" atau "pause" (idempotent, tidak akan double-toggle)
+                        dispatchTargetedMediaButtonBroadcast(primaryKeyCode, targetPkg)
+                        dispatchLegacyMusicServiceCommand(action, wasPlaying, targetPkg)
+
+                        // Fallback 160ms: jika status audio belum berubah dengan KEYCODE_MEDIA_PLAY/PAUSE spesifik,
+                        // kirim KEYCODE_MEDIA_PLAY_PAUSE toggle
+                        mainHandler.postDelayed({
+                            val nowPlaying = am.isMusicActive
+                            if (nowPlaying == wasPlaying) {
+                                val (downToggle, upToggle) = buildSystemMediaKeyEvents(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+                                am.dispatchMediaKeyEvent(downToggle)
+                                am.dispatchMediaKeyEvent(upToggle)
+                                dispatchTargetedMediaButtonBroadcast(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, targetPkg)
+                            }
+                        }, 160)
+                    }
+
+                    // Sinkronkan kembali status tombol Play/Pause di UI
+                    mainHandler.postDelayed({
+                        pushAudioPlayingState(am.isMusicActive)
+                        MediaListenerService.instance?.pollActiveMediaSessions()
+                    }, 280)
+                    mainHandler.postDelayed({
+                        pushAudioPlayingState(am.isMusicActive)
+                    }, 650)
+                } catch (_: Throwable) {}
+            }
         }
 
         @JavascriptInterface
@@ -629,26 +886,65 @@ class MainActivity : Activity(), LocationListener {
             } catch (_: Throwable) {}
         }
 
+        // Atur Volume Sistem Headunit dari Slider (Menggunakan FLAG_SHOW_UI + Fallback Step MCU)
         @JavascriptInterface
         fun setSystemVolume(percent: Int) {
+            runOnUiThread {
+                try {
+                    val am = audioManager ?: return@runOnUiThread
+                    val clamped = percent.coerceIn(0, 100)
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        if (clamped == 0) {
+                            am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_MUTE, AudioManager.FLAG_SHOW_UI)
+                        } else if (am.isStreamMute(AudioManager.STREAM_MUSIC)) {
+                            am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
+                        }
+                    }
+
+                    val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+                    val beforeVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    val targetVol = ((clamped / 100.0) * maxVol).roundToInt().coerceIn(0, maxVol)
+
+                    // Gunakan FLAG_SHOW_UI agar MCU amplifier headunit menerima interupsi perubahan volume
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC, targetVol, AudioManager.FLAG_SHOW_UI)
+
+                    // Jika MCU Headunit mengunci setStreamVolume langsung, dorong dengan adjustStreamVolume bertahap
+                    val afterVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    if (afterVol == beforeVol && targetVol != beforeVol) {
+                        val direction = if (targetVol > beforeVol) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER
+                        val steps = abs(targetVol - beforeVol).coerceAtMost(6)
+                        for (i in 0 until steps) {
+                            am.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, AudioManager.FLAG_SHOW_UI)
+                        }
+                    }
+
+                    lastPushedVolumePercent = readCurrentSystemVolumePercent()
+                } catch (_: Throwable) {}
+            }
+        }
+
+        // Tombol - dan + Volume menggunakan adjustStreamVolume asli seperti tombol fisik Steer Control
+        @JavascriptInterface
+        fun stepSystemVolume(direction: Int): Int {
             try {
-                val am = audioManager ?: return
-                val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                val targetVol = ((percent.coerceIn(0, 100) / 100.0) * maxVol).toInt()
-                am.setStreamVolume(AudioManager.STREAM_MUSIC, targetVol, 0)
-            } catch (_: Throwable) {}
+                val am = audioManager ?: return 75
+                val adj = if (direction > 0) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && direction > 0 && am.isStreamMute(AudioManager.STREAM_MUSIC)) {
+                    am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
+                }
+                am.adjustStreamVolume(AudioManager.STREAM_MUSIC, adj, AudioManager.FLAG_SHOW_UI)
+                val newPct = readCurrentSystemVolumePercent()
+                lastPushedVolumePercent = newPct
+                return newPct
+            } catch (_: Throwable) {
+                return readCurrentSystemVolumePercent()
+            }
         }
 
         @JavascriptInterface
         fun getSystemVolume(): Int {
-            return try {
-                val am = audioManager ?: return 75
-                val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                val curVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
-                if (maxVol > 0) ((curVol * 100.0) / maxVol).toInt() else 75
-            } catch (_: Throwable) {
-                75
-            }
+            return readCurrentSystemVolumePercent()
         }
 
         @JavascriptInterface

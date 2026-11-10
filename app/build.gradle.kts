@@ -11,8 +11,8 @@ android {
         applicationId = "com.greycoat.launcher"
         minSdk = 24
         targetSdk = 32
-        versionCode = 8
-        versionName = "2.4.0"
+        versionCode = 10
+        versionName = "2.6.0"
     }
 
     buildTypes {
