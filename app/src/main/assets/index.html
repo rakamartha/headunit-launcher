@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1280, height=720, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GREYCOAT - Android Headunit Launcher (1280x720)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+        html, body {
+            margin: 0; padding: 0; width: 100vw; height: 100vh;
+            overflow: hidden; background: #070312;
+            font-family: 'Space Grotesk', sans-serif; color: #fff;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #headunit-stage {
+            width: 1280px; height: 720px;
+            background: radial-gradient(circle at 20% 20%, rgba(124, 58, 237, 0.28), transparent 45%),
+                        radial-gradient(circle at 80% 75%, rgba(168, 85, 247, 0.22), transparent 50%),
+                        linear-gradient(135deg, #0d061f 0%, #150932 50%, #090414 100%);
+            position: relative; overflow: hidden;
+            display: flex; flex-direction: column; justify-content: space-between;
+            padding: 14px; gap: 12px;
+        }
+        .glass-card {
+            background: rgba(26, 14, 54, 0.62);
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(168, 85, 247, 0.25);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+        }
+        input[type="range"] { accent-color: #a855f7; }
+    </style>
+</head>
+<body>
+<div id="headunit-stage">
+    <!-- Overlay Kecerahan Layar -->
+    <div id="brightness-overlay" class="pointer-events-none fixed inset-0 bg-black z-50 transition-opacity duration-150" style="opacity: 0;"></div>
+
+    <!-- 1. STATUS BAR ATAS (52px) -->
+    <header class="h-[52px] shrink-0 glass-card rounded-2xl px-5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-purple-400 animate-pulse"></span>
+            <span id="vehicle-brand" class="text-sm font-bold tracking-widest text-purple-300 uppercase">GREYCOAT</span>
+            <span class="text-xs text-purple-200/60">| 29°C Cerah</span>
+            <span id="trip-badge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-purple-600/40 border border-purple-400/40 text-purple-200">MODE: PRIBADI</span>
+        </div>
+
+        <div class="text-center">
+            <span id="clock-text" class="text-lg font-extrabold tracking-wider text-white">09:42</span>
+            <span id="date-text" class="text-xs text-purple-300/70 ml-2">Sel, 10 Nov 2026</span>
+        </div>
+
+        <!-- Bar Brightness Terintegrasi -->
+        <div class="flex items-center gap-2.5 bg-purple-950/60 border border-purple-500/30 rounded-xl px-3 py-1.5">
+            <span class="text-xs text-amber-300">☀</span>
+            <button onclick="adjustBrightness(-10)" class="w-6 h-6 rounded-lg bg-purple-800/50 text-xs font-bold hover:bg-purple-700">-</button>
+            <input id="brightness-slider" type="range" min="20" max="100" value="90" oninput="setBrightness(this.value)" class="w-28 h-1.5 cursor-pointer">
+            <button onclick="adjustBrightness(10)" class="w-6 h-6 rounded-lg bg-purple-800/50 text-xs font-bold hover:bg-purple-700">+</button>
+            <span id="brightness-val" class="text-xs font-bold text-purple-200 w-9 text-right">90%</span>
+        </div>
+    </header>
+
+    <!-- 2. AREA KONTEN UTAMA (552px) -->
+    <main class="h-[552px] shrink-0 overflow-hidden">
+        <!-- VIEW BERANDA -->
+        <section id="view-home" class="grid grid-cols-12 gap-3 h-full">
+            <!-- Kiri: Speedometer GPS Real-Time (4 Kolom) -->
+            <div class="col-span-4 glass-card rounded-2xl p-4 flex flex-col justify-between h-full">
+                <div class="flex justify-between items-center">
+                    <span class="text-[11px] font-bold tracking-widest text-purple-300/80">SPEEDOMETER GPS</span>
+                    <span id="gps-status-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">GPS AKTIF</span>
+                </div>
+                <div class="my-auto text-center py-2">
+                    <div id="speed-value" class="text-8xl font-black tracking-tighter text-white leading-none">0</div>
+                    <div class="text-sm font-bold text-purple-400 tracking-widest mt-2">KM / JAM</div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-purple-950/50 border border-purple-500/20 rounded-xl p-2.5">
+                        <div class="text-[10px] text-purple-300/70 font-bold">JARAK SESI</div>
+                        <div id="session-dist" class="text-lg font-extrabold text-white">0.0 km</div>
+                    </div>
+                    <div class="bg-purple-950/50 border border-purple-500/20 rounded-xl p-2.5">
+                        <div class="text-[10px] text-purple-300/70 font-bold">WAKTU JALAN</div>
+                        <div id="session-time" class="text-lg font-extrabold text-white">00:00</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="setTripCategory('PRIBADI')" id="cat-pribadi" class="py-2 rounded-xl text-xs font-bold bg-purple-600 text-white">PRIBADI</button>
+                    <button onclick="setTripCategory('KERJA')" id="cat-kerja" class="py-2 rounded-xl text-xs font-bold bg-purple-950/60 text-purple-300 border border-purple-500/30">KERJA</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="toggleDriveSim()" id="btn-sim" class="py-2.5 rounded-xl text-xs font-extrabold bg-indigo-600 hover:bg-indigo-500 text-white">SIMULASI JALAN</button>
+                    <button onclick="parkAndSync()" class="py-2.5 rounded-xl text-xs font-extrabold bg-amber-400 hover:bg-amber-300 text-black">PARKIR & SYNC</button>
+                </div>
+            </div>
+
+            <!-- Tengah: Peta Navigasi & Lokasi Parkir (5 Kolom) -->
+            <div class="col-span-5 flex flex-col gap-3 h-full">
+                <div class="h-[360px] glass-card rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden">
+                    <div class="flex justify-between items-center z-10 bg-purple-950/80 border border-purple-500/30 rounded-xl px-3.5 py-2">
+                        <div>
+                            <div class="text-[10px] font-bold text-purple-300">BELOK KANAN • 450 M</div>
+                            <div class="text-sm font-bold text-white">Jl. Jend. Sudirman</div>
+                        </div>
+                        <span class="text-xs font-bold text-amber-400">ETA 14 Mnt</span>
+                    </div>
+                    <div class="my-auto text-center z-10">
+                        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-900/70 border border-purple-400/40 text-xs font-bold text-purple-100">
+                            <span>▲</span> Navigasi Real-Time Headunit Aktif
+                        </div>
+                    </div>
+                    <div class="flex gap-2 z-10">
+                        <button onclick="openApp('com.google.android.apps.maps','Maps')" class="flex-1 py-2 rounded-xl bg-purple-950/80 border border-purple-500/30 text-xs font-bold hover:bg-purple-800/60">🏠 Rumah</button>
+                        <button onclick="openApp('com.google.android.apps.maps','Maps')" class="flex-1 py-2 rounded-xl bg-purple-950/80 border border-purple-500/30 text-xs font-bold hover:bg-purple-800/60">🏢 Kantor</button>
+                        <button onclick="openApp('com.waze','Waze')" class="flex-1 py-2 rounded-xl bg-purple-950/80 border border-purple-500/30 text-xs font-bold hover:bg-purple-800/60">⛽ SPBU</button>
+                    </div>
+                </div>
+                <div class="h-[180px] glass-card rounded-2xl p-4 flex flex-col justify-between">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[11px] font-bold tracking-widest text-purple-300/80">LOKASI PARKIR TERAKHIR & CLOUD SYNC</span>
+                        <span id="sync-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-200">Tersinkron ke HP</span>
+                    </div>
+                    <div>
+                        <div id="parking-label" class="text-base font-bold text-white">Basement P2 - Mall Metropolitan</div>
+                        <div id="parking-meta" class="text-xs text-purple-300/70 mt-0.5">Koordinat: -6.2481, 106.9904 • Tersimpan di Garasi HP</div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-purple-200/80 pt-1 border-t border-purple-500/20">
+                        <span>Total Bulan Ini: <strong id="monthly-total-km" class="text-amber-400">274.9 KM</strong> (28 Perjalanan)</span>
+                        <button onclick="parkAndSync()" class="text-xs font-bold text-amber-400 hover:underline">Sync Sekarang &rarr;</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kanan: Musik, Bar Volume, Pintasan Cepat (3 Kolom) -->
+            <div class="col-span-3 flex flex-col gap-2.5 h-full">
+                <div class="h-[272px] glass-card rounded-2xl p-4 flex flex-col justify-between">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-bold tracking-widest text-purple-300/80">MEDIA PLAYER</span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">SPOTIFY</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-700 flex items-center justify-center text-2xl font-bold shadow-md">♫</div>
+                        <div class="overflow-hidden">
+                            <div id="song-title" class="text-sm font-bold text-white truncate">Hati-Hati di Jalan</div>
+                            <div id="song-artist" class="text-xs text-purple-300/70 truncate">Tulus • Manusia</div>
+                        </div>
+                    </div>
+                    <div class="w-full bg-purple-950 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-purple-400 w-1/2 h-full"></div>
+                    </div>
+                    <div class="flex justify-around items-center">
+                        <button class="text-lg text-purple-200 hover:text-white">⏮</button>
+                        <button class="w-10 h-10 rounded-full bg-purple-500 text-white font-bold flex items-center justify-center">❚❚</button>
+                        <button class="text-lg text-purple-200 hover:text-white">⏭</button>
+                    </div>
+                </div>
+
+                <!-- Bar Volume Headunit -->
+                <div class="h-[92px] glass-card rounded-2xl p-3 flex flex-col justify-between">
+                    <div class="flex justify-between items-center text-[10px] font-bold text-purple-300">
+                        <span>🔊 VOLUME HEADUNIT</span>
+                        <span id="volume-val" class="text-white">75%</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="adjustVolume(-10)" class="w-7 h-7 rounded-lg bg-purple-900/70 font-bold text-xs">-</button>
+                        <input id="volume-slider" type="range" min="0" max="100" value="75" oninput="setVolume(this.value)" class="flex-1 h-1.5 cursor-pointer">
+                        <button onclick="adjustVolume(10)" class="w-7 h-7 rounded-lg bg-purple-900/70 font-bold text-xs">+</button>
+                    </div>
+                </div>
+
+                <!-- Pintasan Cepat 2x2 -->
+                <div class="h-[168px] glass-card rounded-2xl p-3 flex flex-col justify-between">
+                    <div class="text-[10px] font-bold tracking-widest text-purple-300/80">PINTASAN CEPAT</div>
+                    <div class="grid grid-cols-2 gap-2 flex-1 mt-1.5">
+                        <button onclick="switchTab('apps')" class="rounded-xl bg-purple-900/50 border border-purple-500/30 text-xs font-bold hover:bg-purple-800/60">📱 Semua Aplikasi</button>
+                        <button onclick="switchTab('service')" class="rounded-xl bg-purple-900/50 border border-purple-500/30 text-xs font-bold hover:bg-purple-800/60">🔧 Servis (H-7)</button>
+                        <button onclick="openApp('com.google.android.apps.maps','Maps')" class="rounded-xl bg-purple-900/50 border border-purple-500/30 text-xs font-bold hover:bg-purple-800/60">🗺️ Google Maps</button>
+                        <button onclick="switchTab('settings')" class="rounded-xl bg-purple-900/50 border border-purple-500/30 text-xs font-bold hover:bg-purple-800/60">⚙️ Setelan Launcher</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW MENU APLIKASI (Sesuai Mockup Kategori Atas & Grid 6x3) -->
+        <section id="view-apps" class="hidden h-full flex-col justify-between glass-card rounded-2xl p-5">
+            <div id="category-bar" class="flex items-center bg-[#12092b]/90 border border-purple-500/30 rounded-full p-1.5 gap-2"></div>
+            <div id="apps-grid" class="grid grid-cols-6 grid-rows-3 gap-4 flex-1 mt-4 place-items-center"></div>
+        </section>
+
+        <!-- VIEW PENGINGAT SERVIS -->
+        <section id="view-service" class="hidden h-full glass-card rounded-2xl p-5">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-extrabold text-white">PENGINGAT SERVIS & SINKRONISASI ODOMETER</h2>
+                <span class="text-xs font-bold text-amber-400">Notifikasi Otomatis H-7 Pukul 09:00 WIB</span>
+            </div>
+            <p class="text-xs text-purple-200/80">Odometer Aktual Kendaraan: <strong>42.850 KM</strong> (Tersinkronisasi dengan aplikasi HP Garasi).</p>
+        </section>
+
+        <!-- VIEW SETELAN LAUNCHER -->
+        <section id="view-settings" class="hidden h-full glass-card rounded-2xl p-5">
+            <h2 class="text-lg font-extrabold text-white mb-2">SETELAN LAUNCHER (MURNI PENGATURAN APLIKASI)</h2>
+            <p class="text-xs text-purple-200/80">Mengatur ID Akun Sinkronisasi Cloud, Tema Warna Latar Ungu, Kalibrasi Kecepatan GPS, dan Aplikasi Default.</p>
+        </section>
+    </main>
+
+    <!-- 3. DOCK BAWAH (64px) -->
+    <nav class="h-[64px] shrink-0 glass-card rounded-2xl px-8 flex items-center justify-around">
+        <button onclick="switchTab('home')" class="text-xs font-extrabold text-purple-300 hover:text-white">🏠 BERANDA</button>
+        <button onclick="switchTab('apps')" class="text-xs font-extrabold text-purple-300 hover:text-white">🎛️ APLIKASI</button>
+        <button onclick="switchTab('service')" class="text-xs font-extrabold text-purple-300 hover:text-white">🔧 PENGINGAT SERVIS</button>
+        <button onclick="switchTab('settings')" class="text-xs font-extrabold text-purple-300 hover:text-white">⚙️ SETELAN LAUNCHER</button>
+    </nav>
+</div>
+
+<script>
+    const APPS = [
+        { name: 'Navi', cat: 'Navigasi', pkg: 'com.google.android.apps.maps', bg: 'from-indigo-500 to-purple-600', icon: '▲' },
+        { name: 'Maps', cat: 'Navigasi', pkg: 'com.google.android.apps.maps', bg: 'from-emerald-500 to-blue-600', icon: '📍' },
+        { name: 'Chrome', cat: 'Sistem', pkg: 'com.android.chrome', bg: 'from-amber-400 to-red-500', icon: '🌐' },
+        { name: 'YouTube', cat: 'Media', pkg: 'com.google.android.youtube', bg: 'from-red-600 to-red-700', icon: '▶' },
+        { name: 'Netflix', cat: 'Media', pkg: 'com.netflix.mediaclient', bg: 'from-zinc-900 to-red-900', icon: 'N' },
+        { name: 'Disney+', cat: 'Media', pkg: 'com.disney.disneyplus', bg: 'from-blue-900 to-indigo-950', icon: 'D+' },
+        { name: 'Spotify', cat: 'Media', pkg: 'com.spotify.music', bg: 'from-emerald-500 to-green-700', icon: '🟢' },
+        { name: 'Bluetooth', cat: 'Sistem', pkg: 'com.android.settings', bg: 'from-blue-600 to-indigo-800', icon: 'ᛒ' },
+        { name: 'Radio', cat: 'Media', pkg: 'com.android.fmradio', bg: 'from-slate-600 to-slate-800', icon: '📻' },
+        { name: 'Music', cat: 'Media', pkg: 'com.android.music', bg: 'from-pink-500 to-rose-600', icon: '♫' },
+        { name: 'Video', cat: 'Media', pkg: 'com.android.gallery3d', bg: 'from-violet-600 to-purple-800', icon: '🎬' },
+        { name: 'File Manager', cat: 'Sistem', pkg: 'com.android.documentsui', bg: 'from-amber-400 to-orange-500', icon: '📁' },
+        { name: 'Car Settings', cat: 'Mobil', pkg: 'com.android.settings', bg: 'from-slate-500 to-zinc-700', icon: '🚘' },
+        { name: 'Kamera', cat: 'Mobil', pkg: 'com.android.camera2', bg: 'from-zinc-600 to-zinc-800', icon: '📷' },
+        { name: 'Galeri', cat: 'Media', pkg: 'com.android.gallery3d', bg: 'from-purple-500 to-indigo-600', icon: '🖼️' },
+        { name: 'EQ', cat: 'Sistem', pkg: 'com.android.musicfx', bg: 'from-indigo-400 to-purple-700', icon: '🎚️' },
+        { name: 'AUX', cat: 'Mobil', pkg: 'com.android.settings', bg: 'from-cyan-500 to-blue-700', icon: '🔌' },
+        { name: 'DVR', cat: 'Mobil', pkg: 'com.android.camera2', bg: 'from-indigo-500 to-violet-800', icon: '📹' }
+    ];
+    const CATEGORIES = ['Semua', 'Navigasi', 'Media', 'Sistem', 'Mobil', 'Lainnya'];
+    let activeCategory = 'Semua';
+
+    function renderCategories() {
+        const bar = document.getElementById('category-bar');
+        bar.innerHTML = CATEGORIES.map(c => `
+            <button onclick="filterApps('${c}')" class="px-5 py-2 rounded-full text-xs font-bold transition ${activeCategory === c ? 'bg-purple-600 text-white shadow-lg' : 'text-purple-200/70 hover:text-white'}">${c}</button>
+        `).join('');
+    }
+
+    function filterApps(cat) {
+        activeCategory = cat;
+        renderCategories();
+        const grid = document.getElementById('apps-grid');
+        const list = cat === 'Semua' ? APPS : APPS.filter(a => a.cat === cat);
+        grid.innerHTML = list.map(a => `
+            <button onclick="openApp('${a.pkg}', '${a.name}')" class="flex flex-col items-center gap-2 group">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br ${a.bg} flex items-center justify-center text-2xl font-extrabold shadow-lg group-hover:scale-105 transition">${a.icon}</div>
+                <span class="text-xs font-semibold text-purple-100">${a.name}</span>
+            </button>
+        `).join('');
+    }
+
+    function openApp(pkg, label) {
+        if (window.AndroidBridge && window.AndroidBridge.launchApp) {
+            window.AndroidBridge.launchApp(pkg, label);
+        } else {
+            alert('Membuka aplikasi Android: ' + label + ' (' + pkg + ')');
+        }
+    }
+
+    function setBrightness(val) {
+        document.getElementById('brightness-slider').value = val;
+        document.getElementById('brightness-val').innerText = val + '%';
+        document.getElementById('brightness-overlay').style.opacity = ((100 - val) / 100) * 0.75;
+        if (window.AndroidBridge && window.AndroidBridge.setSystemBrightness) {
+            window.AndroidBridge.setSystemBrightness(parseInt(val));
+        }
+    }
+    function adjustBrightness(delta) {
+        const cur = parseInt(document.getElementById('brightness-slider').value);
+        setBrightness(Math.min(100, Math.max(20, cur + delta)));
+    }
+
+    function setVolume(val) {
+        document.getElementById('volume-slider').value = val;
+        document.getElementById('volume-val').innerText = val + '%';
+        if (window.AndroidBridge && window.AndroidBridge.setSystemVolume) {
+            window.AndroidBridge.setSystemVolume(parseInt(val));
+        }
+    }
+    function adjustVolume(delta) {
+        const cur = parseInt(document.getElementById('volume-slider').value);
+        setVolume(Math.min(100, Math.max(0, cur + delta)));
+    }
+
+    function switchTab(tab) {
+        ['home', 'apps', 'service', 'settings'].forEach(t => {
+            const el = document.getElementById('view-' + t);
+            if (el) el.classList.toggle('hidden', t !== tab);
+            if (el && t === 'apps' && t === tab) el.classList.add('flex');
+        });
+    }
+
+    // Hook GPS Native Android
+    window.onNativeGpsUpdate = function(speedKmh, lat, lng) {
+        document.getElementById('speed-value').innerText = speedKmh;
+    };
+
+    renderCategories();
+    filterApps('Semua');
+</script>
+</body>
+</html>
