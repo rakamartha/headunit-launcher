@@ -260,7 +260,7 @@
                         <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
                             <span style="width:30px; height:30px; border-radius:9px; background:rgba(147,51,234,0.35); border:1px solid #a855f7; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;">📍</span>
                             <div style="overflow:hidden;">
-                                <div style="font-size:9px; font-weight:800; color:#c084fc; letter-spacing:0.06em;">PETA NAVIGASI GPS LIVE</div>
+                                <div style="font-size:9px; font-weight:800; color:#c084fc; letter-spacing:0.06em;">PETA PELACAK LOKASI GPS</div>
                                 <div id="map-coord-text" style="font-size:11px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Mengunci lokasi GPS...</div>
                             </div>
                         </div>
@@ -297,10 +297,10 @@
 
                         <!-- Kartu Info Aplikasi Musik & Status Audio Aktif (Klik untuk membuka aplikasi musik yang dipilih) -->
                         <div onclick="openCurrentMusicSourceApp()" style="display:flex; align-items:center; gap:11px; cursor:pointer; background:rgba(20,9,42,0.52); padding:10px; border-radius:14px; border:1px solid rgba(168,85,247,0.24);">
-                            <div id="music-app-icon-box" style="width:48px; height:48px; border-radius:12px; background:linear-gradient(135deg,#a855f7,#4338ca); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; overflow:hidden;">♫</div>
+                            <div style="width:48px; height:48px; border-radius:999px; background:linear-gradient(135deg,#a855f7,#4f46e5); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; border:2px solid rgba(255,255,255,0.2); box-shadow:0 0 15px rgba(168,85,247,0.4);"><span style="transform:translateY(-1px);">♫</span></div>
                             <div style="overflow:hidden; flex:1;">
-                                <div id="song-title" style="font-size:13px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Ketuk untuk Buka Musik</div>
-                                <div id="song-artist" style="font-size:11px; color:rgba(216,180,254,0.85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">Siap Memutar Audio</div>
+                                <div id="song-title" style="font-size:13px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Memuat Audio...</div>
+                                <div id="song-artist" style="font-size:11px; color:rgba(216,180,254,0.85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">Putar musik di headunit</div>
                             </div>
                             <div id="eq-bars" style="display:flex; align-items:flex-end; gap:3px; height:20px;">
                                 <span style="width:3px; background:#c084fc; border-radius:2px; height:6px;"></span>
@@ -777,9 +777,18 @@
         setPlayPauseButtonUI(playing);
     };
 
+    let currentSongTitle = "Memuat Audio...";
+    let currentSongArtist = "Putar musik di headunit";
+
     window.onNativeMediaUpdate = function(title, artist, pkg, playing) {
-        if (title) document.getElementById('song-title').innerText = title;
-        if (artist) document.getElementById('song-artist').innerText = artist;
+        if (title && title !== "null" && title.trim() !== "") {
+            currentSongTitle = title;
+            document.getElementById('song-title').innerText = title;
+        }
+        if (artist && artist !== "null" && artist.trim() !== "") {
+            currentSongArtist = artist;
+            document.getElementById('song-artist').innerText = artist;
+        }
         setPlayPauseButtonUI(playing);
     };
 
@@ -815,24 +824,12 @@
         const titleEl = document.getElementById('song-title');
         const artistEl = document.getElementById('song-artist');
 
-        if (assigned && assigned.pkg) {
-            // Cari ikon terbaru dari daftar aplikasi terinstal
-            const foundApp = installedAppsList.find(a => a.pkg === assigned.pkg);
-            const iconSrc = (foundApp && foundApp.icon) ? foundApp.icon : assigned.icon;
-            if (iconSrc && iconSrc.startsWith('data:image')) {
-                iconBox.innerHTML = `<img src="${iconSrc}" style="width:100%;height:100%;object-fit:contain;" />`;
-                iconBox.style.background = 'rgba(255,255,255,0.08)';
-            } else {
-                iconBox.innerHTML = assigned.name.charAt(0).toUpperCase();
-                iconBox.style.background = 'linear-gradient(135deg,#a855f7,#4338ca)';
-            }
-            titleEl.innerText = assigned.name;
-            artistEl.innerText = 'Ketuk untuk membuka ' + assigned.name;
-        } else {
-            iconBox.innerHTML = '♫';
-            iconBox.style.background = 'linear-gradient(135deg,#a855f7,#4338ca)';
-            titleEl.innerText = 'Tab ' + activeMusicTab + ' (Belum Dipilih)';
-            artistEl.innerText = 'Ketuk ⚙ Pilih untuk mengatur aplikasi ' + activeMusicTab;
+        // v7 Fix: Jangan override judul lagu dan artis dengan nama aplikasi!
+        // Biarkan Broadcast Receiver (window.onNativeMediaUpdate) yang mengatur teksnya.
+        // Cukup perbarui teks placeholder jika belum ada lagu sama sekali.
+        if (titleEl.innerText.includes("Ketuk untuk Buka") || titleEl.innerText.includes("Tab ") || titleEl.innerText.includes("Memuat Audio")) {
+            titleEl.innerText = "Memuat Audio...";
+            artistEl.innerText = "Putar musik di headunit";
         }
     }
 
