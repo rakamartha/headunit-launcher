@@ -418,12 +418,18 @@
                 </div>
 
                 <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:auto 0;">
-                    <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px;">
-                        <div style="font-size:12px; font-weight:800; color:#facc15; margin-bottom:10px;">1. AKUN & AUTO-SYNC CLOUD</div>
-                        <label style="font-size:11px; color:#d8b4fe; display:block; margin-bottom:4px;">Nama Profil Kendaraan:</label>
-                        <input id="setting-vehicle-name" type="text" value="GREYCOAT" oninput="updateVehicleName(this.value)" style="width:100%; padding:8px 10px; border-radius:8px; background:#120726; border:1px solid #a855f7; color:#fff; font-weight:800; margin-bottom:8px;">
-                        <label style="font-size:11px; color:#d8b4fe; display:block; margin-bottom:4px;">URL Cloud Database (Firebase/Supabase):</label>
-                        <input id="setting-cloud-url" type="text" placeholder="https://greycoat-sync.firebaseio.com" onchange="saveCloudEndpoint(this.value)" style="width:100%; padding:8px 10px; border-radius:8px; background:#120726; border:1px solid rgba(168,85,247,0.4); color:#fff; font-size:11px;">
+                    <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <span style="font-size:12px; font-weight:800; color:#facc15;">1. AKUN GMAIL & ID MOBIL</span>
+                                <span id="pairing-code-badge" style="font-size:11px; font-weight:900; padding:2px 8px; border-radius:6px; background:rgba(250,204,21,0.2); color:#facc15; border:1px solid rgba(250,204,21,0.45);">ID: GC-0000</span>
+                            </div>
+                            <label style="font-size:10px; color:#d8b4fe; display:block; margin-bottom:3px;">Akun Gmail (Untuk Sinkronisasi Otomatis ke HP):</label>
+                            <input id="setting-gmail-input" type="email" placeholder="nama.anda@gmail.com" onchange="saveGmailAccount(this.value)" style="width:100%; padding:7px 10px; border-radius:8px; background:#120726; border:1px solid #a855f7; color:#fff; font-weight:700; font-size:12px; margin-bottom:7px;">
+                            <label style="font-size:10px; color:#d8b4fe; display:block; margin-bottom:3px;">Nama Mobil (Contoh: Mobil A / Mobil B):</label>
+                            <input id="setting-vehicle-name" type="text" value="GREYCOAT" oninput="updateVehicleName(this.value)" style="width:100%; padding:7px 10px; border-radius:8px; background:#120726; border:1px solid rgba(168,85,247,0.5); color:#fff; font-weight:800; font-size:12px; margin-bottom:8px;">
+                        </div>
+                        <button onclick="forcePushCloudNow()" style="width:100%; padding:8px; border-radius:10px; background:linear-gradient(90deg,#10b981,#059669); color:#fff; font-size:11px; font-weight:900; border:none;">☁️ Simpan & Sinkronkan ke HP Sekarang</button>
                     </div>
 
                     <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px;">
@@ -582,17 +588,41 @@
         }
     }
 
-    // 4. GPS REAL-TIME & TOTAL JARAK DIMULAI DARI 0,0 KM (BUKAN 274,9 KM)
+    // 4. GPS REAL-TIME, MULTI-VEHICLE ID & ZERO-CONFIG GMAIL CLOUD SYNC (MULAI DARI 0,0 KM)
     let sessionDistKm = 0.0;
     let sessionSeconds = 0;
     let sessionMaxSpeed = 0;
+    let sessionTripRecorded = false;
     let lastGpsTime = null;
     let lastLat = null;
     let lastLng = null;
+    let lastCloudPushTime = 0;
     let tripCategory = localStorage.getItem('gc_trip_cat') || 'PRIBADI';
-    // Key baru 'gc_total_km_v6' default 0.0 agar saat baru instal mulai dari 0,0 KM
     let totalMonthlyKm = parseFloat(localStorage.getItem('gc_total_km_v6') || '0.0');
+    let totalTripsCount = parseInt(localStorage.getItem('gc_trips_count_v8') || '0');
+    let totalDrivingSeconds = parseInt(localStorage.getItem('gc_total_sec_v8') || '0');
+    let longestTripKm = parseFloat(localStorage.getItem('gc_longest_km_v8') || '0.0');
+    let activeDaysArr = JSON.parse(localStorage.getItem('gc_active_days_v8') || '[]');
     let gpsOffset = 0;
+
+    // Generate Kode Pairing Unik 6 karakter khusus untuk Headunit mobil ini (contoh: GC-4829)
+    let vehiclePairingCode = localStorage.getItem('gc_pairing_code_v8');
+    if (!vehiclePairingCode) {
+        const randNum = Math.floor(1000 + Math.random() * 9000);
+        vehiclePairingCode = 'GC-' + randNum;
+        localStorage.setItem('gc_pairing_code_v8', vehiclePairingCode);
+    }
+
+    function getGmailChannelTopic(email) {
+        if (!email || !email.includes('@')) return '';
+        const clean = email.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+        return 'greycoat_gmail_' + clean;
+    }
+
+    function getCarChannelTopic(code) {
+        const clean = (code || vehiclePairingCode).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        return 'greycoat_car_' + clean;
+    }
 
     function renderTotalKm() {
         document.getElementById('total-odo-mini').innerText = totalMonthlyKm.toFixed(1).replace('.', ',') + ' KM';
@@ -602,13 +632,23 @@
         sessionDistKm = 0.0;
         sessionSeconds = 0;
         sessionMaxSpeed = 0;
+        sessionTripRecorded = false;
         totalMonthlyKm = 0.0;
+        totalTripsCount = 0;
+        totalDrivingSeconds = 0;
+        longestTripKm = 0.0;
+        activeDaysArr = [];
         localStorage.setItem('gc_total_km_v6', '0.0');
+        localStorage.setItem('gc_trips_count_v8', '0');
+        localStorage.setItem('gc_total_sec_v8', '0');
+        localStorage.setItem('gc_longest_km_v8', '0.0');
+        localStorage.setItem('gc_active_days_v8', '[]');
         document.getElementById('session-dist').innerText = '0.0 km';
         document.getElementById('session-time').innerText = '00:00';
         document.getElementById('session-max').innerText = '0 km/j';
         renderTotalKm();
-        showToast('🔄 Total Jarak direset kembali ke 0,0 KM');
+        queueAutoSyncPayload(true);
+        showToast('🔄 Seluruh data perjalanan direset kembali ke 0,0 KM');
     }
 
     function haversineKm(lat1, lon1, lat2, lon2) {
@@ -659,6 +699,20 @@
             if (deltaKm > 0.003 && deltaKm < 2.0) {
                 sessionDistKm += deltaKm;
                 totalMonthlyKm += deltaKm;
+                if (sessionDistKm > longestTripKm) {
+                    longestTripKm = sessionDistKm;
+                    localStorage.setItem('gc_longest_km_v8', longestTripKm.toFixed(2));
+                }
+                if (!sessionTripRecorded && sessionDistKm >= 0.05) {
+                    sessionTripRecorded = true;
+                    totalTripsCount += 1;
+                    localStorage.setItem('gc_trips_count_v8', String(totalTripsCount));
+                    const todayKey = new Date().toISOString().split('T')[0];
+                    if (!activeDaysArr.includes(todayKey)) {
+                        activeDaysArr.push(todayKey);
+                        localStorage.setItem('gc_active_days_v8', JSON.stringify(activeDaysArr));
+                    }
+                }
                 localStorage.setItem('gc_total_km_v6', totalMonthlyKm.toFixed(2));
                 document.getElementById('session-dist').innerText = sessionDistKm.toFixed(1) + ' km';
                 renderTotalKm();
@@ -668,6 +722,8 @@
             const dtSec = Math.round((now - lastGpsTime) / 1000);
             if (dtSec > 0 && dtSec < 15) {
                 sessionSeconds += dtSec;
+                totalDrivingSeconds += dtSec;
+                localStorage.setItem('gc_total_sec_v8', String(totalDrivingSeconds));
                 const mins = String(Math.floor(sessionSeconds / 60)).padStart(2, '0');
                 const secs = String(sessionSeconds % 60).padStart(2, '0');
                 document.getElementById('session-time').innerText = mins + ':' + secs;
@@ -677,36 +733,62 @@
         lastLng = lng;
         lastGpsTime = now;
 
-        queueAutoSyncPayload();
+        queueAutoSyncPayload(false);
     };
 
-    function queueAutoSyncPayload() {
+    function queueAutoSyncPayload(forceImmediate) {
+        const odoBase = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
+        const avgSpd = totalDrivingSeconds > 60 ? Math.round((totalMonthlyKm / (totalDrivingSeconds / 3600))) : 0;
         const payload = {
+            pairingCode: vehiclePairingCode,
+            gmail: (localStorage.getItem('gc_user_gmail') || '').trim().toLowerCase(),
             vehicleName: localStorage.getItem('gc_vehicle_name') || 'GREYCOAT',
             category: tripCategory,
             sessionDistKm: Number(sessionDistKm.toFixed(2)),
             totalMonthlyKm: Number(totalMonthlyKm.toFixed(2)),
+            tripsCount: totalTripsCount,
+            totalDurationSec: totalDrivingSeconds,
+            activeDaysCount: activeDaysArr.length,
+            longestTripKm: Number(longestTripKm.toFixed(2)),
             maxSpeedKmh: sessionMaxSpeed,
+            avgSpeedKmh: avgSpd,
+            odometerKm: odoBase,
             lastLat: currentLat,
             lastLng: currentLng,
             updatedAt: Date.now()
         };
         localStorage.setItem('gc_latest_sync_payload', JSON.stringify(payload));
-        if (navigator.onLine) {
+
+        const now = Date.now();
+        if (navigator.onLine && (forceImmediate || (now - lastCloudPushTime > 20000))) {
+            lastCloudPushTime = now;
             triggerSilentCloudSync();
         }
     }
 
     async function triggerSilentCloudSync() {
-        const endpoint = localStorage.getItem('gc_cloud_url');
         const payloadRaw = localStorage.getItem('gc_latest_sync_payload');
-        if (!endpoint || !payloadRaw || !navigator.onLine) return;
+        if (!payloadRaw || !navigator.onLine) return;
         try {
-            await fetch(endpoint.replace(/\/$/, '') + '/vehicles/GREYCOAT/live_state.json', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+            // 1. Kirim ke Channel Spesifik Kode Pairing Mobil ini (Tanpa Perlu URL Supabase Manual)
+            const carTopic = getCarChannelTopic(vehiclePairingCode);
+            await fetch('https://ntfy.sh/' + carTopic, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
                 body: payloadRaw
             });
+
+            // 2. Jika Akun Gmail diisi, kirim juga ke Channel Akun Gmail agar HP langsung mendeteksi Mobil A / Mobil B otomatis
+            const userGmail = localStorage.getItem('gc_user_gmail') || '';
+            const gmailTopic = getGmailChannelTopic(userGmail);
+            if (gmailTopic) {
+                await fetch('https://ntfy.sh/' + gmailTopic, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+                    body: payloadRaw
+                });
+            }
+            document.getElementById('autosync-text').innerText = 'Auto-Sync HP (' + vehiclePairingCode + ')';
         } catch (_e) {}
     }
 
@@ -1186,18 +1268,31 @@
         document.getElementById('rem-trans').innerText = (val + 20000).toLocaleString('id-ID') + ' KM';
         document.getElementById('rem-ban').innerText = (val + 15000).toLocaleString('id-ID') + ' KM';
         localStorage.setItem('gc_odo_km_v6', String(val));
-        queueAutoSyncPayload();
+        queueAutoSyncPayload(true);
         showToast('🔧 Odometer disimpan & disinkronkan ke HP');
     }
     function updateVehicleName(name) {
         const clean = name || 'GREYCOAT';
         document.getElementById('vehicle-brand').innerText = clean;
         localStorage.setItem('gc_vehicle_name', clean);
+        queueAutoSyncPayload(false);
     }
-    function saveCloudEndpoint(url) {
-        localStorage.setItem('gc_cloud_url', url.trim());
-        triggerSilentCloudSync();
-        showToast('☁️ Endpoint Cloud Sync disimpan');
+    function saveGmailAccount(email) {
+        const clean = (email || '').trim().toLowerCase();
+        localStorage.setItem('gc_user_gmail', clean);
+        queueAutoSyncPayload(true);
+        showToast('📧 Akun Gmail (' + (clean || 'Kosong') + ') disimpan & disinkronkan!');
+    }
+    function forcePushCloudNow() {
+        const emailVal = document.getElementById('setting-gmail-input').value;
+        const nameVal = document.getElementById('setting-vehicle-name').value;
+        if (emailVal) localStorage.setItem('gc_user_gmail', emailVal.trim().toLowerCase());
+        if (nameVal) {
+            localStorage.setItem('gc_vehicle_name', nameVal.trim());
+            document.getElementById('vehicle-brand').innerText = nameVal.trim();
+        }
+        queueAutoSyncPayload(true);
+        showToast('☁️ Data ' + (nameVal || 'GREYCOAT') + ' (' + vehiclePairingCode + ') dikirim ke HP!');
     }
     function applyTheme(c1, c2) {
         document.documentElement.style.setProperty('--bg-primary', c1);
@@ -1242,6 +1337,18 @@
     updateClock();
 
     window.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('pairing-code-badge').innerText = 'ID: ' + vehiclePairingCode;
+        document.getElementById('autosync-text').innerText = 'Auto-Sync HP (' + vehiclePairingCode + ')';
+        const savedName = localStorage.getItem('gc_vehicle_name') || 'GREYCOAT';
+        document.getElementById('vehicle-brand').innerText = savedName;
+        document.getElementById('setting-vehicle-name').value = savedName;
+        const savedGmail = localStorage.getItem('gc_user_gmail') || '';
+        document.getElementById('setting-gmail-input').value = savedGmail;
+        const savedOdo = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
+        document.getElementById('odo-input').value = savedOdo;
+        document.getElementById('rem-oli').innerText = (savedOdo + 10000).toLocaleString('id-ID') + ' KM';
+        document.getElementById('rem-trans').innerText = (savedOdo + 20000).toLocaleString('id-ID') + ' KM';
+        document.getElementById('rem-ban').innerText = (savedOdo + 15000).toLocaleString('id-ID') + ' KM';
         renderTotalKm();
         initLiveMap();
         setTripCategory(tripCategory);
