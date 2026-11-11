@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "GreycoatHeadunitLauncher"
+rootProject.name = "PangDashHeadunitLauncher"
 include(":app")

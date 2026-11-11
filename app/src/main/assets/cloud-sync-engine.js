@@ -5,7 +5,7 @@
 export const GreycoatSyncEngine = {
     config: {
         vehicleId: "GREYCOAT-01",
-        vehicleName: "GREYCOAT",
+        vehicleName: "PangDash",
         // Ganti dengan URL Firebase Realtime DB / Firestore / Supabase Project Anda
         endpointUrl: "https://YOUR-PROJECT-ID.firebaseio.com",
         apiKey: "YOUR_API_KEY"

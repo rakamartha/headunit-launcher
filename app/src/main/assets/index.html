@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GREYCOAT - Android Headunit Launcher (1280x720)</title>
+    <title>PangDash - Android Headunit Launcher (1280x720)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Leaflet Real-Time GPS Map CSS & JS -->
@@ -233,7 +233,7 @@
         <div id="default-launcher-modal" class="hidden" style="position:absolute; inset:0; z-index:96; background:rgba(7,3,18,0.82); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center;">
             <div class="glass-card" style="width:480px; border-radius:22px; padding:26px; border:1px solid var(--border-subtle); text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
                 <div style="width:60px; height:60px; border-radius:18px; background:linear-gradient(135deg, var(--btn-primary), var(--accent-main)); margin:0 auto 14px auto; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 24px var(--dock-active-bg);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
-                <h3 style="font-size:20px; font-weight:900; color:#fff; margin:0 0 8px 0;">Jadikan GREYCOAT Sebagai Layar Utama?</h3>
+                <h3 style="font-size:20px; font-weight:900; color:#fff; margin:0 0 8px 0;">Jadikan PangDash Sebagai Layar Utama?</h3>
                 <p style="font-size:13px; color:rgba(233,213,255,0.85); line-height:1.5; margin:0 0 22px 0;">
                     Launcher ini belum diatur sebagai <strong>Layar Utama (Default Home)</strong>. Jadikan layar utama agar otomatis terbuka setiap kali headunit menyala atau saat tombol Home ditekan.
                 </p>
@@ -279,7 +279,7 @@
         <header class="hu-header glass-card shrink-0">
             <div style="display:flex; align-items:center; gap:12px;">
                 <span id="net-dot" style="width:10px; height:10px; border-radius:999px; background:#10b981; box-shadow:0 0 10px #10b981;"></span>
-                <span id="vehicle-brand" style="font-size:14px; font-weight:800; letter-spacing:0.12em; color:var(--text-muted);">GREYCOAT</span>
+                <span id="vehicle-brand" style="font-size:14px; font-weight:800; letter-spacing:0.12em; color:var(--text-muted);">PangDash</span>
                 <span style="font-size:12px; color:rgba(216,180,254,0.7);">| 29°C</span>
                 <span id="trip-badge" style="font-size:10px; font-weight:800; padding:3px 10px; border-radius:999px; background:var(--dock-active-bg); border:1px solid var(--border-subtle); color:var(--text-muted);">MODE: PRIBADI</span>
             </div>
@@ -752,7 +752,7 @@
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div>
                         <div style="font-size:12px; font-weight:700; color:var(--accent-light);">KONFIGURASI INTERNAL LAUNCHER</div>
-                        <h2 style="font-size:20px; font-weight:900; color:#fff; margin:2px 0 0 0;">SETELAN GREYCOAT LAUNCHER</h2>
+                        <h2 style="font-size:20px; font-weight:900; color:#fff; margin:2px 0 0 0;">SETELAN PANGDASH LAUNCHER</h2>
                     </div>
                     <button onclick="triggerSetDefaultLauncher()" style="padding:10px 16px; border-radius:12px; background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); color:#fff; font-size:12px; font-weight:800; border:1px solid var(--accent-light);" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Atur Sebagai Layar Utama (Default Home)</span></button>
                 </div>
@@ -767,7 +767,7 @@
                             <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Akun Gmail (Untuk Sinkronisasi Otomatis ke HP):</label>
                             <input id="setting-gmail-input" type="email" placeholder="nama.anda@gmail.com" onchange="saveGmailAccount(this.value)" style="width:100%; padding:7px 10px; border-radius:8px; background:var(--input-bg); border:1px solid var(--accent-main); color:#fff; font-weight:700; font-size:12px; margin-bottom:7px;">
                             <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Nama Mobil (Contoh: Mobil A / Mobil B):</label>
-                            <input id="setting-vehicle-name" type="text" value="GREYCOAT" oninput="updateVehicleName(this.value)" style="width:100%; padding:7px 10px; border-radius:8px; background:var(--input-bg); border:1px solid var(--border-faint); color:#fff; font-weight:800; font-size:12px; margin-bottom:8px;">
+                            <input id="setting-vehicle-name" type="text" value="PangDash" oninput="updateVehicleName(this.value)" style="width:100%; padding:7px 10px; border-radius:8px; background:var(--input-bg); border:1px solid var(--border-faint); color:#fff; font-weight:800; font-size:12px; margin-bottom:8px;">
                             <!-- Bar Status Auto-Sync HP & Total Jarak (Dipindahkan dari Bawah Speedometer) -->
                             <div style="background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.28); border-radius:10px; padding:7px 10px; display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
                                 <div style="display:flex; align-items:center; gap:7px;">
@@ -840,7 +840,7 @@
                 </div>
 
                 <div style="font-size:12px; color:rgba(216,180,254,0.7);">
-                    GREYCOAT Headunit Launcher v2.2 • Resolusi Native 1280×720 HD
+                    PangDash Headunit Launcher v3.4 • Resolusi Native 1280×720 HD
                 </div>
             </section>
         </main>
@@ -1212,7 +1212,7 @@
         const payload = {
             pairingCode: vehiclePairingCode,
             gmail: (localStorage.getItem('gc_user_gmail') || '').trim().toLowerCase(),
-            vehicleName: localStorage.getItem('gc_vehicle_name') || 'GREYCOAT',
+            vehicleName: localStorage.getItem('gc_vehicle_name') || 'PangDash',
             category: tripCategory,
             sessionDistKm: Number(sessionDistKm.toFixed(2)),
             totalMonthlyKm: Number(totalMonthlyKm.toFixed(2)),
@@ -2704,7 +2704,7 @@
     }
 
     function updateVehicleName(name) {
-        const clean = name || 'GREYCOAT';
+        const clean = name || 'PangDash';
         document.getElementById('vehicle-brand').innerText = clean;
         localStorage.setItem('gc_vehicle_name', clean);
         queueAutoSyncPayload(false);
@@ -2726,7 +2726,7 @@
             document.getElementById('vehicle-brand').innerText = nameVal.trim();
         }
         queueAutoSyncPayload(true);
-        showToast('Data ' + (nameVal || 'GREYCOAT') + ' (' + vehiclePairingCode + ') dikirim ke HP!');
+        showToast('Data ' + (nameVal || 'PangDash') + ' (' + vehiclePairingCode + ') dikirim ke HP!');
     }
 
     function setGpsOffsetValue(val) {
@@ -3009,7 +3009,12 @@
     window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('pairing-code-badge').innerText = 'ID: ' + vehiclePairingCode;
         document.getElementById('autosync-text').innerText = 'Auto-Sync HP (' + vehiclePairingCode + ')';
-        const savedName = localStorage.getItem('gc_vehicle_name') || 'GREYCOAT';
+        let rawSavedName = localStorage.getItem('gc_vehicle_name');
+        if (!rawSavedName || rawSavedName.toUpperCase() === 'GREYCOAT') {
+            rawSavedName = 'PangDash';
+            localStorage.setItem('gc_vehicle_name', 'PangDash');
+        }
+        const savedName = rawSavedName;
         document.getElementById('vehicle-brand').innerText = savedName;
         document.getElementById('setting-vehicle-name').value = savedName;
         const savedGmail = localStorage.getItem('gc_user_gmail') || '';

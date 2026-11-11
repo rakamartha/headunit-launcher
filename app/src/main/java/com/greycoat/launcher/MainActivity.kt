@@ -1013,7 +1013,7 @@ class MainActivity : Activity(), LocationListener {
                             addCategory(Intent.CATEGORY_HOME)
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
-                        startActivity(Intent.createChooser(chooser, "Pilih GREYCOAT sebagai Layar Utama"))
+                        startActivity(Intent.createChooser(chooser, "Pilih PangDash sebagai Layar Utama"))
                     }
                 } catch (_: Throwable) {
                     Toast.makeText(context, "Buka Setelan -> Aplikasi Default -> Aplikasi Layar Utama", Toast.LENGTH_LONG).show()
