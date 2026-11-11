@@ -317,18 +317,50 @@
             </div>
         </div>
 
-        <!-- MODAL 1: POPUP "JADIKAN LAYAR UTAMA" (MUNCUL OTOMATIS JIKA LAUNCHER BELUM DEFAULT) -->
-        <div id="default-launcher-modal" class="hidden" style="position:absolute; inset:0; z-index:96; background:rgba(7,3,18,0.82); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center;">
-            <div class="glass-card" style="width:480px; border-radius:22px; padding:26px; border:1px solid var(--border-subtle); text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
-                <img src="pangdash-logo.png" alt="PangDash" style="width:68px; height:68px; border-radius:20px; object-fit:cover; margin:0 auto 14px auto; display:block; border:1.5px solid var(--accent-light); box-shadow:0 8px 24px var(--dock-active-bg);" />
-                <h3 style="font-size:20px; font-weight:900; color:#fff; margin:0 0 8px 0;">Jadikan PangDash Sebagai Layar Utama?</h3>
-                <p style="font-size:13px; color:rgba(233,213,255,0.85); line-height:1.5; margin:0 0 22px 0;">
-                    Launcher ini belum diatur sebagai <strong>Layar Utama (Default Home)</strong>. Jadikan layar utama agar otomatis terbuka setiap kali headunit menyala atau saat tombol Home ditekan.
-                </p>
-                <div style="display:flex; gap:10px;">
-                    <button onclick="dismissDefaultLauncherModal()" style="flex:1; padding:12px; border-radius:12px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:var(--text-muted); font-size:13px; font-weight:800;">Nanti Saja</button>
-                    <button onclick="triggerSetDefaultLauncher()" style="flex:1.4; padding:12px; border-radius:12px; background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); border:1px solid var(--accent-light); color:#fff; font-size:13px; font-weight:900; box-shadow:0 6px 20px var(--dock-active-bg);">Jadikan Layar Utama</button>
+        <!-- MODAL 1: POPUP "JADIKAN LAYAR UTAMA & KUNCI ANTI-MENTAL HEADUNIT" -->
+        <div id="default-launcher-modal" class="hidden" style="position:absolute; inset:0; z-index:96; background:rgba(7,3,18,0.86); backdrop-filter:blur(12px); display:flex; align-items:center; justify-content:center; padding:20px;">
+            <div class="glass-card" style="width:580px; border-radius:24px; padding:24px 26px; border:1.5px solid var(--accent-light); text-align:center; box-shadow:0 20px 65px rgba(0,0,0,0.88); display:flex; flex-direction:column; gap:14px;">
+                <div style="display:flex; align-items:center; gap:14px; text-align:left;">
+                    <img src="pangdash-logo.png" alt="PangDash" style="width:62px; height:62px; border-radius:18px; object-fit:cover; flex-shrink:0; border:1.5px solid var(--accent-light); box-shadow:0 6px 20px var(--dock-active-bg);" />
+                    <div>
+                        <div style="font-size:10px; font-weight:900; color:#facc15; letter-spacing:0.1em;">PENGUNCI LAYAR UTAMA HEADUNIT</div>
+                        <h3 style="font-size:19px; font-weight:900; color:#fff; margin:2px 0 4px 0;">Jadikan PangDash Layar Utama Permanen</h3>
+                        <p style="font-size:12px; color:var(--text-muted); line-height:1.4; margin:0;">
+                            Pilih salah satu metode di bawah agar saat menekan tombol <strong>Home</strong> tidak mental kembali ke launcher bawaan pabrik:
+                        </p>
+                    </div>
                 </div>
+
+                <div style="display:flex; flex-direction:column; gap:8px; text-align:left;">
+                    <button onclick="triggerSetDefaultLauncher()" style="width:100%; padding:12px 14px; border-radius:14px; background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); border:1px solid var(--accent-light); color:#fff; display:flex; align-items:center; justify-content:space-between; cursor:pointer; box-shadow:0 4px 16px var(--dock-active-bg);">
+                        <div>
+                            <div style="font-size:13px; font-weight:900;">1. Pilih PangDash &amp; Centang "Selalu (Always)"</div>
+                            <div style="font-size:11px; color:rgba(255,255,255,0.82); margin-top:2px;">Mereset ikatan launcher lama &amp; membuka pilihan Layar Utama Android</div>
+                        </div>
+                        <span style="font-size:12px; font-weight:900; background:rgba(0,0,0,0.28); padding:5px 10px; border-radius:8px;">Pilih &rarr;</span>
+                    </button>
+
+                    <button onclick="triggerAccessibilityHomeLock()" style="width:100%; padding:12px 14px; border-radius:14px; background:var(--squircle-bg); border:1.5px solid #10b981; color:#fff; display:flex; align-items:center; justify-content:space-between; cursor:pointer;">
+                        <div>
+                            <div style="font-size:13px; font-weight:900; color:#6ee7b7;">2. Kunci Paksa Anti-Mental (Khusus Headunit Bandel)</div>
+                            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Aktifkan <strong>PangDash Pengunci Layar Utama</strong> di menu Aksesibilitas</div>
+                        </div>
+                        <span style="font-size:11px; font-weight:900; background:rgba(16,185,129,0.2); color:#6ee7b7; border:1px solid rgba(16,185,129,0.4); padding:5px 10px; border-radius:8px;">Aktifkan &rarr;</span>
+                    </button>
+
+                    <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">
+                        <button onclick="triggerOpenHomeSettingsDirect()" style="padding:10px; border-radius:12px; background:var(--panel-bg); border:1px solid var(--border-subtle); color:var(--text-muted); font-size:11px; font-weight:800; cursor:pointer;">
+                            Setelan Aplikasi Utama Android
+                        </button>
+                        <button onclick="triggerClearStockLauncher()" style="padding:10px; border-radius:12px; background:var(--panel-bg); border:1px solid var(--border-subtle); color:#fca5a5; font-size:11px; font-weight:800; cursor:pointer;">
+                            Hapus Default Launcher Bawaan
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="dismissDefaultLauncherModal()" style="width:100%; padding:10px; border-radius:12px; background:transparent; border:1px solid var(--border-faint); color:var(--text-muted); font-size:12px; font-weight:800; cursor:pointer;">
+                    Tutup Sementara
+                </button>
             </div>
         </div>
 
@@ -843,7 +875,9 @@
                         <div style="font-size:12px; font-weight:700; color:var(--accent-light);">KONFIGURASI INTERNAL LAUNCHER</div>
                         <h2 style="font-size:20px; font-weight:900; color:#fff; margin:2px 0 0 0;">SETELAN PANGDASH LAUNCHER</h2>
                     </div>
-                    <button onclick="triggerSetDefaultLauncher()" style="padding:10px 16px; border-radius:12px; background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); color:#fff; font-size:12px; font-weight:800; border:1px solid var(--accent-light);" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Atur Sebagai Layar Utama (Default Home)</span></button>
+                    <div style="display:flex; gap:8px;">
+                        <button onclick="openDefaultLauncherOptionsModal()" style="padding:9px 14px; border-radius:12px; background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); color:#fff; font-size:11px; font-weight:800; border:1px solid var(--accent-light); display:inline-flex; align-items:center; gap:6px; cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Atur &amp; Kunci Layar Utama (Anti-Mental)</span></button>
+                    </div>
                 </div>
 
                 <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:auto 0;">
@@ -994,6 +1028,9 @@
             }
         }
     }
+    function openDefaultLauncherOptionsModal() {
+        document.getElementById('default-launcher-modal').classList.remove('hidden');
+    }
     function dismissDefaultLauncherModal() {
         defaultModalDismissed = true;
         document.getElementById('default-launcher-modal').classList.add('hidden');
@@ -1006,6 +1043,46 @@
             showToast('Membuka pemilihan Aplikasi Layar Utama (Default Home)...');
         }
     }
+    function triggerAccessibilityHomeLock() {
+        document.getElementById('default-launcher-modal').classList.add('hidden');
+        if (window.AndroidBridge && window.AndroidBridge.openAccessibilityHomeLockSettings) {
+            window.AndroidBridge.openAccessibilityHomeLockSettings();
+        }
+    }
+    function triggerOpenHomeSettingsDirect() {
+        document.getElementById('default-launcher-modal').classList.add('hidden');
+        if (window.AndroidBridge && window.AndroidBridge.openHomeSettingsDirect) {
+            window.AndroidBridge.openHomeSettingsDirect();
+        }
+    }
+    function triggerClearStockLauncher() {
+        document.getElementById('default-launcher-modal').classList.add('hidden');
+        if (window.AndroidBridge && window.AndroidBridge.clearStockLauncherDefault) {
+            window.AndroidBridge.clearStockLauncherDefault();
+        }
+    }
+
+    // Tangani tombol Home & Back fisik Headunit agar tidak pernah keluar/mental dari PangDash
+    window.onNativeHomeKeyPressed = function() {
+        closeAppPickerModal();
+        closeOtaModal();
+        cancelResetServiceComponent();
+        switchTab('home');
+    };
+
+    window.onNativeBackKeyPressed = function() {
+        const otaM = document.getElementById('ota-update-modal');
+        if (otaM && !otaM.classList.contains('hidden')) { closeOtaModal(); return; }
+        const rstM = document.getElementById('srv-reset-confirm-modal');
+        if (rstM && !rstM.classList.contains('hidden')) { cancelResetServiceComponent(); return; }
+        const pckM = document.getElementById('app-picker-modal');
+        if (pckM && !pckM.classList.contains('hidden')) { closeAppPickerModal(); return; }
+        const addM = document.getElementById('srv-add-comp-modal');
+        if (addM && !addM.classList.contains('hidden')) { closeAddServiceCompModal(); return; }
+        const srvDet = document.getElementById('srv-detail-view');
+        if (srvDet && !srvDet.classList.contains('hidden')) { closeServiceCompDetail(); return; }
+        switchTab('home');
+    };
     window.onNativeResumeCheck = function() {
                 syncAppVersionLabels();
         const savedOffset = parseInt(localStorage.getItem('gc_gps_offset_v13') || '0');

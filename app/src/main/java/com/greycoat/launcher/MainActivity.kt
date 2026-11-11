@@ -2,7 +2,10 @@ package com.greycoat.launcher
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.accessibilityservice.AccessibilityService
 import android.app.Activity
+import android.app.ActivityManager
+import android.view.accessibility.AccessibilityEvent
 import android.app.Instrumentation
 import android.app.DownloadManager
 import android.content.SharedPreferences
@@ -65,6 +68,115 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
+
+class BootHomeReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+        if (context == null) return
+        try {
+            val prefs = context.getSharedPreferences("greycoat_hu_prefs", Context.MODE_PRIVATE)
+            if (prefs.getBoolean("user_wants_default_home", true)) {
+                val launch = Intent(context, MainActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                }
+                context.startActivity(launch)
+            }
+        } catch (_: Throwable) {}
+    }
+}
+
+class HomeWatchAccessibilityService : AccessibilityService() {
+    private val knownStockLaunchers = setOf(
+        "com.android.launcher",
+        "com.android.launcher2",
+        "com.android.launcher3",
+        "com.google.android.apps.nexuslauncher",
+        "com.syu.launcher",
+        "com.fyt.launcher",
+        "com.tw.launcher",
+        "com.ts.main",
+        "com.ts.MainUI",
+        "com.microntek.launcher",
+        "com.car.launcher",
+        "com.autochips.launcher",
+        "com.jancar.launcher",
+        "com.xyauto.launcher",
+        "com. spreadtrum.launcher"
+    )
+
+    private var cachedHomePackages: Set<String> = emptySet()
+    private var lastCacheTime: Long = 0L
+    private var lastRedirectTime: Long = 0L
+
+    private fun getOtherHomePackages(): Set<String> {
+        val now = SystemClock.uptimeMillis()
+        if (cachedHomePackages.isNotEmpty() && (now - lastCacheTime < 15000L)) {
+            return cachedHomePackages
+        }
+        val set = HashSet<String>(knownStockLaunchers)
+        try {
+            val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_HOME) }
+            val list = packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL)
+            for (ri in list) {
+                val pkg = ri.activityInfo?.packageName ?: continue
+                if (pkg != packageName && !pkg.contains("settings", ignoreCase = true) && !pkg.contains("resolver", ignoreCase = true)) {
+                    set.add(pkg)
+                }
+            }
+        } catch (_: Throwable) {}
+        cachedHomePackages = set
+        lastCacheTime = now
+        return set
+    }
+
+    private fun bringPangDashToFront() {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastRedirectTime < 220L) return
+        lastRedirectTime = now
+        try {
+            val i = Intent(this, MainActivity::class.java).apply {
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                    Intent.FLAG_ACTIVITY_NO_ANIMATION
+                )
+            }
+            startActivity(i)
+        } catch (_: Throwable) {}
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event == null || event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        val pkg = event.packageName?.toString() ?: return
+        if (pkg == packageName) return
+
+        val prefs = getSharedPreferences("greycoat_hu_prefs", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("lock_home_override", true)) return
+
+        // Jika MCU Headunit mencoba melempar layar ke Launcher Bawaan pabrik, langsung tarik kembali ke PangDash!
+        val otherHomes = getOtherHomePackages()
+        if (otherHomes.contains(pkg)) {
+            bringPangDashToFront()
+        }
+    }
+
+    override fun onKeyEvent(event: KeyEvent?): Boolean {
+        if (event != null && event.keyCode == KeyEvent.KEYCODE_HOME) {
+            val prefs = getSharedPreferences("greycoat_hu_prefs", Context.MODE_PRIVATE)
+            if (prefs.getBoolean("lock_home_override", true)) {
+                if (event.action == KeyEvent.ACTION_DOWN) {
+                    bringPangDashToFront()
+                }
+                return true
+            }
+        }
+        return super.onKeyEvent(event)
+    }
+
+    override fun onInterrupt() {}
+}
 
 class MediaListenerService : NotificationListenerService() {
     companion object {
@@ -534,6 +646,14 @@ class MainActivity : Activity(), LocationListener {
     // Tangkap langsung tombol Steer Control (SWC) Volume & Media ketika Launcher sedang tampil di layar
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val keyCode = event.keyCode
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (event.action == KeyEvent.ACTION_UP) {
+                runOnUiThread {
+                    webView?.evaluateJavascript("if(window.onNativeBackKeyPressed) window.onNativeBackKeyPressed();", null)
+                }
+            }
+            return true
+        }
         when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP,
             KeyEvent.KEYCODE_VOLUME_DOWN,
@@ -778,6 +898,25 @@ class MainActivity : Activity(), LocationListener {
                 })
             }
         } catch (_: Throwable) {}
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        hideSystemUI()
+        // Jika tombol Home ditekan saat sedang berada di sub-tab atau modal, kembali ke tab Beranda utama
+        runOnUiThread {
+            webView?.evaluateJavascript("if(window.onNativeHomeKeyPressed) window.onNativeHomeKeyPressed();", null)
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        // Jangan pernah keluar (finish) dari Launcher saat tombol Back ditekan di Headunit!
+        // Arahkan kembali ke tab Beranda atau tutup modal yang sedang terbuka
+        runOnUiThread {
+            webView?.evaluateJavascript("if(window.onNativeBackKeyPressed) window.onNativeBackKeyPressed();", null)
+        }
     }
 
     override fun onPause() {
@@ -1161,9 +1300,22 @@ class MainActivity : Activity(), LocationListener {
             }
         }
 
+        private fun isAccessibilityHomeLockEnabled(): Boolean {
+            return try {
+                val enabledServices = Settings.Secure.getString(
+                    contentResolver,
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+                ) ?: ""
+                enabledServices.contains(context.packageName, ignoreCase = true)
+            } catch (_: Throwable) {
+                false
+            }
+        }
+
         @JavascriptInterface
         fun isDefaultLauncher(): Boolean {
             return try {
+                if (isAccessibilityHomeLockEnabled()) return true
                 val intent = Intent(Intent.ACTION_MAIN).apply {
                     addCategory(Intent.CATEGORY_HOME)
                 }
@@ -1176,30 +1328,138 @@ class MainActivity : Activity(), LocationListener {
         }
 
         @JavascriptInterface
+        fun isHomeLockAccessibilityActive(): Boolean {
+            return isAccessibilityHomeLockEnabled()
+        }
+
+        // Metode 1: Reset paksa ikatan Launcher Bawaan dengan trik FakeHomeAlias + buka dialog "Selalu / Always" asli Android
+        @JavascriptInterface
         fun promptSetDefaultLauncher() {
             runOnUiThread {
                 try {
+                    prefs?.edit()
+                        ?.putBoolean("user_wants_default_home", true)
+                        ?.putBoolean("lock_home_override", true)
+                        ?.apply()
+
+                    // 1. Pada Android 10+ (Q), coba minta ROLE_HOME resmi terlebih dahulu
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         val roleManager = getSystemService(RoleManager::class.java)
                         if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_HOME) && !roleManager.isRoleHeld(RoleManager.ROLE_HOME)) {
-                            val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME)
-                            startActivityForResult(intent, 2002)
-                            return@runOnUiThread
+                            try {
+                                val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME)
+                                startActivityForResult(intent, 2002)
+                                return@runOnUiThread
+                            } catch (_: Throwable) {}
                         }
                     }
+
+                    // 2. Trik FakeHomeAlias: aktifkan komponen HOME sementara lalu matikan lagi.
+                    // Ini memaksa PackageManager Headunit mereset preferensi Launcher Bawaan dan memunculkan kotak centang "Selalu (Always)"!
                     try {
-                        val homeSettings = Intent(Settings.ACTION_HOME_SETTINGS)
-                        homeSettings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        startActivity(homeSettings)
-                    } catch (_: Throwable) {
-                        val chooser = Intent(Intent.ACTION_MAIN).apply {
+                        val pm = context.packageManager
+                        val fakeComp = ComponentName(context, "com.greycoat.launcher.FakeHomeAlias")
+                        pm.setComponentEnabledSetting(
+                            fakeComp,
+                            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                            PackageManager.DONT_KILL_APP
+                        )
+                        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
                             addCategory(Intent.CATEGORY_HOME)
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
-                        startActivity(Intent.createChooser(chooser, "Pilih PangDash sebagai Layar Utama"))
+                        startActivity(homeIntent)
+                        mainHandler.postDelayed({
+                            try {
+                                pm.setComponentEnabledSetting(
+                                    fakeComp,
+                                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                                    PackageManager.DONT_KILL_APP
+                                )
+                            } catch (_: Throwable) {}
+                        }, 900)
+                        return@runOnUiThread
+                    } catch (_: Throwable) {}
+
+                    // 3. Fallback: Buka halaman Pengaturan Aplikasi Default Home Android
+                    val homeSettings = Intent(Settings.ACTION_HOME_SETTINGS).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
+                    startActivity(homeSettings)
                 } catch (_: Throwable) {
-                    Toast.makeText(context, "Buka Setelan -> Aplikasi Default -> Aplikasi Layar Utama", Toast.LENGTH_LONG).show()
+                    openHomeSettingsDirect()
+                }
+            }
+        }
+
+        // Metode 2: Buka langsung Pengaturan Aplikasi Layar Utama (Default Home App Settings) di Android
+        @JavascriptInterface
+        fun openHomeSettingsDirect() {
+            runOnUiThread {
+                try {
+                    val intent = Intent(Settings.ACTION_HOME_SETTINGS).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(intent)
+                } catch (_: Throwable) {
+                    try {
+                        val intent2 = Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent2)
+                    } catch (_: Throwable) {
+                        Toast.makeText(context, "Buka Setelan Android -> Aplikasi -> Aplikasi Default -> Aplikasi Layar Utama", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+
+        // Metode 3: Buka Pengaturan Aksesibilitas untuk Mengunci Tombol Home Headunit (Solusi Permanen untuk Headunit yang Mengunci Launcher Bawaan)
+        @JavascriptInterface
+        fun openAccessibilityHomeLockSettings() {
+            runOnUiThread {
+                try {
+                    prefs?.edit()?.putBoolean("lock_home_override", true)?.apply()
+                    Toast.makeText(
+                        context,
+                        "Aktifkan 'PangDash Pengunci Layar Utama' agar tombol Home tidak pernah mental ke launcher bawaan",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(intent)
+                } catch (_: Throwable) {
+                    openSystemSettings()
+                }
+            }
+        }
+
+        // Metode 4: Buka Info Aplikasi Launcher Bawaan untuk "Hapus Default / Paksa Berhenti"
+        @JavascriptInterface
+        fun clearStockLauncherDefault() {
+            runOnUiThread {
+                try {
+                    val pm = context.packageManager
+                    val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_HOME) }
+                    val resolveInfo = pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                    val currentHomePkg = resolveInfo?.activityInfo?.packageName
+                    if (!currentHomePkg.isNullOrBlank() && currentHomePkg != context.packageName && !currentHomePkg.contains("android")) {
+                        Toast.makeText(
+                            context,
+                            "Ketuk 'Buka secara default -> Hapus default' atau 'Paksa Berhenti' pada Launcher Bawaan ini",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        val appInfoIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.parse("package:$currentHomePkg")
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(appInfoIntent)
+                        return@runOnUiThread
+                    }
+                    openHomeSettingsDirect()
+                } catch (_: Throwable) {
+                    openHomeSettingsDirect()
                 }
             }
         }
