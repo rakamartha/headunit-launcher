@@ -86,6 +86,13 @@
             accent-color: var(--accent-main);
             cursor: pointer;
         }
+        @keyframes spinOta {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .spin-ota {
+            animation: spinOta 0.9s linear infinite;
+        }
         @keyframes eqBar {
             0%, 100% { height: 4px; }
             50% { height: 20px; }
@@ -205,6 +212,71 @@
         </div>
 
         
+        
+        <!-- MODAL OTA UPDATE OTOMATIS (3 STATE: MEMERIKSA / SUDAH TERBARU / ADA PEMBARUAN) -->
+        <div id="ota-update-modal" class="hidden" style="position:absolute; inset:0; z-index:120; background:rgba(7,3,18,0.88); backdrop-filter:blur(14px); display:flex; align-items:center; justify-content:center; padding:24px;">
+            <div class="glass-card" style="width:540px; max-height:85%; border-radius:24px; padding:26px; background:linear-gradient(145deg, var(--bg-secondary) 0%, var(--bg-primary) 100%); border:1.5px solid var(--accent-light); box-shadow:0 20px 70px rgba(0,0,0,0.85); display:flex; flex-direction:column; gap:16px;">
+
+                <!-- STATE 1: LOADING MEMERIKSA PEMBARUAN -->
+                <div id="ota-state-checking" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:28px 16px; text-align:center; gap:16px;">
+                    <div style="width:64px; height:64px; border-radius:20px; background:var(--squircle-bg); border:1.5px solid var(--border-subtle); display:flex; align-items:center; justify-content:center; box-shadow:0 0 24px var(--dock-active-bg);">
+                        <svg class="spin-ota" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-size:11px; font-weight:900; color:var(--accent-light); letter-spacing:0.12em;">MENGHUBUNGI SERVER RILIS</div>
+                        <h3 style="font-size:20px; font-weight:900; color:#ffffff; margin:6px 0 4px 0;">Memeriksa Pembaruan PangDash...</h3>
+                        <p style="font-size:12px; color:var(--text-muted); margin:0;">Mohon tunggu sebentar, sedang mengecek versi APK terbaru.</p>
+                    </div>
+                </div>
+
+                <!-- STATE 2: SUDAH VERSI TERBARU (TIDAK ADA PEMBARUAN) -->
+                <div id="ota-state-latest" class="hidden" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:18px 12px 6px 12px; text-align:center; gap:14px;">
+                    <div style="width:64px; height:64px; border-radius:20px; background:rgba(16,185,129,0.16); border:1.5px solid #10b981; display:flex; align-items:center; justify-content:center; box-shadow:0 0 24px rgba(16,185,129,0.3);">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-size:11px; font-weight:900; color:#6ee7b7; letter-spacing:0.12em;">SISTEM MUTAKHIR</div>
+                        <h3 style="font-size:21px; font-weight:900; color:#ffffff; margin:6px 0 4px 0;">Sudah Versi Terbaru</h3>
+                        <p id="ota-latest-desc" style="font-size:13px; color:var(--text-muted); margin:0; line-height:1.45;">
+                            PangDash v4.1.0 yang terinstal di headunit Anda saat ini sudah merupakan versi paling baru.
+                        </p>
+                    </div>
+                    <button onclick="closeOtaModal()" style="width:100%; margin-top:8px; padding:13px; border-radius:14px; background:var(--squircle-bg); border:1px solid var(--border-subtle); color:#ffffff; font-size:13px; font-weight:900; cursor:pointer;">
+                        Tutup
+                    </button>
+                </div>
+
+                <!-- STATE 3: PEMBARUAN TERSEDIA (SIAP UNDUH & INSTAL) -->
+                <div id="ota-state-available" class="hidden" style="display:flex; flex-direction:column; gap:14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-faint); padding-bottom:12px;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div style="width:48px; height:48px; border-radius:14px; background:var(--dock-active-bg); border:1px solid var(--accent-light); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            </div>
+                            <div>
+                                <div style="font-size:10px; font-weight:900; color:#facc15; letter-spacing:0.1em;">PEMBARUAN TERSEDIA UNTUK DIUNDUH</div>
+                                <h3 style="font-size:21px; font-weight:900; color:#fff; margin:2px 0 0 0;">PangDash <span id="update-version-text" style="color:var(--accent-light);">v4.2.0</span></h3>
+                            </div>
+                        </div>
+                        <button onclick="closeOtaModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <div style="font-size:11px; font-weight:800; color:var(--text-muted);">RINCIAN PEMBARUAN:</div>
+                        <div id="update-changelog-text" style="font-size:12px; color:#fff; line-height:1.5; max-height:160px; overflow-y:auto; white-space:pre-wrap; background:var(--input-bg); padding:12px 14px; border-radius:14px; border:1px solid var(--border-subtle);"></div>
+                    </div>
+                    <div style="display:flex; gap:12px; margin-top:4px;">
+                        <button onclick="closeOtaModal()" style="flex:1; padding:13px; border-radius:14px; background:var(--squircle-bg); border:1px solid var(--border-subtle); color:var(--text-muted); font-size:13px; font-weight:800; cursor:pointer;">
+                            Nanti Saja
+                        </button>
+                        <button onclick="startOtaDownload()" style="flex:1.5; padding:13px; border-radius:14px; background:linear-gradient(90deg, #2563eb, #3b82f6); border:1px solid #93c5fd; color:#ffffff; font-size:13px; font-weight:900; cursor:pointer; box-shadow:0 6px 18px rgba(37,99,235,0.45); display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            <span>Unduh & Instal Sekarang</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
         <!-- MODAL 4: KONFIRMASI SAAT KLIK RESET PADA KARTU SERVIS -->
         <div id="srv-reset-confirm-modal" class="hidden" style="position:absolute; inset:0; z-index:110; background:rgba(7,3,18,0.86); backdrop-filter:blur(12px); display:flex; align-items:center; justify-content:center; padding:24px;">
             <div class="glass-card" style="width:460px; border-radius:22px; padding:24px; background:linear-gradient(145deg, rgba(28,14,56,0.98) 0%, rgba(15,7,32,0.99) 100%); border:1.5px solid var(--border-subtle); box-shadow:0 20px 60px rgba(0,0,0,0.85); text-align:center; display:flex; flex-direction:column; gap:14px;">
@@ -757,7 +829,7 @@
                     <button onclick="triggerSetDefaultLauncher()" style="padding:10px 16px; border-radius:12px; background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); color:#fff; font-size:12px; font-weight:800; border:1px solid var(--accent-light);" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Atur Sebagai Layar Utama (Default Home)</span></button>
                 </div>
 
-                <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:auto 0;">
+                <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:auto 0;">
                     <div style="background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:16px; padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
                         <div>
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -837,6 +909,29 @@
                             <button onclick="openAndroidSettings()" style="flex:1; padding:8px; border-radius:10px; background:#4f46e5; color:#fff; font-size:11px; font-weight:800; border:none; cursor:pointer;">Setelan Android</button>
                         </div>
                     </div>
+
+                    <div style="background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:16px; padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+                        <div>
+                            <div style="font-size:12px; font-weight:800; color:#facc15; margin-bottom:10px;">4. PEMBARUAN SISTEM (OTA)</div>
+                            <div style="background:var(--squircle-bg); border:1px solid var(--border-subtle); border-radius:12px; padding:12px; margin-bottom:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <span style="font-size:11px; font-weight:700; color:var(--text-muted);">Versi PangDash:</span>
+                                    <strong id="current-app-version-label" style="font-size:14px; font-weight:900; color:#ffffff;">v4.1.0</strong>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-size:10px; font-weight:700; color:var(--text-muted);">Status Sistem:</span>
+                                    <span id="ota-card-status-badge" style="font-size:10px; font-weight:800; color:#6ee7b7;">Siap Periksa Otomatis</span>
+                                </div>
+                            </div>
+                            <div style="font-size:11px; color:var(--text-muted); line-height:1.45;">
+                                Tekan tombol di bawah untuk memeriksa pembaruan otomatis tanpa perlu mengisi alamat server secara manual.
+                            </div>
+                        </div>
+                        <button id="btn-check-ota" onclick="checkForOtaUpdates()" style="width:100%; padding:10px; border-radius:11px; background:linear-gradient(90deg, #2563eb, #3b82f6); color:#fff; font-size:12px; font-weight:900; border:1px solid #93c5fd; box-shadow:0 4px 14px rgba(37,99,235,0.4); display:inline-flex; align-items:center; justify-content:center; gap:7px; cursor:pointer;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> 
+                            <span>Periksa Pembaruan</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div style="font-size:12px; color:rgba(216,180,254,0.7);">
@@ -894,6 +989,9 @@
         }
     }
     window.onNativeResumeCheck = function() {
+                if (window.AndroidBridge && window.AndroidBridge.getAppVersion) {
+            document.getElementById('current-app-version-label').innerText = 'v' + window.AndroidBridge.getAppVersion();
+        }
         const savedOffset = parseInt(localStorage.getItem('gc_gps_offset_v13') || '0');
         setGpsOffsetValue(savedOffset);
         const savedThemeIdx = parseInt(localStorage.getItem('gc_theme_idx_v16') || '0');
@@ -2952,6 +3050,159 @@
         }
     }
 
+
+    // =========================================================================
+    // 12. ZERO-CONFIG OTA UPDATE (OTOMATIS TANPA INPUT REPO MANUAL)
+    // =========================================================================
+    // Saat di-build oleh GitHub Actions, __AUTO_GITHUB_REPO__ otomatis diisi dengan nama repo Anda!
+    const BUILTIN_GITHUB_REPO = '__AUTO_GITHUB_REPO__';
+    const GLOBAL_OTA_RELAY_TOPIC = 'pangdash_global_ota_release_v1';
+    let pendingOtaApkUrl = '';
+
+    function isNewerVersion(oldVer, newVer) {
+        const cleanOld = String(oldVer || '4.1.0').replace(/[^0-9.]/g, '');
+        const cleanNew = String(newVer || '4.1.0').replace(/[^0-9.]/g, '');
+        const oldParts = cleanOld.split('.').map(Number);
+        const newParts = cleanNew.split('.').map(Number);
+        for (let i = 0; i < Math.max(oldParts.length, newParts.length); i++) {
+            const o = oldParts[i] || 0;
+            const n = newParts[i] || 0;
+            if (n > o) return true;
+            if (n < o) return false;
+        }
+        return false;
+    }
+
+    function setOtaModalView(state) {
+        const modal = document.getElementById('ota-update-modal');
+        const stCheck = document.getElementById('ota-state-checking');
+        const stLatest = document.getElementById('ota-state-latest');
+        const stAvail = document.getElementById('ota-state-available');
+        if (!modal) return;
+
+        modal.classList.remove('hidden');
+        stCheck.classList.toggle('hidden', state !== 'CHECKING');
+        stLatest.classList.toggle('hidden', state !== 'LATEST');
+        stAvail.classList.toggle('hidden', state !== 'AVAILABLE');
+    }
+
+    async function checkForOtaUpdates() {
+        if (!navigator.onLine) {
+            showToast('Tidak ada koneksi internet untuk memeriksa pembaruan');
+            return;
+        }
+
+        let currentVersion = '4.1.0';
+        let currentCode = 20;
+        if (window.AndroidBridge && window.AndroidBridge.getAppVersion) {
+            currentVersion = window.AndroidBridge.getAppVersion();
+        }
+        if (window.AndroidBridge && window.AndroidBridge.getAppVersionCode) {
+            currentCode = window.AndroidBridge.getAppVersionCode();
+        }
+
+        // 1. Tampilkan Modal Loading "Memeriksa Pembaruan PangDash..."
+        setOtaModalView('CHECKING');
+        const badge = document.getElementById('ota-card-status-badge');
+        if (badge) {
+            badge.innerText = 'Memeriksa...';
+            badge.style.color = '#facc15';
+        }
+
+        const startWait = Date.now();
+        let foundRelease = null;
+
+        // 2. Cek dari Repositori GitHub yang tertanam otomatis saat Build APK
+        const activeRepo = (BUILTIN_GITHUB_REPO && !BUILTIN_GITHUB_REPO.includes('__AUTO_'))
+            ? BUILTIN_GITHUB_REPO
+            : (localStorage.getItem('gc_github_repo') || '');
+
+        if (activeRepo && activeRepo.includes('/')) {
+            try {
+                const res = await fetch(`https://api.github.com/repos/${activeRepo}/releases/latest`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const apkAsset = data.assets && data.assets.find(a => a.name && a.name.endsWith('.apk'));
+                    if (apkAsset && apkAsset.browser_download_url) {
+                        foundRelease = {
+                            version: data.tag_name || data.name || '4.1.0',
+                            versionCode: parseInt((data.tag_name || '').replace(/[^0-9]/g, '')) || 0,
+                            apkUrl: apkAsset.browser_download_url,
+                            notes: data.body || 'Pembaruan otomatis PangDash Headunit Launcher.'
+                        };
+                    }
+                }
+            } catch (_e) {}
+        }
+
+        // 3. Fallback: Cek juga dari Channel Cloud OTA Global PangDash
+        if (!foundRelease) {
+            try {
+                const resRelay = await fetch(`https://ntfy.sh/${GLOBAL_OTA_RELAY_TOPIC}/json?poll=1&since=all`);
+                if (resRelay.ok) {
+                    const text = await resRelay.text();
+                    const lines = text.split('\n').filter(Boolean);
+                    for (let i = lines.length - 1; i >= 0; i--) {
+                        try {
+                            const evt = JSON.parse(lines[i]);
+                            if (evt.event === 'message' && evt.message) {
+                                const info = JSON.parse(evt.message);
+                                if (info && info.apkUrl && info.version) {
+                                    foundRelease = info;
+                                    break;
+                                }
+                            }
+                        } catch (_inner) {}
+                    }
+                }
+            } catch (_e2) {}
+        }
+
+        // Pastikan animasi loading tampil minimal 900ms agar terasa responsif dan jelas
+        const elapsed = Date.now() - startWait;
+        if (elapsed < 900) {
+            await new Promise(r => setTimeout(r, 900 - elapsed));
+        }
+
+        const hasUpdate = foundRelease && (
+            isNewerVersion(currentVersion, foundRelease.version) ||
+            (foundRelease.versionCode && foundRelease.versionCode > currentCode)
+        );
+
+        if (hasUpdate) {
+            pendingOtaApkUrl = foundRelease.apkUrl;
+            const verStr = String(foundRelease.version).startsWith('v') ? foundRelease.version : ('v' + foundRelease.version);
+            document.getElementById('update-version-text').innerText = verStr;
+            document.getElementById('update-changelog-text').innerText = foundRelease.notes || 'Perbaikan stabilitas dan peningkatan fitur PangDash.';
+            setOtaModalView('AVAILABLE');
+            if (badge) {
+                badge.innerText = 'Pembaruan ' + verStr + ' Tersedia!';
+                badge.style.color = '#facc15';
+            }
+        } else {
+            document.getElementById('ota-latest-desc').innerText = `PangDash v${currentVersion} yang terinstal di headunit Anda saat ini sudah merupakan versi paling baru.`;
+            setOtaModalView('LATEST');
+            if (badge) {
+                badge.innerText = 'Sudah Versi Terbaru (v' + currentVersion + ')';
+                badge.style.color = '#6ee7b7';
+            }
+        }
+    }
+
+    function closeOtaModal() {
+        document.getElementById('ota-update-modal').classList.add('hidden');
+    }
+
+    function startOtaDownload() {
+        if (!pendingOtaApkUrl) return;
+        closeOtaModal();
+        if (window.AndroidBridge && window.AndroidBridge.startUpdateDownload) {
+            window.AndroidBridge.startUpdateDownload(pendingOtaApkUrl);
+        } else {
+            window.open(pendingOtaApkUrl, '_blank');
+        }
+    }
+
     function switchTab(tab) {
         ['home', 'apps', 'service', 'settings'].forEach(t => {
             const view = document.getElementById('view-' + t);
@@ -3026,6 +3277,9 @@
         initLiveMap();
         setTripCategory(tripCategory);
         loadRealInstalledApps(false);
+                if (window.AndroidBridge && window.AndroidBridge.getAppVersion) {
+            document.getElementById('current-app-version-label').innerText = 'v' + window.AndroidBridge.getAppVersion();
+        }
         const savedOffset = parseInt(localStorage.getItem('gc_gps_offset_v13') || '0');
         setGpsOffsetValue(savedOffset);
         const savedThemeIdx = parseInt(localStorage.getItem('gc_theme_idx_v16') || '0');

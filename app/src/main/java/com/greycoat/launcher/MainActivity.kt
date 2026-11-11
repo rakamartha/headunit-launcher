@@ -4,7 +4,9 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Instrumentation
+import android.app.DownloadManager
 import android.content.SharedPreferences
+import android.os.Environment
 import java.util.concurrent.Executors
 import android.app.role.RoleManager
 import android.content.BroadcastReceiver
@@ -126,6 +128,32 @@ class MainActivity : Activity(), LocationListener {
     private var lastPushedVolumePercent: Int = -1
     private var lastPushedBrightnessPercent: Int = -1
     private var hasPromptedWriteSettings: Boolean = false
+    private var otaDownloadId: Long = -1L
+
+    
+    // Receiver untuk OTA Update Download Complete
+    private val otaDownloadReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+            if (id != -1L && id == otaDownloadId) {
+                installDownloadedApk(id)
+            }
+        }
+    }
+
+    private fun installDownloadedApk(downloadId: Long) {
+        try {
+            val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val uri = dm.getUriForDownloadedFile(downloadId) ?: return
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+            }
+            startActivity(installIntent)
+        } catch (e: Exception) {
+            runOnUiThread { Toast.makeText(this@MainActivity, "Gagal menginstal pembaruan APK", Toast.LENGTH_LONG).show() }
+        }
+    }
 
     // 1. BroadcastReceiver untuk Metadata Musik
     private val mediaReceiver = object : BroadcastReceiver() {
@@ -291,6 +319,11 @@ class MainActivity : Activity(), LocationListener {
         registerVolumeSyncWatchers()
         registerAudioPlaybackWatcher()
         registerAutoNetworkSync()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(otaDownloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(otaDownloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+        }
 
         window?.decorView?.post {
             hideSystemUI()
@@ -727,6 +760,7 @@ class MainActivity : Activity(), LocationListener {
 
     override fun onDestroy() {
         super.onDestroy()
+        try { unregisterReceiver(otaDownloadReceiver) } catch (_: Throwable) {}
         try { unregisterReceiver(mediaReceiver) } catch (_: Throwable) {}
         try { unregisterReceiver(volumeReceiver) } catch (_: Throwable) {}
         try { contentResolver.unregisterContentObserver(settingsVolumeObserver) } catch (_: Throwable) {}
@@ -977,6 +1011,51 @@ class MainActivity : Activity(), LocationListener {
     }
 
     inner class HeadunitBridge(private val context: Context) {
+
+        @JavascriptInterface
+        fun getAppVersion(): String {
+            return try {
+                val pInfo = packageManager.getPackageInfo(packageName, 0)
+                pInfo.versionName ?: "4.1.0"
+            } catch (e: Exception) {
+                "4.1.0"
+            }
+        }
+
+        @JavascriptInterface
+        fun getAppVersionCode(): Int {
+            return try {
+                val pInfo = packageManager.getPackageInfo(packageName, 0)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    pInfo.longVersionCode.toInt()
+                } else {
+                    @Suppress("DEPRECATION")
+                    pInfo.versionCode
+                }
+            } catch (e: Exception) {
+                20
+            }
+        }
+
+        @JavascriptInterface
+        fun startUpdateDownload(apkUrl: String) {
+            runOnUiThread {
+                try {
+                    Toast.makeText(context, "Mulai mengunduh pembaruan...", Toast.LENGTH_SHORT).show()
+                    val request = DownloadManager.Request(Uri.parse(apkUrl)).apply {
+                        setTitle("Pembaruan PangDash")
+                        setDescription("Mengunduh versi terbaru dari GitHub...")
+                        setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "PangDash_Update.apk")
+                        setMimeType("application/vnd.android.package-archive")
+                    }
+                    val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                    otaDownloadId = dm.enqueue(request)
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Gagal memulai unduhan", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
 
         @JavascriptInterface
         fun isDefaultLauncher(): Boolean {
