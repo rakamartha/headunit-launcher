@@ -144,10 +144,51 @@
             <span style="color:#facc15; font-weight:800; font-size:13px;" id="hu-toast-text">Notifikasi</span>
         </div>
 
+        
+        <!-- MODAL 3: NOTIFIKASI POPUP BESAR SAAT NYALAKAN MOBIL (KOMPONEN MERAH / H-7 PENGGANTIAN) -->
+        <div id="service-startup-alert-modal" class="hidden" style="position:absolute; inset:0; z-index:99; background:rgba(7,3,18,0.88); backdrop-filter:blur(14px); display:flex; align-items:center; justify-content:center; padding:24px;">
+            <div class="glass-card" style="width:740px; max-height:560px; border-radius:24px; padding:24px 26px; background:linear-gradient(145deg, rgba(32,12,52,0.96) 0%, rgba(16,6,30,0.98) 100%); border:2px solid rgba(239,68,68,0.65); box-shadow:0 20px 70px rgba(239,68,68,0.38); display:flex; flex-direction:column; justify-content:space-between; gap:16px;">
+                <!-- Header Popup -->
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding-bottom:14px; border-bottom:1px solid rgba(239,68,68,0.28);">
+                    <div style="display:flex; align-items:center; gap:14px;">
+                        <div style="width:54px; height:54px; border-radius:16px; background:rgba(239,68,68,0.18); border:1.5px solid #ef4444; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 0 20px rgba(239,68,68,0.4);">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        </div>
+                        <div>
+                            <div style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; background:rgba(239,68,68,0.22); border:1px solid rgba(239,68,68,0.5); color:#fca5a5; font-size:10px; font-weight:900; letter-spacing:0.08em; margin-bottom:5px;">
+                                PERINGATAN SERVIS SAAT MESIN MENYALA
+                            </div>
+                            <h3 style="font-size:20px; font-weight:900; color:#ffffff; margin:0;">Komponen Perlu Diservis Segera / H-7</h3>
+                            <p id="srv-startup-alert-subtitle" style="font-size:12px; color:#d8b4fe; margin:3px 0 0 0;">
+                                Ditemukan komponen melewati batas aman (&lt; 500 km / &lt; 17 hari) atau memasuki H-7 penggantian.
+                            </p>
+                        </div>
+                    </div>
+                    <button onclick="dismissStartupServiceAlert()" style="padding:8px 12px; border-radius:10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:#d4d4d8; font-size:12px; font-weight:800; cursor:pointer;">
+                        Tutup
+                    </button>
+                </div>
+
+                <!-- Daftar Komponen Kritis / H-7 -->
+                <div id="srv-startup-alert-list" class="srv-scroll" style="flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; padding-right:4px; max-height:310px;">
+                </div>
+
+                <!-- Footer Tombol Aksi -->
+                <div style="display:flex; gap:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1);">
+                    <button onclick="dismissStartupServiceAlert()" style="flex:1; padding:13px; border-radius:14px; background:#170D2B; border:1px solid rgba(196,155,255,0.3); color:#e9d5ff; font-size:13px; font-weight:800; cursor:pointer;">
+                        Nanti Saja (Mengerti)
+                    </button>
+                    <button onclick="openServiceTabFromAlert()" style="flex:1.4; padding:13px; border-radius:14px; background:linear-gradient(90deg, #ef4444, #dc2626); border:1px solid #fca5a5; color:#ffffff; font-size:13px; font-weight:900; cursor:pointer; box-shadow:0 6px 20px rgba(239,68,68,0.45);">
+                        Buka Menu Pengingat Servis
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- MODAL 1: POPUP "JADIKAN LAYAR UTAMA" (MUNCUL OTOMATIS JIKA LAUNCHER BELUM DEFAULT) -->
         <div id="default-launcher-modal" class="hidden" style="position:absolute; inset:0; z-index:96; background:rgba(7,3,18,0.82); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center;">
             <div class="glass-card" style="width:480px; border-radius:22px; padding:26px; border:1px solid rgba(192,132,252,0.5); text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
-                <div style="width:60px; height:60px; border-radius:18px; background:linear-gradient(135deg,#9333ea,#4f46e5); margin:0 auto 14px auto; display:flex; align-items:center; justify-content:center; font-size:28px; box-shadow:0 8px 24px rgba(147,51,234,0.5);">🏠</div>
+                <div style="width:60px; height:60px; border-radius:18px; background:linear-gradient(135deg,#9333ea,#4f46e5); margin:0 auto 14px auto; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(147,51,234,0.5);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
                 <h3 style="font-size:20px; font-weight:900; color:#fff; margin:0 0 8px 0;">Jadikan GREYCOAT Sebagai Layar Utama?</h3>
                 <p style="font-size:13px; color:rgba(233,213,255,0.85); line-height:1.5; margin:0 0 22px 0;">
                     Launcher ini belum diatur sebagai <strong>Layar Utama (Default Home)</strong>. Jadikan layar utama agar otomatis terbuka setiap kali headunit menyala atau saat tombol Home ditekan.
@@ -167,7 +208,7 @@
                         <div id="picker-subtitle" style="font-size:11px; font-weight:800; color:#facc15; letter-spacing:0.08em;">KUSTOMISASI LAUNCHER</div>
                         <h3 id="picker-title" style="font-size:18px; font-weight:900; color:#fff; margin:2px 0 0 0;">Pilih Aplikasi</h3>
                     </div>
-                    <button onclick="closeAppPickerModal()" style="padding:8px 16px; border-radius:10px; background:rgba(220,38,38,0.25); border:1px solid rgba(248,113,113,0.4); color:#fca5a5; font-size:12px; font-weight:800;">✕ Tutup</button>
+                    <button onclick="closeAppPickerModal()" style="padding:8px 16px; border-radius:10px; background:rgba(220,38,38,0.25); border:1px solid rgba(248,113,113,0.4); color:#fca5a5; font-size:12px; font-weight:800;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> <span style="margin-left:4px;">Tutup</span></button>
                 </div>
 
                 <!-- Pilihan Slot (Khusus saat klik tombol Ubah Pintasan Cepat) -->
@@ -206,7 +247,7 @@
 
             <!-- Pojok Kanan Atas: Bar Brightness Headunit -->
             <div style="display:flex; align-items:center; gap:8px; background:rgba(20,9,42,0.75); border:1px solid rgba(168,85,247,0.3); padding:5px 12px; border-radius:12px;">
-                <span style="font-size:12px; color:#fcd34d; font-weight:800;">☀</span>
+                <span style="display:inline-flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
                 <button onclick="adjustBrightness(-10)" style="width:24px; height:24px; border-radius:6px; background:rgba(107,33,168,0.6); color:#fff; border:none; font-weight:800;">-</button>
                 <input id="brightness-slider" type="range" min="20" max="100" value="95" oninput="setBrightness(this.value)" style="width:105px; height:6px;">
                 <button onclick="adjustBrightness(10)" style="width:24px; height:24px; border-radius:6px; background:rgba(107,33,168,0.6); color:#fff; border:none; font-weight:800;">+</button>
@@ -227,38 +268,49 @@
                         <span id="gps-badge" style="font-size:10px; font-weight:800; padding:3px 10px; border-radius:999px; background:rgba(16,185,129,0.2); color:#6ee7b7; border:1px solid rgba(16,185,129,0.35);">GPS REAL-TIME</span>
                     </div>
 
-                    <!-- Gauge SVG Speedometer -->
-                    <div style="position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; margin:6px 0;">
-                        <svg viewBox="0 0 220 135" style="width:265px; height:160px;">
+                    <!-- Gauge SVG Speedometer (16.dp Stroke + Dual-Layer Gradient Glow) -->
+                    <div style="position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; margin:2px 0;">
+                        <svg viewBox="0 0 220 138" style="width:276px; height:166px; overflow:visible;">
                             <defs>
                                 <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                                     <stop offset="0%" stop-color="#8b5cf6" />
-                                    <stop offset="55%" stop-color="#c084fc" />
+                                    <stop offset="52%" stop-color="#c49bff" />
                                     <stop offset="100%" stop-color="#facc15" />
                                 </linearGradient>
+                                <filter id="speedGlow" x="-30%" y="-30%" width="160%" height="160%">
+                                    <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blurGlow" />
+                                    <feMerge>
+                                        <feMergeNode in="blurGlow" />
+                                        <feMergeNode in="SourceGraphic" />
+                                    </feMerge>
+                                </filter>
                             </defs>
-                            <path d="M 20 120 A 90 90 0 0 1 200 120" fill="none" stroke="rgba(168,85,247,0.16)" stroke-width="15" stroke-linecap="round"/>
-                            <path id="speed-arc" d="M 20 120 A 90 90 0 0 1 200 120" fill="none" stroke="url(#purpleGrad)" stroke-width="15" stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="283" style="transition: stroke-dashoffset 0.25s ease;"/>
+                            <!-- Track Dasar 16.dp -->
+                            <path d="M 20 120 A 90 90 0 0 1 200 120" fill="none" stroke="rgba(196,155,255,0.16)" stroke-width="16" stroke-linecap="round"/>
+                            <!-- Lapisan Efek Gradient Glow 16.dp -->
+                            <path id="speed-arc-glow" d="M 20 120 A 90 90 0 0 1 200 120" fill="none" stroke="url(#purpleGrad)" stroke-width="16" stroke-linecap="round" filter="url(#speedGlow)" opacity="0.75" stroke-dasharray="283" stroke-dashoffset="283" style="transition: stroke-dashoffset 0.25s ease;"/>
+                            <!-- Busur Utama Tajam 16.dp -->
+                            <path id="speed-arc" d="M 20 120 A 90 90 0 0 1 200 120" fill="none" stroke="url(#purpleGrad)" stroke-width="16" stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="283" style="transition: stroke-dashoffset 0.25s ease;"/>
                         </svg>
-                        <div style="position:absolute; bottom:8px; text-align:center;">
-                            <div id="speed-value" style="font-size:84px; font-weight:900; line-height:0.95; color:#fff; letter-spacing:-0.03em;">0</div>
-                            <div id="speed-unit" style="font-size:13px; font-weight:800; color:#d8b4fe; margin-top:6px; letter-spacing:0.15em;">KM / JAM</div>
+                        <div style="position:absolute; bottom:6px; text-align:center;">
+                            <div id="speed-value" style="font-size:88px; font-weight:900; line-height:0.9; color:#ffffff; letter-spacing:-0.03em; text-shadow:0 0 26px rgba(196,155,255,0.55);">0</div>
+                            <div id="speed-unit" style="font-size:13px; font-weight:800; color:#C49BFF; margin-top:6px; letter-spacing:0.18em;">KM / JAM</div>
                         </div>
                     </div>
 
-                    <!-- Metrik Sesi Perjalanan Otomatis -->
+                    <!-- 3 Kartu Statistik Sekali Lirik (JARAK JALAN, WAKTU JALAN, KEC. MAKS) -->
                     <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
-                        <div style="background:rgba(20,9,42,0.55); border:1px solid rgba(168,85,247,0.22); border-radius:12px; padding:10px 8px; text-align:center;">
-                            <div style="font-size:9px; color:rgba(216,180,254,0.7); font-weight:800;">JARAK JALAN</div>
-                            <div id="session-dist" style="font-size:15px; font-weight:800; color:#fff; margin-top:3px;">0.0 km</div>
+                        <div style="background:#170D2B; border:1.5px solid rgba(196,155,255,0.34); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px rgba(196,155,255,0.08);">
+                            <div style="font-size:10px; color:#C49BFF; font-weight:800; letter-spacing:0.06em;">JARAK JALAN</div>
+                            <div id="session-dist" style="font-size:21px; font-weight:900; color:#ffffff; margin-top:4px; line-height:1.15; letter-spacing:-0.02em;">0.0 km</div>
                         </div>
-                        <div style="background:rgba(20,9,42,0.55); border:1px solid rgba(168,85,247,0.22); border-radius:12px; padding:10px 8px; text-align:center;">
-                            <div style="font-size:9px; color:rgba(216,180,254,0.7); font-weight:800;">WAKTU JALAN</div>
-                            <div id="session-time" style="font-size:15px; font-weight:800; color:#fff; margin-top:3px;">00:00</div>
+                        <div style="background:#170D2B; border:1.5px solid rgba(196,155,255,0.34); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px rgba(196,155,255,0.08);">
+                            <div style="font-size:10px; color:#C49BFF; font-weight:800; letter-spacing:0.06em;">WAKTU JALAN</div>
+                            <div id="session-time" style="font-size:21px; font-weight:900; color:#ffffff; margin-top:4px; line-height:1.15; letter-spacing:-0.02em;">00:00</div>
                         </div>
-                        <div style="background:rgba(20,9,42,0.55); border:1px solid rgba(168,85,247,0.22); border-radius:12px; padding:10px 8px; text-align:center;">
-                            <div style="font-size:9px; color:rgba(216,180,254,0.7); font-weight:800;">KEC. MAKS</div>
-                            <div id="session-max" style="font-size:15px; font-weight:800; color:#facc15; margin-top:3px;">0 km/j</div>
+                        <div style="background:#170D2B; border:1.5px solid rgba(250,204,21,0.38); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px rgba(250,204,21,0.08);">
+                            <div style="font-size:10px; color:#C49BFF; font-weight:800; letter-spacing:0.06em;">KEC. MAKS</div>
+                            <div id="session-max" style="font-size:21px; font-weight:900; color:#facc15; margin-top:4px; line-height:1.15; letter-spacing:-0.02em;">0 km/j</div>
                         </div>
                     </div>
 
@@ -287,25 +339,25 @@
                     <!-- Bar Atas Peta -->
                     <div style="position:relative; z-index:10; margin:12px; padding:10px 12px; border-radius:14px; background:rgba(15,7,34,0.92); border:1px solid rgba(168,85,247,0.4); display:flex; justify-content:space-between; align-items:center; backdrop-filter:blur(12px);">
                         <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
-                            <span style="width:30px; height:30px; border-radius:9px; background:rgba(147,51,234,0.35); border:1px solid #a855f7; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;">📍</span>
+                            <span style="width:30px; height:30px; border-radius:9px; background:#170D2B; border:1px solid rgba(196,155,255,0.35); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
                             <div style="overflow:hidden;">
                                 <div style="font-size:9px; font-weight:800; color:#c084fc; letter-spacing:0.06em;">PETA PELACAK LOKASI GPS</div>
                                 <div id="map-coord-text" style="font-size:11px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Mengunci lokasi GPS...</div>
                             </div>
                         </div>
                         <div style="display:flex; gap:5px; flex-shrink:0;">
-                            <button onclick="toggleMapTheme()" id="btn-map-theme" style="padding:7px 9px; border-radius:9px; background:rgba(88,28,135,0.7); border:1px solid rgba(168,85,247,0.4); color:#fff; font-size:10px; font-weight:800;">🌙 Gelap</button>
-                            <button onclick="centerMapOnCar()" style="padding:7px 9px; border-radius:9px; background:rgba(88,28,135,0.7); border:1px solid rgba(168,85,247,0.4); color:#fff; font-size:10px; font-weight:800;">🎯 Pusatkan</button>
-                            <button onclick="launchHeadunitMaps('')" style="padding:7px 10px; border-radius:9px; background:#9333ea; border:none; color:#fff; font-size:10px; font-weight:800;">🗺️ Maps ↗</button>
+                            <button onclick="toggleMapTheme()" id="btn-map-theme" style="padding:7px 9px; border-radius:9px; background:rgba(88,28,135,0.7); border:1px solid rgba(168,85,247,0.4); color:#fff; font-size:10px; font-weight:800;" style="display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> <span>Gelap</span></button>
+                            <button onclick="centerMapOnCar()" style="padding:7px 9px; border-radius:9px; background:rgba(88,28,135,0.7); border:1px solid rgba(168,85,247,0.4); color:#fff; font-size:10px; font-weight:800;" style="display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg> <span>Pusatkan</span></button>
+                            <button onclick="launchHeadunitMaps('')" style="padding:7px 10px; border-radius:9px; background:#9333ea; border:none; color:#fff; font-size:10px; font-weight:800;" style="display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg> <span>Maps</span></button>
                         </div>
                     </div>
 
                     <!-- Bar Bawah Peta -->
                     <div style="position:relative; z-index:10; margin:12px; padding:10px; border-radius:14px; background:rgba(15,7,34,0.92); border:1px solid rgba(168,85,247,0.35); display:flex; gap:8px; backdrop-filter:blur(12px);">
-                        <button onclick="launchHeadunitMaps('Rumah')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;">🏠 Rute Rumah</button>
-                        <button onclick="launchHeadunitMaps('Kantor')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;">🏢 Rute Kantor</button>
-                        <button onclick="launchHeadunitMaps('SPBU Terdekat')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;">⛽ Cari SPBU</button>
-                        <button onclick="launchHeadunitMaps('Bengkel Mobil Terdekat')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;">🔧 Bengkel</button>
+                        <button onclick="launchHeadunitMaps('Rumah')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Rute Rumah</span></button>
+                        <button onclick="launchHeadunitMaps('Kantor')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></svg> <span>Rute Kantor</span></button>
+                        <button onclick="launchHeadunitMaps('SPBU Terdekat')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="3" y1="22" x2="15" y2="22"/><line x1="4" y1="9" x2="14" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg> <span>Cari SPBU</span></button>
+                        <button onclick="launchHeadunitMaps('Bengkel Mobil Terdekat')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> <span>Bengkel</span></button>
                     </div>
                 </div>
 
@@ -321,12 +373,12 @@
                                 <button onclick="activateMusicSourceTab('FM')" id="src-btn-FM" style="font-size:9px; font-weight:800; padding:4px 7px; border-radius:7px; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">FM</button>
                                 <button onclick="activateMusicSourceTab('BT')" id="src-btn-BT" style="font-size:9px; font-weight:800; padding:4px 7px; border-radius:7px; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">BT</button>
                             </div>
-                            <button onclick="openMusicSourcePickerModal()" title="Pilih Aplikasi Musik Manual" style="font-size:10px; font-weight:800; padding:4px 8px; border-radius:7px; background:rgba(250,204,21,0.18); color:#facc15; border:1px solid rgba(250,204,21,0.4);">⚙ Pilih</button>
+                            <button onclick="openMusicSourcePickerModal()" title="Pilih Aplikasi Musik Manual" style="font-size:10px; font-weight:800; padding:4px 8px; border-radius:7px; background:rgba(250,204,21,0.18); color:#facc15; border:1px solid rgba(250,204,21,0.4);" style="display:inline-flex;align-items:center;gap:4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> <span>Pilih</span></button>
                         </div>
 
                         <!-- Kartu Info Aplikasi Musik & Status Audio Aktif (Klik untuk membuka aplikasi musik yang dipilih) -->
                         <div onclick="openCurrentMusicSourceApp()" style="display:flex; align-items:center; gap:11px; cursor:pointer; background:rgba(20,9,42,0.52); padding:10px; border-radius:14px; border:1px solid rgba(168,85,247,0.24);">
-                            <div style="width:48px; height:48px; border-radius:999px; background:linear-gradient(135deg,#a855f7,#4f46e5); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; border:2px solid rgba(255,255,255,0.2); box-shadow:0 0 15px rgba(168,85,247,0.4);"><span style="transform:translateY(-1px);">♫</span></div>
+                            <div style="width:48px; height:48px; border-radius:999px; background:linear-gradient(135deg,#a855f7,#4f46e5); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; border:2px solid rgba(255,255,255,0.2); box-shadow:0 0 15px rgba(168,85,247,0.4);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
                             <div style="overflow:hidden; flex:1;">
                                 <div id="song-title" style="font-size:13px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Memuat Audio...</div>
                                 <div id="song-artist" style="font-size:11px; color:rgba(216,180,254,0.85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">Putar musik di headunit</div>
@@ -341,7 +393,7 @@
 
                         <!-- Bar Status Pemutaran -->
                         <div style="display:flex; justify-content:space-between; align-items:center; padding:0 2px;">
-                            <span id="playback-status-text" style="font-size:10px; font-weight:700; color:rgba(216,180,254,0.75);">⏸ Audio Dijeda</span>
+                            <span id="playback-status-text" style="font-size:10px; font-weight:700; color:rgba(216,180,254,0.75);">Audio Dijeda</span>
                             <button onclick="openCurrentMusicSourceApp()" style="background:none; border:none; color:#c084fc; font-size:10px; font-weight:800;">Buka Aplikasi ↗</button>
                         </div>
 
@@ -365,11 +417,11 @@
                     <!-- Bar Volume Headunit -->
                     <div class="glass-card" style="height:92px; border-radius:16px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">
                         <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; font-weight:800; color:#d8b4fe;">
-                            <span>🔊 VOLUME HEADUNIT</span>
+                            <span style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/></svg> <span>VOLUME HEADUNIT</span></span>
                             <span id="volume-val" style="color:#facc15; font-weight:900;">75%</span>
                         </div>
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <button onclick="toggleMute()" id="btn-mute" style="width:28px; height:28px; border-radius:8px; background:rgba(88,28,135,0.7); color:#fff; border:none;">🔊</button>
+                            <button onclick="toggleMute()" id="btn-mute" style="width:28px; height:28px; border-radius:8px; background:#170D2B; border:1px solid rgba(196,155,255,0.28); color:#C49BFF; display:inline-flex; align-items:center; justify-content:center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>
                             <button onclick="adjustVolume(-10)" style="width:28px; height:28px; border-radius:8px; background:rgba(88,28,135,0.7); color:#fff; border:none; font-weight:800;">-</button>
                             <input id="volume-slider" type="range" min="0" max="100" value="75" ontouchstart="isUserDraggingVolume=true" ontouchend="isUserDraggingVolume=false" onmousedown="isUserDraggingVolume=true" onmouseup="isUserDraggingVolume=false" oninput="setVolume(this.value)" onchange="isUserDraggingVolume=false; setVolume(this.value)" style="flex:1; height:6px;">
                             <button onclick="adjustVolume(10)" style="width:28px; height:28px; border-radius:8px; background:rgba(88,28,135,0.7); color:#fff; border:none; font-weight:800;">+</button>
@@ -380,7 +432,7 @@
                     <div class="glass-card" style="height:168px; border-radius:16px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span style="font-size:10px; font-weight:800; letter-spacing:0.08em; color:rgba(216,180,254,0.85);">PINTASAN CEPAT</span>
-                            <button onclick="openShortcutPickerModal(0)" style="font-size:10px; font-weight:800; padding:2px 8px; border-radius:6px; background:rgba(168,85,247,0.22); color:#e9d5ff; border:1px solid rgba(168,85,247,0.4);">✎ Ubah</button>
+                            <button onclick="openShortcutPickerModal(0)" style="font-size:10px; font-weight:800; padding:2px 8px; border-radius:6px; background:rgba(168,85,247,0.22); color:#e9d5ff; border:1px solid rgba(168,85,247,0.4);" style="display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> <span>Ubah</span></button>
                         </div>
                         <div id="quick-shortcuts-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; flex:1; margin-top:8px; align-items:center; justify-items:center;"></div>
                     </div>
@@ -391,7 +443,7 @@
             <section id="view-apps" class="hidden glass-card" style="border-radius:16px; padding:18px 20px; height:100%; display:flex; flex-direction:column; justify-content:space-between;">
                 <div style="display:flex; align-items:center; gap:10px;">
                     <div id="category-bar" style="flex:1; display:flex; align-items:center; background:rgba(15,7,34,0.92); border:1px solid rgba(168,85,247,0.28); border-radius:999px; padding:5px; gap:4px;"></div>
-                    <button onclick="loadRealInstalledApps(true)" style="padding:10px 14px; border-radius:999px; background:rgba(88,28,135,0.65); border:1px solid rgba(168,85,247,0.35); color:#fff; font-size:12px; font-weight:800;">↻ Segarkan (<span id="app-count-badge">0</span>)</button>
+                    <button onclick="loadRealInstalledApps(true)" style="padding:10px 14px; border-radius:999px; background:rgba(88,28,135,0.65); border:1px solid rgba(168,85,247,0.35); color:#fff; font-size:12px; font-weight:800;" style="display:inline-flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> <span>Segarkan (</span><span id="app-count-badge">0</span>)</span></button>
                 </div>
                 <div id="apps-grid" style="display:grid; grid-template-columns:repeat(6,1fr); grid-auto-rows:110px; gap:14px; flex:1; margin-top:14px; overflow-y:auto; padding:6px 4px; align-items:center; justify-items:center;"></div>
             </section>
@@ -410,8 +462,9 @@
                         <div style="display:flex; align-items:center; gap:8px;">
                             <span style="font-size:11px; color:#e9d5ff; font-weight:700;">Odometer Aktual (KM):</span>
                             <input id="odo-input" type="number" value="0" style="width:110px; padding:6px 10px; border-radius:10px; background:#120726; border:1px solid #a855f7; color:#fff; font-weight:800; font-size:13px;">
-                            <button onclick="updateOdometer()" style="padding:7px 12px; border-radius:10px; background:#9333ea; color:#fff; font-weight:800; font-size:11px; border:none;">Simpan Odo</button>
-                            <button onclick="openAddServiceCompModal()" style="padding:7px 12px; border-radius:10px; background:rgba(59,130,246,0.25); border:1px solid #3b82f6; color:#93c5fd; font-weight:800; font-size:11px;">+ Tambah Komponen</button>
+                            <button onclick="updateOdometer()" style="padding:7px 12px; border-radius:10px; background:#9333ea; color:#fff; font-weight:800; font-size:11px; border:none; cursor:pointer;">Simpan Odo</button>
+                            <button onclick="checkAndShowStartupServiceAlert(true)" style="padding:7px 12px; border-radius:10px; background:rgba(239,68,68,0.22); border:1px solid #ef4444; color:#fca5a5; font-weight:800; font-size:11px; cursor:pointer;">Popup Peringatan</button>
+                            <button onclick="openAddServiceCompModal()" style="padding:7px 12px; border-radius:10px; background:rgba(59,130,246,0.25); border:1px solid #3b82f6; color:#93c5fd; font-weight:800; font-size:11px; cursor:pointer;">+ Tambah Komponen</button>
                         </div>
                     </div>
 
@@ -463,7 +516,7 @@
                                 <!-- Bagian Terbaik Hingga (Tanggal & Sisa Hari) -->
                                 <div>
                                     <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-                                        <span style="font-size:14px; color:#a1a1aa; font-weight:600;">📅 Terbaik Hingga <strong id="srv-view-best-date" style="color:#fff; font-size:15px; font-weight:800;">23 Jun 2027 &bull; 224hr</strong></span>
+                                        <span style="font-size:14px; color:#a1a1aa; font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> <span style="margin-left:4px;">Terbaik Hingga</span> <strong id="srv-view-best-date" style="color:#fff; font-size:15px; font-weight:800;">23 Jun 2027 &bull; 224hr</strong></span>
                                         <span id="srv-view-time-pct" style="font-size:14px; color:#a1a1aa; font-weight:700;">31%</span>
                                     </div>
                                     <div style="width:100%; height:7px; background:#2c2c2e; border-radius:999px; overflow:hidden;">
@@ -524,7 +577,7 @@
                                     </div>
 
                                     <div style="display:flex; justify-content:space-between; align-items:baseline;">
-                                        <span style="font-size:13px; color:#a1a1aa;">📅 Terbaik Hingga <strong id="srv-edit-best-date-label" onclick="document.getElementById('srv-hidden-date-picker').showPicker ? document.getElementById('srv-hidden-date-picker').showPicker() : null" style="color:#38bdf8; font-size:14px; font-weight:800; text-decoration:underline; cursor:pointer;">23 Jun 2027 &bull; 224hr</strong></span>
+                                        <span style="font-size:13px; color:#a1a1aa;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> <span style="margin-left:4px;">Terbaik Hingga</span> <strong id="srv-edit-best-date-label" onclick="document.getElementById('srv-hidden-date-picker').showPicker ? document.getElementById('srv-hidden-date-picker').showPicker() : null" style="color:#38bdf8; font-size:14px; font-weight:800; text-decoration:underline; cursor:pointer;">23 Jun 2027 &bull; 224hr</strong></span>
                                         <input id="srv-hidden-date-picker" type="date" onchange="onPickTargetDate(this.value)" style="position:absolute; opacity:0; pointer-events:none; width:1px; height:1px;">
                                         <span id="srv-edit-time-pct-label" style="font-size:13px; color:#a1a1aa; font-weight:700;">31%</span>
                                     </div>
@@ -554,7 +607,7 @@
                             <!-- Kartu Saran Perawatan -->
                             <div style="background:#1c1c1e; border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:16px;">
                                 <div style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:900; color:#38bdf8; letter-spacing:0.06em; margin-bottom:6px;">
-                                    <span>💡</span>
+                                    <span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg></span>
                                     <span>SARAN PERAWATAN</span>
                                 </div>
                                 <p id="srv-detail-advice" style="font-size:12px; color:#d4d4d8; line-height:1.5; margin:0;">
@@ -565,7 +618,7 @@
                             <!-- Kartu Catatan -->
                             <div style="background:#1c1c1e; border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:16px;">
                                 <div style="display:flex; align-items:center; gap:8px; font-size:14px; font-weight:800; color:#fff; margin-bottom:8px;">
-                                    <span>📄</span>
+                                    <span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
                                     <span>Catatan</span>
                                 </div>
                                 <textarea id="srv-detail-note" rows="3" oninput="saveCurrentServiceNote(this.value)" placeholder="Tambah catatan tentang komponen ini..." style="width:100%; padding:10px 12px; border-radius:12px; background:#09090b; border:1px solid #27272a; color:#fff; font-size:12px; resize:none; outline:none;"></textarea>
@@ -589,7 +642,7 @@
                     <div class="glass-card" style="width:440px; border-radius:20px; padding:22px; border:1px solid rgba(56,189,248,0.4); display:flex; flex-direction:column; gap:12px;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <h3 style="font-size:16px; font-weight:900; color:#fff; margin:0;">Tambah Komponen Servis</h3>
-                            <button onclick="closeAddServiceCompModal()" style="background:none; border:none; color:#a1a1aa; font-size:16px; font-weight:800;">✕</button>
+                            <button onclick="closeAddServiceCompModal()" style="background:none; border:none; color:#a1a1aa; font-size:16px; font-weight:800;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                         </div>
                         <div>
                             <label style="font-size:11px; color:#d8b4fe; display:block; margin-bottom:4px;">Nama Komponen:</label>
@@ -621,7 +674,7 @@
                         <div style="font-size:12px; font-weight:700; color:#c084fc;">KONFIGURASI INTERNAL LAUNCHER</div>
                         <h2 style="font-size:20px; font-weight:900; color:#fff; margin:2px 0 0 0;">SETELAN GREYCOAT LAUNCHER</h2>
                     </div>
-                    <button onclick="triggerSetDefaultLauncher()" style="padding:10px 16px; border-radius:12px; background:linear-gradient(90deg,#9333ea,#4f46e5); color:#fff; font-size:12px; font-weight:800; border:1px solid #c084fc;">🏠 Atur Sebagai Layar Utama (Default Home)</button>
+                    <button onclick="triggerSetDefaultLauncher()" style="padding:10px 16px; border-radius:12px; background:linear-gradient(90deg,#9333ea,#4f46e5); color:#fff; font-size:12px; font-weight:800; border:1px solid #c084fc;" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Atur Sebagai Layar Utama (Default Home)</span></button>
                 </div>
 
                 <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:auto 0;">
@@ -636,27 +689,50 @@
                             <label style="font-size:10px; color:#d8b4fe; display:block; margin-bottom:3px;">Nama Mobil (Contoh: Mobil A / Mobil B):</label>
                             <input id="setting-vehicle-name" type="text" value="GREYCOAT" oninput="updateVehicleName(this.value)" style="width:100%; padding:7px 10px; border-radius:8px; background:#120726; border:1px solid rgba(168,85,247,0.5); color:#fff; font-weight:800; font-size:12px; margin-bottom:8px;">
                         </div>
-                        <button onclick="forcePushCloudNow()" style="width:100%; padding:8px; border-radius:10px; background:linear-gradient(90deg,#10b981,#059669); color:#fff; font-size:11px; font-weight:900; border:none;">☁️ Simpan & Sinkronkan ke HP Sekarang</button>
+                        <button onclick="forcePushCloudNow()" style="width:100%; padding:8px; border-radius:10px; background:linear-gradient(90deg,#10b981,#059669); color:#fff; font-size:11px; font-weight:900; border:none;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg> <span>Simpan & Sinkronkan ke HP Sekarang</span></button>
                     </div>
 
-                    <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px;">
-                        <div style="font-size:12px; font-weight:800; color:#facc15; margin-bottom:10px;">2. TEMA WARNA & PINTASAN</div>
-                        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:8px;">
-                            <button onclick="applyTheme('#0d061f','#150932')" style="padding:8px; border-radius:10px; background:#2e1065; color:#fff; font-size:11px; font-weight:800; border:1px solid #a855f7;">Cyber Purple</button>
-                            <button onclick="applyTheme('#11052C','#1F0A4D')" style="padding:8px; border-radius:10px; background:#3b0764; color:#fff; font-size:11px; font-weight:800; border:1px solid #c084fc;">Deep Violet</button>
-                            <button onclick="applyTheme('#090414','#140826')" style="padding:8px; border-radius:10px; background:#1e1b4b; color:#fff; font-size:11px; font-weight:800; border:1px solid #818cf8;">Midnight Indigo</button>
-                            <button onclick="applyTheme('#1a0524','#2d093d')" style="padding:8px; border-radius:10px; background:#4a044e; color:#fff; font-size:11px; font-weight:800; border:1px solid #e879f9;">Neon Magenta</button>
+                    <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+                        <div>
+                            <div style="font-size:12px; font-weight:800; color:#facc15; margin-bottom:10px;">2. TEMA WARNA & PINTASAN</div>
+                            <div id="theme-buttons-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:10px;">
+                                <button id="theme-btn-0" onclick="applyTheme('#0d061f','#150932', 0)" style="padding:10px 8px; border-radius:12px; background:#2e1065; color:#ffffff; font-size:11px; font-weight:800; border:2px solid #C49BFF; box-shadow:0 0 16px rgba(196,155,255,0.65), inset 0 0 8px rgba(196,155,255,0.25); display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; transition:all 0.2s;">
+                                    <span class="theme-check-icon" style="width:16px; height:16px; border-radius:999px; background:#C49BFF; color:#170D2B; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#170D2B" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                    <span>Cyber Purple</span>
+                                </button>
+                                <button id="theme-btn-1" onclick="applyTheme('#11052C','#1F0A4D', 1)" style="padding:10px 8px; border-radius:12px; background:#3b0764; color:#d8b4fe; font-size:11px; font-weight:800; border:1px solid rgba(196,155,255,0.28); display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; transition:all 0.2s;">
+                                    <span class="theme-check-icon hidden" style="width:16px; height:16px; border-radius:999px; background:#C49BFF; color:#170D2B; display:none; align-items:center; justify-content:center; flex-shrink:0;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#170D2B" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                    <span>Deep Violet</span>
+                                </button>
+                                <button id="theme-btn-2" onclick="applyTheme('#090414','#140826', 2)" style="padding:10px 8px; border-radius:12px; background:#1e1b4b; color:#d8b4fe; font-size:11px; font-weight:800; border:1px solid rgba(196,155,255,0.28); display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; transition:all 0.2s;">
+                                    <span class="theme-check-icon hidden" style="width:16px; height:16px; border-radius:999px; background:#C49BFF; color:#170D2B; display:none; align-items:center; justify-content:center; flex-shrink:0;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#170D2B" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                    <span>Midnight Indigo</span>
+                                </button>
+                                <button id="theme-btn-3" onclick="applyTheme('#1a0524','#2d093d', 3)" style="padding:10px 8px; border-radius:12px; background:#4a044e; color:#d8b4fe; font-size:11px; font-weight:800; border:1px solid rgba(196,155,255,0.28); display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; transition:all 0.2s;">
+                                    <span class="theme-check-icon hidden" style="width:16px; height:16px; border-radius:999px; background:#C49BFF; color:#170D2B; display:none; align-items:center; justify-content:center; flex-shrink:0;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#170D2B" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                    <span>Neon Magenta</span>
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="openMusicSourcePickerModal()" style="width:100%; padding:8px; border-radius:10px; background:rgba(147,51,234,0.4); border:1px solid #a855f7; color:#fff; font-size:11px; font-weight:800;">🎵 Atur Aplikasi Tab Musik & Spotify</button>
+                        <button onclick="openMusicSourcePickerModal()" style="width:100%; padding:8px; border-radius:10px; background:rgba(147,51,234,0.4); border:1px solid #a855f7; color:#fff; font-size:11px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> <span>Atur Aplikasi Tab Musik & Spotify</span></button>
                     </div>
 
-                    <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px;">
-                        <div style="font-size:12px; font-weight:800; color:#facc15; margin-bottom:10px;">3. KALIBRASI GPS & RESET JARAK</div>
-                        <div style="font-size:12px; color:#e9d5ff; margin-bottom:4px;">Kompensasi Kecepatan GPS: <strong id="gps-offset-label">+0 km/j</strong></div>
-                        <input type="range" min="0" max="5" value="0" oninput="document.getElementById('gps-offset-label').innerText='+'+this.value+' km/j'; gpsOffset=parseInt(this.value);" style="width:100%; margin-bottom:8px;">
+                    <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+                        <div>
+                            <div style="font-size:12px; font-weight:800; color:#facc15; margin-bottom:10px;">3. KALIBRASI GPS & RESET JARAK</div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#e9d5ff; margin-bottom:8px;">
+                                <span>Kompensasi Kecepatan GPS:</span>
+                                <strong id="gps-offset-label" style="color:#facc15; font-size:14px; font-weight:900;">+0 km/j</strong>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; background:#120726; padding:6px 8px; border-radius:12px; border:1px solid rgba(196,155,255,0.22);">
+                                <button onclick="adjustGpsOffset(-1)" style="width:34px; height:34px; border-radius:9px; background:#170D2B; border:1px solid rgba(196,155,255,0.45); color:#C49BFF; font-size:16px; font-weight:900; display:flex; align-items:center; justify-content:center; cursor:pointer;">-</button>
+                                <input id="gps-offset-slider" type="range" min="0" max="10" value="0" oninput="setGpsOffsetValue(this.value)" style="flex:1; height:6px;">
+                                <button onclick="adjustGpsOffset(1)" style="width:34px; height:34px; border-radius:9px; background:#170D2B; border:1px solid rgba(196,155,255,0.45); color:#C49BFF; font-size:16px; font-weight:900; display:flex; align-items:center; justify-content:center; cursor:pointer;">+</button>
+                            </div>
+                        </div>
                         <div style="display:flex; gap:6px;">
-                            <button onclick="resetTripDistance()" style="flex:1; padding:8px; border-radius:10px; background:rgba(220,38,38,0.3); border:1px solid rgba(248,113,113,0.4); color:#fca5a5; font-size:11px; font-weight:800;">Reset 0,0 KM</button>
-                            <button onclick="openAndroidSettings()" style="flex:1; padding:8px; border-radius:10px; background:#4f46e5; color:#fff; font-size:11px; font-weight:800; border:none;">Setelan Android</button>
+                            <button onclick="resetTripDistance()" style="flex:1; padding:8px; border-radius:10px; background:rgba(220,38,38,0.3); border:1px solid rgba(248,113,113,0.4); color:#fca5a5; font-size:11px; font-weight:800; cursor:pointer;">Reset 0,0 KM</button>
+                            <button onclick="openAndroidSettings()" style="flex:1; padding:8px; border-radius:10px; background:#4f46e5; color:#fff; font-size:11px; font-weight:800; border:none; cursor:pointer;">Setelan Android</button>
                         </div>
                     </div>
                 </div>
@@ -667,12 +743,12 @@
             </section>
         </main>
 
-        <!-- 3. DOCK NAVIGASI BAWAH (64px) -->
+        <!-- 3. DOCK NAVIGASI BAWAH (64px) DENGAN IKON VEKTOR MONOLINE (#C49BFF) -->
         <nav class="hu-dock glass-card shrink-0">
-            <button onclick="switchTab('home')" id="dock-home" style="background:rgba(147,51,234,0.38); border:1px solid #a855f7; color:#fff; padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800;">🏠 BERANDA</button>
-            <button onclick="switchTab('apps')" id="dock-apps" style="background:transparent; border:1px solid transparent; color:#d8b4fe; padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800;">🎛️ APLIKASI</button>
-            <button onclick="switchTab('service')" id="dock-service" style="background:transparent; border:1px solid transparent; color:#d8b4fe; padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800;">🔧 PENGINGAT SERVIS</button>
-            <button onclick="switchTab('settings')" id="dock-settings" style="background:transparent; border:1px solid transparent; color:#d8b4fe; padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800;">⚙️ SETELAN LAUNCHER</button>
+            <button onclick="switchTab('home')" id="dock-home" style="background:rgba(147,51,234,0.38); border:1px solid #a855f7; color:#fff; padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>BERANDA</span></button>
+            <button onclick="switchTab('apps')" id="dock-apps" style="background:transparent; border:1px solid transparent; color:#d8b4fe; padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg> <span>APLIKASI</span></button>
+            <button onclick="switchTab('service')" id="dock-service" style="background:transparent; border:1px solid transparent; color:#d8b4fe; padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> <span>PENGINGAT SERVIS</span></button>
+            <button onclick="switchTab('settings')" id="dock-settings" style="background:transparent; border:1px solid transparent; color:#d8b4fe; padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> <span>SETELAN LAUNCHER</span></button>
         </nav>
     </div>
 </div>
@@ -716,8 +792,16 @@
         }
     }
     window.onNativeResumeCheck = function() {
+        const savedOffset = parseInt(localStorage.getItem('gc_gps_offset_v13') || '0');
+        setGpsOffsetValue(savedOffset);
+        const savedThemeIdx = parseInt(localStorage.getItem('gc_theme_idx') || '0');
+        const savedC1 = localStorage.getItem('gc_theme_c1');
+        const savedC2 = localStorage.getItem('gc_theme_c2');
+        if (savedC1 && savedC2) applyTheme(savedC1, savedC2, savedThemeIdx, true);
         checkDefaultLauncherStatus();
         syncAudioStateFromBridge();
+        setTimeout(() => checkAndShowStartupServiceAlert(false), 450);
+        checkAndShowStartupServiceAlert(false);
     };
 
     // 3. PETA INTERAKTIF GPS REAL-TIME (MENGGUNAKAN GOOGLE MAPS TILES BEBAS API KEY + FALLBACK OSM)
@@ -773,10 +857,10 @@
         const btn = document.getElementById('btn-map-theme');
         if (isDarkMap) {
             mapEl.classList.add('map-dark-tiles');
-            btn.innerText = '🌙 Gelap';
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> <span>Gelap</span>';
         } else {
             mapEl.classList.remove('map-dark-tiles');
-            btn.innerText = '☀️ Terang';
+            btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg> <span>Terang</span>';
         }
     }
 
@@ -784,14 +868,14 @@
         if (mapInstance) {
             mapInstance.setView([currentLat, currentLng], 17, { animate: true });
         }
-        showToast('🎯 Peta dipusatkan ke posisi GPS saat ini');
+        showToast('Peta dipusatkan ke posisi GPS saat ini');
     }
 
     function launchHeadunitMaps(query) {
         if (window.AndroidBridge && window.AndroidBridge.launchNativeMaps) {
             window.AndroidBridge.launchNativeMaps(query || '');
         } else {
-            showToast('🗺️ Membuka aplikasi Maps Headunit' + (query ? ': ' + query : ''));
+            showToast('Membuka aplikasi Maps Headunit' + (query ? ': ' + query : ''));
         }
     }
 
@@ -863,6 +947,7 @@
 
     // Dipanggil otomatis saat Headunit mati / ACC OFF / Sleep
     window.onNativeHeadunitSleep = function() {
+        startupServiceAlertDismissedInSession = false;
         upsertCurrentSessionToHistory();
         queueAutoSyncPayload(true);
     };
@@ -913,7 +998,7 @@
         document.getElementById('session-max').innerText = '0 km/j';
         renderTotalKm();
         queueAutoSyncPayload(true);
-        showToast('🔄 Seluruh data perjalanan direset kembali ke 0,0 KM');
+        showToast('Seluruh data perjalanan direset kembali ke 0,0 KM');
     }
 
     function haversineKm(lat1, lon1, lat2, lon2) {
@@ -926,13 +1011,18 @@
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
+    let lastRawSpeedKmh = 0;
     function updateSpeedUI(speedKmh) {
+        lastRawSpeedKmh = speedKmh;
         const calibrated = speedKmh > 0 ? speedKmh + gpsOffset : 0;
         if (calibrated > sessionMaxSpeed) sessionMaxSpeed = calibrated;
         document.getElementById('speed-value').innerText = calibrated;
         document.getElementById('session-max').innerText = sessionMaxSpeed + ' km/j';
         const ratio = Math.min(1, calibrated / 180);
-        document.getElementById('speed-arc').style.strokeDashoffset = 283 - (283 * ratio);
+        const dashOffset = 283 - (283 * ratio);
+        document.getElementById('speed-arc').style.strokeDashoffset = dashOffset;
+        const glowArc = document.getElementById('speed-arc-glow');
+        if (glowArc) glowArc.style.strokeDashoffset = dashOffset;
     }
 
     window.onNativeGpsUpdate = function(speedKmh, lat, lng, bearing) {
@@ -1114,7 +1204,7 @@
             playSvg.classList.add('hidden');
             pauseSvg.classList.remove('hidden');
             eq.classList.add('eq-active');
-            statusTxt.innerText = '▶ Sedang Memutar Audio';
+            statusTxt.innerText = 'Sedang Memutar Audio';
             statusTxt.style.color = '#6ee7b7';
             btnPlay.style.background = 'linear-gradient(135deg,#facc15,#f59e0b)';
             btnPlay.style.color = '#000';
@@ -1122,7 +1212,7 @@
             playSvg.classList.remove('hidden');
             pauseSvg.classList.add('hidden');
             eq.classList.remove('eq-active');
-            statusTxt.innerText = '⏸ Audio Dijeda';
+            statusTxt.innerText = 'Audio Dijeda';
             statusTxt.style.color = 'rgba(216,180,254,0.75)';
             btnPlay.style.background = 'linear-gradient(135deg,#a855f7,#7c3aed)';
             btnPlay.style.color = '#fff';
@@ -1258,10 +1348,10 @@
             const iconData = (liveApp && liveApp.icon) ? liveApp.icon : item.icon;
             const label = (liveApp && liveApp.name) ? liveApp.name : (item.name || 'Pilih App');
             const iconHtml = (iconData && iconData.startsWith('data:image'))
-                ? `<img src="${iconData}" style="width:48px; height:48px; border-radius:13px; object-fit:contain; filter:drop-shadow(0 4px 10px rgba(0,0,0,0.45));" />`
-                : `<div style="width:48px; height:48px; border-radius:13px; background:linear-gradient(135deg,#7c3aed,#4338ca); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:900; color:#fff; border:1px solid rgba(255,255,255,0.2);">${label.charAt(0).toUpperCase()}</div>`;
+                ? `<div style="width:50px; height:50px; border-radius:16px; background:#170D2B; border:1px solid rgba(196,155,255,0.24); display:flex; align-items:center; justify-content:center; padding:6px; box-shadow:inset 0 2px 8px rgba(0,0,0,0.55);"><img src="${iconData}" style="width:100%; height:100%; border-radius:11px; object-fit:contain;" /></div>`
+                : `<div style="width:50px; height:50px; border-radius:16px; background:#170D2B; border:1px solid rgba(196,155,255,0.32); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:900; color:#C49BFF;">${label.charAt(0).toUpperCase()}</div>`;
             return `
-                <button onclick="handleShortcutClick(${idx})" oncontextmenu="openShortcutPickerModal(${idx}); return false;" style="background:rgba(20,9,42,0.5); border:1px solid rgba(168,85,247,0.24); border-radius:14px; padding:8px 4px; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:#fff; overflow:hidden;">
+                <button onclick="handleShortcutClick(${idx})" oncontextmenu="openShortcutPickerModal(${idx}); return false;" style="background:#170D2B; border:1px solid rgba(196,155,255,0.28); border-radius:18px; padding:8px 4px; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:#fff; overflow:hidden; box-shadow:0 6px 16px rgba(0,0,0,0.4);">
                     ${iconHtml}
                     <span style="font-size:10px; font-weight:700; color:#f3e8ff; width:95%; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${label}</span>
                 </button>
@@ -1367,7 +1457,7 @@
             };
             localStorage.setItem('gc_custom_shortcuts_v6', JSON.stringify(customShortcuts));
             renderQuickShortcuts();
-            showToast('✅ Pintasan #' + (editingShortcutSlot + 1) + ' diatur ke ' + chosen.name);
+            showToast('Pintasan #' + (editingShortcutSlot + 1) + ' diatur ke ' + chosen.name);
             closeAppPickerModal();
         } else {
             customMusicSources[editingMusicSourceTab] = {
@@ -1379,7 +1469,7 @@
             activeMusicTab = editingMusicSourceTab;
             localStorage.setItem('gc_active_music_tab', activeMusicTab);
             renderMusicSourceCard();
-            showToast('🎵 Tab ' + editingMusicSourceTab + ' dihubungkan ke ' + chosen.name);
+            showToast('Tab ' + editingMusicSourceTab + ' dihubungkan ke ' + chosen.name);
             closeAppPickerModal();
         }
     }
@@ -1390,12 +1480,12 @@
 
     // 8. DAFTAR APLIKASI REAL YANG TERINSTAL DI PERANGKAT
     const CATEGORIES = [
-        { id: 'Semua', icon: '⊞' },
-        { id: 'Navigasi', icon: '△' },
-        { id: 'Media', icon: '♫' },
-        { id: 'Sistem', icon: '⚙' },
-        { id: 'Mobil', icon: '🚘' },
-        { id: 'Lainnya', icon: '••' }
+        { id: 'Semua', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>' },
+        { id: 'Navigasi', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>' },
+        { id: 'Media', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>' },
+        { id: 'Sistem', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' },
+        { id: 'Mobil', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>' },
+        { id: 'Lainnya', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="12" r="1.5"/></svg>' }
     ];
     let activeCategory = 'Semua';
     let installedAppsList = [];
@@ -1537,7 +1627,7 @@
         }
         document.getElementById('volume-val').innerText = v + '%';
         isMuted = (v === 0);
-        document.getElementById('btn-mute').innerText = isMuted ? '🔇' : '🔊';
+        document.getElementById('btn-mute').innerHTML = isMuted ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>' : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
         if (v > 0) prevVol = v;
     }
 
@@ -1591,32 +1681,44 @@
 
 
     // =========================================================================
-    // 10. SISTEM PENGINGAT SERVIS 17 KOMPONEN + SESUAIKAN UMUR & EDIT INTERVAL
+    // 10. SISTEM PENGINGAT SERVIS 17 KOMPONEN (4 KOLOM HORIZONTAL + THRESHOLD BARU + POPUP STARTUP)
     // =========================================================================
+    // Ambang Batas Baru:
+    // - MERAH (Periksa Segera): Sisa KM < 500 km ATAU Sisa Hari < 17 hari (termasuk H-7 <= 7 hari)
+    // - KUNING (Perlu perhatian): Sisa KM < 1.200 km ATAU Sisa Hari < 35 hari
+    // - HIJAU (Sehat): Normal (Sisa KM >= 1.200 km DAN Sisa Hari >= 35 hari)
     const DEFAULT_SERVICE_COMPONENTS = [
-        // Perlu Perhatian (2)
+        // Contoh Default Periksa Segera / Merah (< 500 km / < 17 hari & H-7)
         {
             id: 'filter_oli', name: 'Filter Oli Mesin', iconKey: 'filter_oli',
-            hasKm: true, recKm: 20000, intervalKm: 20000, remKm: 15635,
-            recMonths: 6, intervalMonths: 6, remDays: 34,
+            hasKm: true, recKm: 10000, intervalKm: 10000, remKm: 420,
+            recMonths: 6, intervalMonths: 6, remDays: 12,
             advice: 'Ganti filter oli bersamaan dengan penggantian oli mesin agar sirkulasi pelumasan tetap bersih dari endapan logam.',
             lastService: 'Tidak tersedia', note: '', history: []
         },
         {
             id: 'wiper', name: 'Wiper', iconKey: 'wiper',
             hasKm: false, recKm: 0, intervalKm: 0, remKm: 0,
-            recMonths: 12, intervalMonths: 12, remDays: 42,
+            recMonths: 12, intervalMonths: 12, remDays: 7,
             advice: 'Periksa karet bilah wiper secara berkala. Ganti jika sapuan air mulai meninggalkan garis atau berdecit di kaca.',
             lastService: 'Tidak tersedia', note: '', history: []
         },
-        // Periksa Segera (10)
+        // Contoh Default Perlu Perhatian / Kuning (< 1.200 km / < 35 hari)
+        {
+            id: 'oli_mesin', name: 'Oli Mesin', iconKey: 'oli_mesin',
+            hasKm: true, recKm: 10000, intervalKm: 10000, remKm: 950,
+            recMonths: 6, intervalMonths: 6, remDays: 26,
+            advice: 'Ganti oli mesin tepat waktu sesuai spesifikasi viskositas pabrikan untuk menjaga keawetan komponen internal mesin.',
+            lastService: 'Tidak tersedia', note: '', history: []
+        },
         {
             id: 'aki_12v', name: 'Aki 12V', iconKey: 'aki',
             hasKm: false, recKm: 0, intervalKm: 0, remKm: 0,
-            recMonths: 24, intervalMonths: 24, remDays: 224,
+            recMonths: 24, intervalMonths: 24, remDays: 28,
             advice: 'Periksa tegangan aki dan kebersihan terminal kutub positif/negatif di setiap servis berkala.',
             lastService: 'Tidak tersedia', note: '', history: []
         },
+        // Komponen Sehat / Hijau (Normal >= 1.200 km & >= 35 hari)
         {
             id: 'filter_udara', name: 'Filter Udara', iconKey: 'filter_udara',
             hasKm: true, recKm: 50000, intervalKm: 50000, remKm: 45635,
@@ -1674,14 +1776,6 @@
             lastService: 'Tidak tersedia', note: '', history: []
         },
         {
-            id: 'oli_mesin', name: 'Oli Mesin', iconKey: 'oli_mesin',
-            hasKm: true, recKm: 10000, intervalKm: 10000, remKm: 5630,
-            recMonths: 6, intervalMonths: 6, remDays: 92,
-            advice: 'Ganti oli mesin tepat waktu sesuai spesifikasi viskositas pabrikan untuk menjaga keawetan komponen internal mesin.',
-            lastService: 'Tidak tersedia', note: '', history: []
-        },
-        // Sehat (5)
-        {
             id: 'minyak_rem', name: 'Minyak Rem', iconKey: 'minyak_rem',
             hasKm: true, recKm: 20000, intervalKm: 20000, remKm: 15635,
             recMonths: 24, intervalMonths: 24, remDays: 615,
@@ -1718,10 +1812,10 @@
         }
     ];
 
-    let serviceComponents = JSON.parse(localStorage.getItem('gc_service_components_v11') || 'null');
+    let serviceComponents = JSON.parse(localStorage.getItem('gc_service_components_v13') || 'null');
     if (!Array.isArray(serviceComponents) || serviceComponents.length === 0) {
         serviceComponents = JSON.parse(JSON.stringify(DEFAULT_SERVICE_COMPONENTS));
-        localStorage.setItem('gc_service_components_v11', JSON.stringify(serviceComponents));
+        localStorage.setItem('gc_service_components_v13', JSON.stringify(serviceComponents));
     }
 
     let selectedServiceCompId = null;
@@ -1729,9 +1823,22 @@
     let editTempRemKm = 45600;
     let editTempIntervalMonths = 24;
     let editTempRemDays = 224;
+    let startupServiceAlertDismissedInSession = false;
 
     function saveServiceComponentsToStorage() {
-        localStorage.setItem('gc_service_components_v11', JSON.stringify(serviceComponents));
+        localStorage.setItem('gc_service_components_v13', JSON.stringify(serviceComponents));
+    }
+
+    function getBarColorByKm(rKm) {
+        if (rKm < 500) return '#ef4444';
+        if (rKm < 1200) return '#eab308';
+        return '#22c55e';
+    }
+
+    function getBarColorByDays(rDays) {
+        if (rDays < 17) return '#ef4444';
+        if (rDays < 35) return '#eab308';
+        return '#22c55e';
     }
 
     function getCompMetrics(comp) {
@@ -1747,17 +1854,28 @@
         }
 
         const lowestPct = comp.hasKm ? Math.min(kmPct, timePct) : timePct;
-        let status = 'GOOD'; // 'URGENT' | 'SOON' | 'GOOD'
+
+        // Logika Ambang Batas Baru:
+        // Merah (< 500 km / < 17 hari) -> PERIKSA SEGERA (URGENT)
+        // Kuning (< 1.200 km / < 35 hari) -> PERLU PERHATIAN (WARNING)
+        // Hijau (Normal) -> SEHAT (GOOD)
+        const isRed = (comp.hasKm && rKm < 500) || (rDays < 17);
+        const isYellow = !isRed && ((comp.hasKm && rKm < 1200) || (rDays < 35));
+        const isH7 = (rDays <= 7);
+
+        let status = 'GOOD';
         let color = '#22c55e';
-        if (lowestPct <= 20) {
+        let borderColor = 'rgba(34, 197, 94, 0.28)';
+        if (isRed) {
             status = 'URGENT';
             color = '#ef4444';
-        } else if (lowestPct <= 55) {
-            status = 'SOON';
+            borderColor = 'rgba(239, 68, 68, 0.48)';
+        } else if (isYellow) {
+            status = 'WARNING';
             color = '#eab308';
+            borderColor = 'rgba(234, 179, 8, 0.42)';
         }
 
-        // Hitung tanggal estimasi dari rDays
         const targetDate = new Date();
         targetDate.setDate(targetDate.getDate() + rDays);
         const monthsId = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -1768,22 +1886,18 @@
         return {
             rKm, kmPct,
             rDays, totalDays, timePct,
-            lowestPct, status, color,
+            lowestPct, status, color, borderColor,
+            isRed, isYellow, isH7,
             estMonthYear, fullBestDate, isoDate
         };
     }
 
-    function getBarColorByPct(pct) {
-        if (pct <= 20) return '#ef4444';
-        if (pct <= 55) return '#eab308';
-        return '#22c55e';
-    }
-
-    function getServiceComponentSvg(iconKey, fillHex) {
-        const baseGray = '#3f3f46';
+    function getServiceComponentSvg(iconKey, fillHex, sizePx) {
+        const s = sizePx || 32;
+        const baseGray = '#52525b';
         switch (iconKey) {
             case 'filter_oli':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <rect x="13" y="8" width="22" height="24" rx="3" fill="${baseGray}"/>
                     <path d="M13 30 H35 V35 C35 38.3 32.3 41 29 41 H19 C15.7 41 13 38.3 13 35 V30 Z" fill="${fillHex}"/>
                     <line x1="17" y1="33" x2="17" y2="38" stroke="#18181b" stroke-width="2" stroke-linecap="round"/>
@@ -1791,96 +1905,96 @@
                     <line x1="31" y1="33" x2="31" y2="38" stroke="#18181b" stroke-width="2" stroke-linecap="round"/>
                 </svg>`;
             case 'wiper':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <path d="M8 18 Q24 6 40 18 L34 36 Q24 29 14 36 Z" stroke="${baseGray}" stroke-width="3.5" fill="none"/>
                     <line x1="24" y1="37" x2="33" y2="14" stroke="${fillHex}" stroke-width="3.5" stroke-linecap="round"/>
                     <circle cx="24" cy="37" r="4" fill="${fillHex}"/>
                 </svg>`;
             case 'aki':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <rect x="14" y="10" width="5" height="4" rx="1" fill="${baseGray}"/>
                     <rect x="29" y="10" width="5" height="4" rx="1" fill="${baseGray}"/>
                     <rect x="8" y="14" width="32" height="24" rx="3" fill="${baseGray}"/>
                     <rect x="8" y="29" width="32" height="9" rx="2" fill="${fillHex}"/>
                 </svg>`;
             case 'filter_udara':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <path d="M12 14 C18 10, 26 18, 36 14" stroke="${baseGray}" stroke-width="3.2" stroke-linecap="round"/>
                     <path d="M12 22 C18 18, 26 26, 36 22" stroke="${baseGray}" stroke-width="3.2" stroke-linecap="round"/>
                     <rect x="13" y="28" width="22" height="10" rx="3" stroke="${fillHex}" stroke-width="3" fill="none"/>
                     <path d="M17 33 H31" stroke="${fillHex}" stroke-width="3" stroke-linecap="round"/>
                 </svg>`;
             case 'filter_kabin':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <circle cx="24" cy="17" r="7" fill="${baseGray}"/>
                     <text x="24" y="39" text-anchor="middle" fill="${fillHex}" font-size="14" font-weight="900" font-family="sans-serif">A/C</text>
                 </svg>`;
             case 'radiator':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <rect x="19" y="9" width="10" height="4" rx="1" fill="${baseGray}"/>
                     <rect x="9" y="14" width="30" height="24" rx="3" fill="${baseGray}"/>
                     <rect x="9" y="29" width="30" height="9" rx="2" fill="${fillHex}"/>
                 </svg>`;
             case 'filter_bbm':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <path d="M12 12 H36 L27 25 V35 H21 V25 L12 12 Z" fill="${baseGray}"/>
                     <circle cx="24" cy="36" r="4.5" stroke="${fillHex}" stroke-width="3" fill="none"/>
                 </svg>`;
             case 'power_steering':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <rect x="12" y="10" width="24" height="28" rx="4" fill="${baseGray}"/>
                     <path d="M12 29 H36 V34 C36 36.2 34.2 38 32 38 H16 C13.8 38 12 36.2 12 34 V29 Z" fill="${fillHex}"/>
                     <circle cx="24" cy="24" r="6" stroke="#18181b" stroke-width="2.5" fill="none"/>
                 </svg>`;
             case 'busi':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <rect x="20" y="8" width="8" height="16" rx="2" fill="${baseGray}"/>
                     <rect x="18" y="24" width="12" height="7" rx="1" fill="${baseGray}"/>
                     <path d="M21 31 H27 L25 39 H23 Z" fill="${fillHex}"/>
                 </svg>`;
             case 'ban':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <circle cx="24" cy="24" r="14" stroke="${baseGray}" stroke-width="6" fill="none"/>
                     <path d="M12 31 A14 14 0 0 0 36 31" stroke="${fillHex}" stroke-width="6" stroke-linecap="round" fill="none"/>
                 </svg>`;
             case 'sokbreaker':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <rect x="18" y="9" width="12" height="18" rx="3" fill="${baseGray}"/>
                     <path d="M16 28 H32 L29 38 H19 Z" fill="${fillHex}"/>
                     <circle cx="24" cy="39" r="3" fill="${fillHex}"/>
                 </svg>`;
             case 'oli_mesin':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <path d="M10 22 H30 L38 18 L40 21 L32 32 H12 Z" fill="${fillHex}"/>
                     <rect x="17" y="16" width="8" height="4" rx="1" fill="${baseGray}"/>
                     <circle cx="41" cy="28" r="2.5" fill="${fillHex}"/>
                 </svg>`;
             case 'minyak_rem':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <circle cx="24" cy="24" r="10" stroke="${fillHex}" stroke-width="3" fill="none"/>
                     <path d="M16 24 A8 8 0 0 0 32 24 Z" fill="${fillHex}"/>
                     <path d="M10 15 A16 16 0 0 0 10 33" stroke="${fillHex}" stroke-width="3" stroke-linecap="round" fill="none"/>
                     <path d="M38 15 A16 16 0 0 1 38 33" stroke="${fillHex}" stroke-width="3" stroke-linecap="round" fill="none"/>
                 </svg>`;
             case 'kampas_rem':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <path d="M21 10 C28 14, 28 34, 21 38 L17 34 C22 30, 22 18, 17 14 Z" fill="${fillHex}"/>
                     <path d="M26 12 C32 17, 32 31, 26 36" stroke="${fillHex}" stroke-width="3.5" stroke-linecap="round" fill="none"/>
                 </svg>`;
             case 'cakram_rem':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <circle cx="24" cy="24" r="14" fill="${fillHex}"/>
                     <circle cx="24" cy="24" r="5" fill="#18181b"/>
                     <circle cx="24" cy="24" r="2" fill="${fillHex}"/>
                 </svg>`;
             case 'oli_transmisi':
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <circle cx="22" cy="22" r="10" fill="${fillHex}"/>
                     <path d="M34 26 C34 26, 39 32, 39 35 A5 5 0 0 1 29 35 C29 32, 34 26, 34 26 Z" fill="${fillHex}"/>
                 </svg>`;
             case 'timing_belt':
             default:
-                return `<svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+                return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" fill="none">
                     <rect x="9" y="15" width="30" height="18" rx="9" stroke="${fillHex}" stroke-width="4" stroke-dasharray="5 2" fill="none"/>
                 </svg>`;
         }
@@ -1901,62 +2015,105 @@
         saveServiceComponentsToStorage();
     }
 
+    // Reset cepat langsung dari tombol "Reset" pada kartu 4 kolom maupun dari Popup Startup
+    function quickResetServiceComponent(compId) {
+        const comp = serviceComponents.find(c => c.id === compId);
+        if (!comp) return;
+
+        const now = new Date();
+        const monthsId = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        const dateFormatted = `${now.getDate()} ${monthsId[now.getMonth()]} ${now.getFullYear()}`;
+        const curOdo = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
+
+        if (comp.hasKm) {
+            comp.remKm = comp.intervalKm || comp.recKm || 10000;
+        }
+        comp.remDays = Math.round((comp.intervalMonths || comp.recMonths || 12) * 30.4375);
+        comp.lastService = `${dateFormatted} (${formatDotNumber(curOdo)} km)`;
+
+        if (!Array.isArray(comp.history)) comp.history = [];
+        comp.history.unshift({
+            date: dateFormatted,
+            odometerKm: curOdo,
+            note: 'Reset Servis Cepat (Umur dikembalikan ke 100%)'
+        });
+
+        saveServiceComponentsToStorage();
+        renderServiceDashboard();
+        if (selectedServiceCompId === compId) {
+            refreshServiceDetailUI();
+        }
+        // Perbarui juga daftar pada popup startup jika sedang terbuka
+        const alertModal = document.getElementById('service-startup-alert-modal');
+        if (alertModal && !alertModal.classList.contains('hidden')) {
+            checkAndShowStartupServiceAlert(true, true);
+        }
+        if (typeof queueAutoSyncPayload === 'function') queueAutoSyncPayload(true);
+        showToast('Servis ' + comp.name + ' direset kembali ke 100% (Sehat)');
+    }
+
+    // Render Grid 4 Kolom Kompak Horizontal dengan Tombol Reset & LinearProgressIndicator
     function renderServiceDashboard() {
         const container = document.getElementById('srv-categories-scroll');
         if (!container) return;
 
         const urgentList = [];
-        const soonList = [];
+        const warningList = [];
         const goodList = [];
 
         for (const comp of serviceComponents) {
             const m = getCompMetrics(comp);
             const itemWithMeta = { comp, m };
             if (m.status === 'URGENT') urgentList.push(itemWithMeta);
-            else if (m.status === 'SOON') soonList.push(itemWithMeta);
+            else if (m.status === 'WARNING') warningList.push(itemWithMeta);
             else goodList.push(itemWithMeta);
         }
 
         const groups = [
             {
-                title: 'Perlu perhatian',
+                title: 'Periksa Segera (Merah: < 500 km / < 17 hari)',
                 badgeBg: 'rgba(239,68,68,0.22)',
                 badgeColor: '#f87171',
-                iconHtml: `<span style="width:22px;height:22px;border-radius:999px;background:#ef4444;color:#000;font-weight:900;font-size:13px;display:inline-flex;align-items:center;justify-content:center;">!</span>`,
+                iconHtml: `<span style="width:20px;height:20px;border-radius:999px;background:#ef4444;color:#000;font-weight:900;font-size:12px;display:inline-flex;align-items:center;justify-content:center;">!</span>`,
                 items: urgentList
             },
             {
-                title: 'Periksa Segera',
+                title: 'Perlu perhatian (Kuning: < 1.200 km / < 35 hari)',
                 badgeBg: 'rgba(234,179,8,0.22)',
                 badgeColor: '#facc15',
-                iconHtml: `<span style="width:22px;height:22px;border-radius:6px;background:#eab308;color:#000;font-weight:900;font-size:13px;display:inline-flex;align-items:center;justify-content:center;">&#9888;</span>`,
-                items: soonList
+                iconHtml: `<span style="width:20px;height:20px;border-radius:6px;background:#eab308;color:#000;font-weight:900;font-size:12px;display:inline-flex;align-items:center;justify-content:center;">&#9888;</span>`,
+                items: warningList
             },
             {
-                title: 'Sehat',
+                title: 'Sehat (Hijau: Normal)',
                 badgeBg: 'rgba(34,197,94,0.22)',
                 badgeColor: '#4ade80',
-                iconHtml: `<span style="width:22px;height:22px;border-radius:999px;background:#22c55e;color:#000;font-weight:900;font-size:13px;display:inline-flex;align-items:center;justify-content:center;">&#10003;</span>`,
+                iconHtml: `<span style="width:20px;height:20px;border-radius:999px;background:#22c55e;color:#000;font-weight:900;font-size:12px;display:inline-flex;align-items:center;justify-content:center;">&#10003;</span>`,
                 items: goodList
             }
         ];
 
-        const gridCols = window.innerWidth >= 900 ? 'repeat(6, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))';
-
         container.innerHTML = groups.filter(g => g.items.length > 0).map(g => {
             const cardsHtml = g.items.map(({ comp, m }) => {
-                const mainRemainingText = comp.hasKm
-                    ? `Sisa ${formatDotNumber(m.rKm)} km`
-                    : `Sisa ${formatDotNumber(m.rDays)} hari`;
+                const subRemainingText = comp.hasKm
+                    ? `${formatDotNumber(m.rKm)} km &bull; ${m.rDays} hari`
+                    : `Sisa ${formatDotNumber(m.rDays)} hari (${m.estMonthYear})`;
                 return `
-                    <div onclick="openServiceCompDetail('${comp.id}')" style="background:#1c1c1e; border:1px solid rgba(255,255,255,0.08); border-radius:20px; padding:14px 10px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; min-height:148px; cursor:pointer; transition:transform 0.15s;" onmouseover="this.style.borderColor='rgba(168,85,247,0.5)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
-                        <div style="font-size:13px; font-weight:800; color:#fff; text-align:center; line-height:1.25; height:32px; display:flex; align-items:center; justify-content:center;">${comp.name}</div>
-                        <div style="margin:6px 0;">
-                            ${getServiceComponentSvg(comp.iconKey, m.color)}
+                    <div onclick="openServiceCompDetail('${comp.id}')" style="background:#170D2B; border:1px solid ${m.borderColor}; border-radius:14px; padding:10px 11px; display:flex; flex-direction:column; justify-content:space-between; gap:8px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.35); transition:border-color 0.15s;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                            <div style="width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(196,155,255,0.16); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                ${getServiceComponentSvg(comp.iconKey, m.color, 26)}
+                            </div>
+                            <div style="flex:1; min-width:0; overflow:hidden;">
+                                <div style="font-size:12px; font-weight:800; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${comp.name}</div>
+                                <div style="font-size:10px; font-weight:700; color:${m.color}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">${subRemainingText}</div>
+                            </div>
+                            <button onclick="event.stopPropagation(); quickResetServiceComponent('${comp.id}')" title="Reset Servis Komponen" style="padding:5px 9px; border-radius:8px; background:rgba(196,155,255,0.14); border:1px solid rgba(196,155,255,0.38); color:#C49BFF; font-size:10px; font-weight:800; flex-shrink:0; cursor:pointer;">
+                                Reset
+                            </button>
                         </div>
-                        <div style="text-align:center;">
-                            <div style="font-size:12px; font-weight:800; color:#e4e4e7;">${mainRemainingText}</div>
-                            <div style="font-size:10px; font-weight:600; color:#71717a; margin-top:2px;">${m.estMonthYear}</div>
+                        <div style="width:100%; height:5px; background:rgba(255,255,255,0.09); border-radius:999px; overflow:hidden;">
+                            <div style="width:${m.lowestPct}%; height:100%; background:${m.color}; border-radius:999px; transition:width 0.3s ease;"></div>
                         </div>
                     </div>
                 `;
@@ -1964,26 +2121,93 @@
 
             return `
                 <div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding:0 4px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:0 2px;">
                         <div style="display:flex; align-items:center; gap:8px;">
                             ${g.iconHtml}
-                            <span style="font-size:14px; font-weight:800; color:#fff;">${g.title}</span>
+                            <span style="font-size:13px; font-weight:800; color:#fff;">${g.title}</span>
                         </div>
-                        <span style="padding:2px 10px; border-radius:999px; background:${g.badgeBg}; color:${g.badgeColor}; font-size:12px; font-weight:800;">${g.items.length}</span>
+                        <span style="padding:2px 10px; border-radius:999px; background:${g.badgeBg}; color:${g.badgeColor}; font-size:11px; font-weight:800;">${g.items.length}</span>
                     </div>
-                    <div style="display:grid; grid-template-columns:${gridCols}; gap:10px;">
+                    <div style="display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px;">
                         ${cardsHtml}
                     </div>
                 </div>
             `;
-        }).join('') + `
-            <div style="padding-top:6px;">
-                <button onclick="openAddServiceCompModal()" style="width:100%; padding:12px; border-radius:999px; background:#1c1c1e; border:1px solid rgba(255,255,255,0.1); color:#fff; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
-                    <span>Tambah Komponen</span>
-                    <span style="color:#38bdf8;">&#9662;</span>
-                </button>
-            </div>
-        `;
+        }).join('');
+    }
+
+    // Notifikasi Popup Besar Saat Nyalakan Mobil (Jika Ada Komponen Merah < 500 km / < 17 hari atau H-7 <= 7 hari)
+    function checkAndShowStartupServiceAlert(forceOpen, closeIfEmpty) {
+        if (!forceOpen && startupServiceAlertDismissedInSession) return;
+
+        const criticalItems = [];
+        for (const comp of serviceComponents) {
+            const m = getCompMetrics(comp);
+            if (m.isRed || m.isH7) {
+                criticalItems.push({ comp, m });
+            }
+        }
+
+        const modal = document.getElementById('service-startup-alert-modal');
+        const listEl = document.getElementById('srv-startup-alert-list');
+        const subEl = document.getElementById('srv-startup-alert-subtitle');
+        if (!modal || !listEl) return;
+
+        if (criticalItems.length === 0) {
+            if (closeIfEmpty) {
+                modal.classList.add('hidden');
+            } else if (forceOpen) {
+                showToast('Seluruh komponen di atas ambang Merah (> 500 km & > 17 hari)');
+            }
+            return;
+        }
+
+        subEl.innerText = `Terdapat ${criticalItems.length} komponen berstatus Periksa Segera (Merah: < 500 km / < 17 hari) atau memasuki H-7 penggantian:`;
+
+        listEl.innerHTML = criticalItems.map(({ comp, m }) => {
+            const badgeText = m.isH7
+                ? `H-${m.rDays} JATUH TEMPO`
+                : (comp.hasKm && m.rKm < 500 ? `KRITIS < 500 KM` : `SEGERA < 17 HARI`);
+            const detailText = comp.hasKm
+                ? `Sisa ${formatDotNumber(m.rKm)} km &bull; Sisa ${m.rDays} hari`
+                : `Sisa ${m.rDays} hari (${m.estMonthYear})`;
+
+            return `
+                <div style="background:#170D2B; border:1.5px solid rgba(239,68,68,0.55); border-radius:16px; padding:12px 14px; display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                        <div style="width:40px; height:40px; border-radius:11px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                            ${getServiceComponentSvg(comp.iconKey, '#ef4444', 28)}
+                        </div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span style="font-size:13px; font-weight:900; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${comp.name}</span>
+                                <span style="font-size:9px; font-weight:900; padding:2px 6px; border-radius:6px; background:rgba(239,68,68,0.25); color:#fca5a5; border:1px solid rgba(239,68,68,0.45); flex-shrink:0;">${badgeText}</span>
+                            </div>
+                            <div style="font-size:11px; font-weight:700; color:#f87171; margin-top:3px;">${detailText}</div>
+                        </div>
+                        <button onclick="quickResetServiceComponent('${comp.id}')" style="padding:7px 11px; border-radius:9px; background:rgba(196,155,255,0.18); border:1px solid #C49BFF; color:#C49BFF; font-size:11px; font-weight:800; flex-shrink:0; cursor:pointer;">
+                            Reset
+                        </button>
+                    </div>
+                    <div style="width:100%; height:5px; background:rgba(255,255,255,0.1); border-radius:999px; overflow:hidden;">
+                        <div style="width:${m.lowestPct}%; height:100%; background:#ef4444; border-radius:999px;"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        modal.classList.remove('hidden');
+    }
+
+    function dismissStartupServiceAlert() {
+        startupServiceAlertDismissedInSession = true;
+        document.getElementById('service-startup-alert-modal').classList.add('hidden');
+    }
+
+    function openServiceTabFromAlert() {
+        startupServiceAlertDismissedInSession = true;
+        document.getElementById('service-startup-alert-modal').classList.add('hidden');
+        switchTab('service');
     }
 
     function openServiceCompDetail(compId) {
@@ -1994,7 +2218,6 @@
         document.getElementById('srv-dashboard-view').classList.add('hidden');
         document.getElementById('srv-detail-view').classList.remove('hidden');
 
-        // Pastikan masuk ke mode Lihat & tab Saat Ini terlebih dahulu
         document.getElementById('srv-card-view-mode').classList.remove('hidden');
         document.getElementById('srv-card-edit-mode').classList.add('hidden');
         switchServiceDetailTab('CURRENT');
@@ -2037,7 +2260,7 @@
         if (!comp) return;
         const m = getCompMetrics(comp);
 
-        document.getElementById('srv-detail-icon').innerHTML = getServiceComponentSvg(comp.iconKey, m.color);
+        document.getElementById('srv-detail-icon').innerHTML = getServiceComponentSvg(comp.iconKey, m.color, 44);
         document.getElementById('srv-detail-title').innerText = comp.name;
         document.getElementById('srv-detail-last').innerHTML = `Servis Terakhir: <strong style="color:#fff;">${comp.lastService || 'Tidak tersedia'}</strong>`;
         document.getElementById('srv-detail-advice').innerText = comp.advice || 'Periksa komponen ini secara berkala di setiap jadwal servis.';
@@ -2050,7 +2273,7 @@
             document.getElementById('srv-view-km-pct').innerText = m.kmPct + '%';
             const kmBar = document.getElementById('srv-view-km-bar');
             kmBar.style.width = m.kmPct + '%';
-            kmBar.style.background = getBarColorByPct(m.kmPct);
+            kmBar.style.background = getBarColorByKm(m.rKm);
         } else {
             kmBlock.classList.add('hidden');
         }
@@ -2059,10 +2282,9 @@
         document.getElementById('srv-view-time-pct').innerText = m.timePct + '%';
         const timeBar = document.getElementById('srv-view-time-bar');
         timeBar.style.width = m.timePct + '%';
-        timeBar.style.background = getBarColorByPct(m.timePct);
+        timeBar.style.background = getBarColorByDays(m.rDays);
     }
 
-    // Buka Editor "Sesuaikan Umur" & Edit Interval (Gambar 28)
     function openAdjustAgeEditor() {
         const comp = serviceComponents.find(c => c.id === selectedServiceCompId);
         if (!comp) return;
@@ -2103,7 +2325,6 @@
         const comp = serviceComponents.find(c => c.id === selectedServiceCompId);
         if (!comp) return;
 
-        // 1. Update KM Labels & Slider Fill
         if (comp.hasKm) {
             const maxKm = Math.max(500, parseInt(editTempIntervalKm || 50000));
             const curKm = Math.min(maxKm, Math.max(0, parseInt(editTempRemKm || 0)));
@@ -2114,11 +2335,10 @@
             const kmSlider = document.getElementById('srv-slider-rem-km');
             kmSlider.max = maxKm;
             kmSlider.value = curKm;
-            const cKm = getBarColorByPct(kmPct);
+            const cKm = getBarColorByKm(curKm);
             kmSlider.style.background = `linear-gradient(to right, ${cKm} 0%, ${cKm} ${kmPct}%, #2c2c2e ${kmPct}%, #2c2c2e 100%)`;
         }
 
-        // 2. Update Time Labels & Slider Fill
         const maxDays = Math.max(1, Math.round((editTempIntervalMonths || 12) * 30.4375));
         const curDays = Math.min(maxDays, Math.max(0, parseInt(editTempRemDays || 0)));
         const timePct = Math.round((curDays / maxDays) * 100);
@@ -2134,7 +2354,7 @@
         const daySlider = document.getElementById('srv-slider-rem-days');
         daySlider.max = maxDays;
         daySlider.value = curDays;
-        const cTime = getBarColorByPct(timePct);
+        const cTime = getBarColorByDays(curDays);
         daySlider.style.background = `linear-gradient(to right, ${cTime} 0%, ${cTime} ${timePct}%, #2c2c2e ${timePct}%, #2c2c2e 100%)`;
     }
 
@@ -2206,8 +2426,9 @@
         document.getElementById('srv-card-edit-mode').classList.add('hidden');
         document.getElementById('srv-card-view-mode').classList.remove('hidden');
         refreshServiceDetailUI();
+        renderServiceDashboard();
         if (typeof queueAutoSyncPayload === 'function') queueAutoSyncPayload(true);
-        showToast('✅ Interval & sisa umur ' + comp.name + ' berhasil disimpan');
+        showToast('Interval & sisa umur ' + comp.name + ' berhasil disimpan');
     }
 
     function saveCurrentServiceNote(val) {
@@ -2218,31 +2439,8 @@
     }
 
     function markComponentServicedNow() {
-        const comp = serviceComponents.find(c => c.id === selectedServiceCompId);
-        if (!comp) return;
-
-        const now = new Date();
-        const monthsId = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-        const dateFormatted = `${now.getDate()} ${monthsId[now.getMonth()]} ${now.getFullYear()}`;
-        const curOdo = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
-
-        if (comp.hasKm) {
-            comp.remKm = comp.intervalKm;
-        }
-        comp.remDays = Math.round((comp.intervalMonths || 12) * 30.4375);
-        comp.lastService = `${dateFormatted} (${formatDotNumber(curOdo)} km)`;
-
-        if (!Array.isArray(comp.history)) comp.history = [];
-        comp.history.unshift({
-            date: dateFormatted,
-            odometerKm: curOdo,
-            note: comp.note || 'Servis berkala / penggantian komponen selesai (Reset 100%)'
-        });
-
-        saveServiceComponentsToStorage();
-        refreshServiceDetailUI();
-        if (typeof queueAutoSyncPayload === 'function') queueAutoSyncPayload(true);
-        showToast('🔧 ' + comp.name + ' telah diservis (Umur direset ke 100%)');
+        if (!selectedServiceCompId) return;
+        quickResetServiceComponent(selectedServiceCompId);
     }
 
     function renderServiceHistoryList() {
@@ -2255,7 +2453,7 @@
             listEl.innerHTML = `
                 <div style="background:#1c1c1e; border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:28px; text-align:center; color:#a1a1aa; font-size:13px;">
                     Belum ada riwayat servis tercatat untuk <strong>${comp.name}</strong>.<br>
-                    <span style="font-size:11px; color:#71717a;">Tekan tombol "Servis Komponen" saat Anda mengganti atau menyervis komponen ini.</span>
+                    <span style="font-size:11px; color:#71717a;">Tekan tombol "Reset" pada kartu atau "Servis Komponen" saat Anda mengganti komponen ini.</span>
                 </div>
             `;
             return;
@@ -2311,7 +2509,7 @@
         closeAddServiceCompModal();
         renderServiceDashboard();
         if (typeof queueAutoSyncPayload === 'function') queueAutoSyncPayload(true);
-        showToast('✅ Komponen ' + name + ' ditambahkan');
+        showToast('Komponen ' + name + ' ditambahkan');
     }
 
     function updateOdometer() {
@@ -2323,20 +2521,23 @@
         localStorage.setItem('gc_odo_km_v6', String(val));
         renderServiceDashboard();
         queueAutoSyncPayload(true);
-        showToast('🔧 Odometer (' + val.toLocaleString('id-ID') + ' KM) disimpan & disinkronkan ke HP');
+        showToast('Odometer (' + val.toLocaleString('id-ID') + ' KM) disimpan & disinkronkan ke HP');
     }
+
     function updateVehicleName(name) {
         const clean = name || 'GREYCOAT';
         document.getElementById('vehicle-brand').innerText = clean;
         localStorage.setItem('gc_vehicle_name', clean);
         queueAutoSyncPayload(false);
     }
+
     function saveGmailAccount(email) {
         const clean = (email || '').trim().toLowerCase();
         localStorage.setItem('gc_user_gmail', clean);
         queueAutoSyncPayload(true);
-        showToast('📧 Akun Gmail (' + (clean || 'Kosong') + ') disimpan & disinkronkan!');
+        showToast('Akun Gmail (' + (clean || 'Kosong') + ') disimpan & disinkronkan!');
     }
+
     function forcePushCloudNow() {
         const emailVal = document.getElementById('setting-gmail-input').value;
         const nameVal = document.getElementById('setting-vehicle-name').value;
@@ -2346,12 +2547,56 @@
             document.getElementById('vehicle-brand').innerText = nameVal.trim();
         }
         queueAutoSyncPayload(true);
-        showToast('☁️ Data ' + (nameVal || 'GREYCOAT') + ' (' + vehiclePairingCode + ') dikirim ke HP!');
+        showToast('Data ' + (nameVal || 'GREYCOAT') + ' (' + vehiclePairingCode + ') dikirim ke HP!');
     }
-    function applyTheme(c1, c2) {
+
+    function setGpsOffsetValue(val) {
+        const v = Math.min(10, Math.max(0, parseInt(val) || 0));
+        gpsOffset = v;
+        localStorage.setItem('gc_gps_offset_v13', String(v));
+        const slider = document.getElementById('gps-offset-slider');
+        if (slider) slider.value = v;
+        const lbl = document.getElementById('gps-offset-label');
+        if (lbl) lbl.innerText = '+' + v + ' km/j';
+        if (typeof lastRawSpeedKmh !== 'undefined' && lastRawSpeedKmh > 0) {
+            updateSpeedUI(lastRawSpeedKmh);
+        }
+    }
+
+    function adjustGpsOffset(delta) {
+        setGpsOffsetValue(gpsOffset + delta);
+    }
+
+    function applyTheme(c1, c2, activeIdx, silent) {
         document.documentElement.style.setProperty('--bg-primary', c1);
         document.documentElement.style.setProperty('--bg-secondary', c2);
-        showToast('🎨 Tema Latar Ungu Diperbarui');
+        localStorage.setItem('gc_theme_c1', c1);
+        localStorage.setItem('gc_theme_c2', c2);
+        localStorage.setItem('gc_theme_idx', String(activeIdx ?? 0));
+
+        [0, 1, 2, 3].forEach(i => {
+            const btn = document.getElementById('theme-btn-' + i);
+            if (!btn) return;
+            const checkSpan = btn.querySelector('.theme-check-icon');
+            if (i === (activeIdx ?? 0)) {
+                btn.style.border = '2px solid #C49BFF';
+                btn.style.boxShadow = '0 0 16px rgba(196,155,255,0.65), inset 0 0 8px rgba(196,155,255,0.25)';
+                btn.style.color = '#ffffff';
+                if (checkSpan) {
+                    checkSpan.classList.remove('hidden');
+                    checkSpan.style.display = 'inline-flex';
+                }
+            } else {
+                btn.style.border = '1px solid rgba(196,155,255,0.28)';
+                btn.style.boxShadow = 'none';
+                btn.style.color = '#d8b4fe';
+                if (checkSpan) {
+                    checkSpan.classList.add('hidden');
+                    checkSpan.style.display = 'none';
+                }
+            }
+        });
+        if (!silent) showToast('Tema Latar Ungu Diperbarui');
     }
 
     function switchTab(tab) {
@@ -2408,8 +2653,15 @@
         initLiveMap();
         setTripCategory(tripCategory);
         loadRealInstalledApps(false);
+        const savedOffset = parseInt(localStorage.getItem('gc_gps_offset_v13') || '0');
+        setGpsOffsetValue(savedOffset);
+        const savedThemeIdx = parseInt(localStorage.getItem('gc_theme_idx') || '0');
+        const savedC1 = localStorage.getItem('gc_theme_c1');
+        const savedC2 = localStorage.getItem('gc_theme_c2');
+        if (savedC1 && savedC2) applyTheme(savedC1, savedC2, savedThemeIdx, true);
         checkDefaultLauncherStatus();
         syncAudioStateFromBridge();
+        setTimeout(() => checkAndShowStartupServiceAlert(false), 450);
         if (window.AndroidBridge && window.AndroidBridge.getSystemVolume) {
             updateVolumeUIFromNative(window.AndroidBridge.getSystemVolume());
         }
