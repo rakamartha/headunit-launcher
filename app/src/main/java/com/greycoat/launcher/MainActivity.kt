@@ -6,7 +6,9 @@ import android.app.Activity
 import android.app.Instrumentation
 import android.app.DownloadManager
 import android.content.SharedPreferences
+import android.database.Cursor
 import android.os.Environment
+import java.io.File
 import java.util.concurrent.Executors
 import android.app.role.RoleManager
 import android.content.BroadcastReceiver
@@ -131,27 +133,66 @@ class MainActivity : Activity(), LocationListener {
     private var otaDownloadId: Long = -1L
 
     
+    @Volatile private var pendingInstallDownloadId: Long = -1L
+
     // Receiver untuk OTA Update Download Complete
     private val otaDownloadReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+            val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L) ?: -1L
             if (id != -1L && id == otaDownloadId) {
+                pushOtaStatusToWeb(100, "COMPLETE", "Unduhan selesai! Membuka penginstal Android...")
                 installDownloadedApk(id)
             }
         }
     }
 
+    private fun pushOtaStatusToWeb(pct: Int, state: String, message: String) {
+        val safeMsg = JSONObject.quote(message)
+        val safeState = JSONObject.quote(state)
+        runOnUiThread {
+            webView?.evaluateJavascript(
+                "if(window.onNativeOtaProgress) window.onNativeOtaProgress($pct, $safeState, $safeMsg);",
+                null
+            )
+        }
+    }
+
     private fun installDownloadedApk(downloadId: Long) {
-        try {
-            val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            val uri = dm.getUriForDownloadedFile(downloadId) ?: return
-            val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/vnd.android.package-archive")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+        runOnUiThread {
+            try {
+                // Pada Android 8.0+ (API 26+), periksa izin "Instal Aplikasi Tidak Dikenal" terlebih dahulu
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+                    pendingInstallDownloadId = downloadId
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Aktifkan izin 'Instal aplikasi tidak dikenal' untuk PangDash, lalu kembali",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    val permIntent = Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:$packageName")
+                    ).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(permIntent)
+                    return@runOnUiThread
+                }
+
+                val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                val contentUri = dm.getUriForDownloadedFile(downloadId)
+                if (contentUri != null) {
+                    val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(contentUri, "application/vnd.android.package-archive")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    startActivity(installIntent)
+                    pendingInstallDownloadId = -1L
+                } else {
+                    Toast.makeText(this@MainActivity, "File APK hasil unduhan tidak ditemukan", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Throwable) {
+                Toast.makeText(this@MainActivity, "Gagal membuka installer: ${e.message}", Toast.LENGTH_LONG).show()
             }
-            startActivity(installIntent)
-        } catch (e: Exception) {
-            runOnUiThread { Toast.makeText(this@MainActivity, "Gagal menginstal pembaruan APK", Toast.LENGTH_LONG).show() }
         }
     }
 
@@ -749,6 +790,11 @@ class MainActivity : Activity(), LocationListener {
     override fun onResume() {
         super.onResume()
         hideSystemUI()
+        if (pendingInstallDownloadId != -1L && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && packageManager.canRequestPackageInstalls()) {
+            val idToInstall = pendingInstallDownloadId
+            pendingInstallDownloadId = -1L
+            mainHandler.postDelayed({ installDownloadedApk(idToInstall) }, 350)
+        }
         val playing = audioManager?.isMusicActive ?: false
         pushAudioPlayingState(playing)
         pushCurrentSystemVolumeToWeb(force = true)
@@ -1016,9 +1062,9 @@ class MainActivity : Activity(), LocationListener {
         fun getAppVersion(): String {
             return try {
                 val pInfo = packageManager.getPackageInfo(packageName, 0)
-                pInfo.versionName ?: "4.1.0"
+                pInfo.versionName ?: "1.0"
             } catch (e: Exception) {
-                "4.1.0"
+                "1.0"
             }
         }
 
@@ -1033,7 +1079,7 @@ class MainActivity : Activity(), LocationListener {
                     pInfo.versionCode
                 }
             } catch (e: Exception) {
-                20
+                100
             }
         }
 
@@ -1041,18 +1087,76 @@ class MainActivity : Activity(), LocationListener {
         fun startUpdateDownload(apkUrl: String) {
             runOnUiThread {
                 try {
-                    Toast.makeText(context, "Mulai mengunduh pembaruan...", Toast.LENGTH_SHORT).show()
+                    // Validasi URL sebelum mengunduh
+                    if (!apkUrl.startsWith("http://") && !apkUrl.startsWith("https://")) {
+                        pushOtaStatusToWeb(0, "ERROR", "Alamat unduhan APK belum valid.")
+                        return@runOnUiThread
+                    }
+
+                    // Hapus file APK update lama jika ada agar tidak bentrok di Android 10+
+                    try {
+                        val oldFile = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "PangDash_Update.apk")
+                        if (oldFile.exists()) oldFile.delete()
+                    } catch (_: Throwable) {}
+
+                    pushOtaStatusToWeb(5, "DOWNLOADING", "Menghubungi server & memulai unduhan APK...")
                     val request = DownloadManager.Request(Uri.parse(apkUrl)).apply {
                         setTitle("Pembaruan PangDash")
-                        setDescription("Mengunduh versi terbaru dari GitHub...")
-                        setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                        setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "PangDash_Update.apk")
+                        setDescription("Mengunduh paket instalasi PangDash...")
+                        setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+                        // Gunakan getExternalFilesDir (App-Specific Storage) yang dijamin tidak pernah gagal karena Scoped Storage Android 10-14
+                        setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, "PangDash_Update.apk")
                         setMimeType("application/vnd.android.package-archive")
+                        setAllowedOverMetered(true)
+                        setAllowedOverRoaming(true)
                     }
                     val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
                     otaDownloadId = dm.enqueue(request)
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Gagal memulai unduhan", Toast.LENGTH_SHORT).show()
+
+                    // Pantau progres unduhan secara real-time untuk ditampilkan di bar layar Headunit
+                    volumeStepExecutor.execute {
+                        var active = true
+                        while (active && otaDownloadId != -1L) {
+                            try {
+                                val q = DownloadManager.Query().setFilterById(otaDownloadId)
+                                val cursor: Cursor? = dm.query(q)
+                                if (cursor != null && cursor.moveToFirst()) {
+                                    val statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                                    val downIdx = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                                    val totalIdx = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                                    val status = if (statusIdx >= 0) cursor.getInt(statusIdx) else DownloadManager.STATUS_RUNNING
+                                    val downBytes = if (downIdx >= 0) cursor.getLong(downIdx) else 0L
+                                    val totalBytes = if (totalIdx >= 0) cursor.getLong(totalIdx) else -1L
+
+                                    if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                                        active = false
+                                        cursor.close()
+                                        pushOtaStatusToWeb(100, "COMPLETE", "Unduhan selesai 100%! Membuka penginstal...")
+                                        installDownloadedApk(otaDownloadId)
+                                        break
+                                    } else if (status == DownloadManager.STATUS_FAILED) {
+                                        active = false
+                                        cursor.close()
+                                        pushOtaStatusToWeb(0, "ERROR", "Unduhan gagal. Pastikan rilis APK tersedia di GitHub.")
+                                        break
+                                    } else {
+                                        val pct = if (totalBytes > 0) ((downBytes * 100L) / totalBytes).toInt().coerceIn(5, 99) else 25
+                                        val mbDown = String.format("%.1f", downBytes / (1024.0 * 1024.0))
+                                        pushOtaStatusToWeb(pct, "DOWNLOADING", "Mengunduh PangDash APK... ($pct% • $mbDown MB)")
+                                    }
+                                    cursor.close()
+                                } else {
+                                    cursor?.close()
+                                    active = false
+                                }
+                                Thread.sleep(300)
+                            } catch (_: Throwable) {
+                                active = false
+                            }
+                        }
+                    }
+                } catch (e: Throwable) {
+                    pushOtaStatusToWeb(0, "ERROR", "Gagal memulai unduhan: ${e.message}")
                 }
             }
         }

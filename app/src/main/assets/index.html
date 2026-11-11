@@ -275,6 +275,22 @@
                     </div>
                 </div>
 
+                <!-- STATE 4: PROGRES MENGUNDUH & MEMBUKA PENGINSTAL APK -->
+                <div id="ota-state-downloading" class="hidden" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px 12px 10px 12px; text-align:center; gap:14px;">
+                    <img src="pangdash-logo.png" alt="PangDash" style="width:58px; height:58px; border-radius:16px; object-fit:cover; border:1.5px solid var(--accent-light); box-shadow:0 0 20px var(--dock-active-bg);" />
+                    <div style="width:100%;">
+                        <div style="font-size:11px; font-weight:900; color:var(--accent-light); letter-spacing:0.1em;">MENGUNDUH PEMBARUAN OTA</div>
+                        <h3 id="ota-download-title" style="font-size:19px; font-weight:900; color:#ffffff; margin:6px 0 10px 0;">Mengunduh PangDash APK...</h3>
+                        <div style="width:100%; height:10px; background:var(--input-bg); border:1px solid var(--border-subtle); border-radius:999px; overflow:hidden; margin-bottom:8px;">
+                            <div id="ota-download-bar" style="width:10%; height:100%; background:linear-gradient(90deg, var(--btn-primary), #38bdf8); border-radius:999px; transition:width 0.25s ease;"></div>
+                        </div>
+                        <div id="ota-download-status-text" style="font-size:12px; font-weight:700; color:var(--text-muted);">Menyiapkan unduhan...</div>
+                    </div>
+                    <button onclick="closeOtaModal()" style="width:100%; margin-top:6px; padding:11px; border-radius:12px; background:var(--squircle-bg); border:1px solid var(--border-subtle); color:var(--text-muted); font-size:12px; font-weight:800; cursor:pointer;">
+                        Sembunyikan ke Latar Belakang
+                    </button>
+                </div>
+
             </div>
         </div>
         <!-- MODAL 4: KONFIRMASI SAAT KLIK RESET PADA KARTU SERVIS -->
@@ -304,7 +320,7 @@
         <!-- MODAL 1: POPUP "JADIKAN LAYAR UTAMA" (MUNCUL OTOMATIS JIKA LAUNCHER BELUM DEFAULT) -->
         <div id="default-launcher-modal" class="hidden" style="position:absolute; inset:0; z-index:96; background:rgba(7,3,18,0.82); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center;">
             <div class="glass-card" style="width:480px; border-radius:22px; padding:26px; border:1px solid var(--border-subtle); text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
-                <div style="width:60px; height:60px; border-radius:18px; background:linear-gradient(135deg, var(--btn-primary), var(--accent-main)); margin:0 auto 14px auto; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 24px var(--dock-active-bg);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+                <img src="pangdash-logo.png" alt="PangDash" style="width:68px; height:68px; border-radius:20px; object-fit:cover; margin:0 auto 14px auto; display:block; border:1.5px solid var(--accent-light); box-shadow:0 8px 24px var(--dock-active-bg);" />
                 <h3 style="font-size:20px; font-weight:900; color:#fff; margin:0 0 8px 0;">Jadikan PangDash Sebagai Layar Utama?</h3>
                 <p style="font-size:13px; color:rgba(233,213,255,0.85); line-height:1.5; margin:0 0 22px 0;">
                     Launcher ini belum diatur sebagai <strong>Layar Utama (Default Home)</strong>. Jadikan layar utama agar otomatis terbuka setiap kali headunit menyala atau saat tombol Home ditekan.
@@ -349,8 +365,9 @@
 
         <!-- 1. STATUS BAR ATAS (52px) -->
         <header class="hu-header glass-card shrink-0">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <span id="net-dot" style="width:10px; height:10px; border-radius:999px; background:#10b981; box-shadow:0 0 10px #10b981;"></span>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <img src="pangdash-logo.png" alt="PangDash" style="width:32px; height:32px; border-radius:9px; object-fit:cover; border:1px solid var(--border-subtle); box-shadow:0 0 10px var(--dock-active-bg);" />
+                <span id="net-dot" style="width:9px; height:9px; border-radius:999px; background:#10b981; box-shadow:0 0 10px #10b981;"></span>
                 <span id="vehicle-brand" style="font-size:14px; font-weight:800; letter-spacing:0.12em; color:var(--text-muted);">PangDash</span>
                 <span style="font-size:12px; color:rgba(216,180,254,0.7);">| 29°C</span>
                 <span id="trip-badge" style="font-size:10px; font-weight:800; padding:3px 10px; border-radius:999px; background:var(--dock-active-bg); border:1px solid var(--border-subtle); color:var(--text-muted);">MODE: PRIBADI</span>
@@ -916,7 +933,7 @@
                             <div style="background:var(--squircle-bg); border:1px solid var(--border-subtle); border-radius:12px; padding:12px; margin-bottom:10px;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                                     <span style="font-size:11px; font-weight:700; color:var(--text-muted);">Versi PangDash:</span>
-                                    <strong id="current-app-version-label" style="font-size:14px; font-weight:900; color:#ffffff;">v4.1.0</strong>
+                                    <strong id="current-app-version-label" style="font-size:14px; font-weight:900; color:#ffffff;">v1.0</strong>
                                 </div>
                                 <div style="display:flex; justify-content:space-between; align-items:center;">
                                     <span style="font-size:10px; font-weight:700; color:var(--text-muted);">Status Sistem:</span>
@@ -934,8 +951,9 @@
                     </div>
                 </div>
 
-                <div style="font-size:12px; color:rgba(216,180,254,0.7);">
-                    PangDash Headunit Launcher v3.4 • Resolusi Native 1280×720 HD
+                <div style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-muted);">
+                    <img src="pangdash-logo.png" alt="PangDash" style="width:20px; height:20px; border-radius:6px; object-fit:cover;" />
+                    <span id="settings-footer-version-text">PangDash Headunit Launcher v1.0 • Resolusi Native 1280×720 HD</span>
                 </div>
             </section>
         </main>
@@ -989,9 +1007,7 @@
         }
     }
     window.onNativeResumeCheck = function() {
-                if (window.AndroidBridge && window.AndroidBridge.getAppVersion) {
-            document.getElementById('current-app-version-label').innerText = 'v' + window.AndroidBridge.getAppVersion();
-        }
+                syncAppVersionLabels();
         const savedOffset = parseInt(localStorage.getItem('gc_gps_offset_v13') || '0');
         setGpsOffsetValue(savedOffset);
         const savedThemeIdx = parseInt(localStorage.getItem('gc_theme_idx_v16') || '0');
@@ -3052,18 +3068,39 @@
 
 
     // =========================================================================
-    // 12. ZERO-CONFIG OTA UPDATE (OTOMATIS TANPA INPUT REPO MANUAL)
+    // 12. ZERO-CONFIG OTA UPDATE (MULAI DARI VERSI 1.0 & VALIDASI KETAT)
     // =========================================================================
-    // Saat di-build oleh GitHub Actions, __AUTO_GITHUB_REPO__ otomatis diisi dengan nama repo Anda!
     const BUILTIN_GITHUB_REPO = '__AUTO_GITHUB_REPO__';
-    const GLOBAL_OTA_RELAY_TOPIC = 'pangdash_global_ota_release_v1';
+    // Topic baru khusus lini v1.0+ (bebas dari data uji coba sebelumnya)
+    const GLOBAL_OTA_RELAY_TOPIC = 'pangdash_ota_channel_v100';
     let pendingOtaApkUrl = '';
 
+    function syncAppVersionLabels() {
+        let ver = '1.0';
+        if (window.AndroidBridge && window.AndroidBridge.getAppVersion) {
+            ver = window.AndroidBridge.getAppVersion() || '1.0';
+        }
+        const cleanVer = String(ver).replace(/^v/i, '');
+        const cardLbl = document.getElementById('current-app-version-label');
+        const footerLbl = document.getElementById('settings-footer-version-text');
+        if (cardLbl) cardLbl.innerText = 'v' + cleanVer;
+        if (footerLbl) footerLbl.innerText = `PangDash Headunit Launcher v${cleanVer} • Resolusi Native 1280×720 HD`;
+        return cleanVer;
+    }
+
+    function isValidApkDownloadUrl(url) {
+        if (!url || typeof url !== 'string') return false;
+        if (!url.startsWith('https://') && !url.startsWith('http://')) return false;
+        // Tolak URL yang masih mengandung variabel template mentah
+        if (url.includes('${') || url.includes('__AUTO_')) return false;
+        return url.toLowerCase().includes('.apk');
+    }
+
     function isNewerVersion(oldVer, newVer) {
-        const cleanOld = String(oldVer || '4.1.0').replace(/[^0-9.]/g, '');
-        const cleanNew = String(newVer || '4.1.0').replace(/[^0-9.]/g, '');
-        const oldParts = cleanOld.split('.').map(Number);
-        const newParts = cleanNew.split('.').map(Number);
+        const cleanOld = String(oldVer || '1.0').replace(/^v/i, '').split('-')[0];
+        const cleanNew = String(newVer || '1.0').replace(/^v/i, '').split('-')[0];
+        const oldParts = cleanOld.split('.').map(n => parseInt(n) || 0);
+        const newParts = cleanNew.split('.').map(n => parseInt(n) || 0);
         for (let i = 0; i < Math.max(oldParts.length, newParts.length); i++) {
             const o = oldParts[i] || 0;
             const n = newParts[i] || 0;
@@ -3078,13 +3115,32 @@
         const stCheck = document.getElementById('ota-state-checking');
         const stLatest = document.getElementById('ota-state-latest');
         const stAvail = document.getElementById('ota-state-available');
+        const stDown = document.getElementById('ota-state-downloading');
         if (!modal) return;
 
         modal.classList.remove('hidden');
-        stCheck.classList.toggle('hidden', state !== 'CHECKING');
-        stLatest.classList.toggle('hidden', state !== 'LATEST');
-        stAvail.classList.toggle('hidden', state !== 'AVAILABLE');
+        if (stCheck) stCheck.classList.toggle('hidden', state !== 'CHECKING');
+        if (stLatest) stLatest.classList.toggle('hidden', state !== 'LATEST');
+        if (stAvail) stAvail.classList.toggle('hidden', state !== 'AVAILABLE');
+        if (stDown) stDown.classList.toggle('hidden', state !== 'DOWNLOADING');
     }
+
+    // Callback Progres Unduhan Real-Time dari Native DownloadManager
+    window.onNativeOtaProgress = function(pct, state, message) {
+        setOtaModalView('DOWNLOADING');
+        const bar = document.getElementById('ota-download-bar');
+        const txt = document.getElementById('ota-download-status-text');
+        const title = document.getElementById('ota-download-title');
+        if (bar) bar.style.width = Math.max(5, Math.min(100, parseInt(pct) || 0)) + '%';
+        if (txt) txt.innerText = message || '';
+        if (state === 'COMPLETE') {
+            if (title) title.innerText = 'Unduhan Selesai! Membuka Installer...';
+            setTimeout(() => closeOtaModal(), 2200);
+        } else if (state === 'ERROR') {
+            if (title) title.innerText = 'Unduhan Gagal';
+            if (bar) bar.style.background = '#ef4444';
+        }
+    };
 
     async function checkForOtaUpdates() {
         if (!navigator.onLine) {
@@ -3092,11 +3148,8 @@
             return;
         }
 
-        let currentVersion = '4.1.0';
-        let currentCode = 20;
-        if (window.AndroidBridge && window.AndroidBridge.getAppVersion) {
-            currentVersion = window.AndroidBridge.getAppVersion();
-        }
+        const currentVersion = syncAppVersionLabels();
+        let currentCode = 100;
         if (window.AndroidBridge && window.AndroidBridge.getAppVersionCode) {
             currentCode = window.AndroidBridge.getAppVersionCode();
         }
@@ -3113,29 +3166,33 @@
         let foundRelease = null;
 
         // 2. Cek dari Repositori GitHub yang tertanam otomatis saat Build APK
-        const activeRepo = (BUILTIN_GITHUB_REPO && !BUILTIN_GITHUB_REPO.includes('__AUTO_'))
+        const activeRepo = (BUILTIN_GITHUB_REPO && !BUILTIN_GITHUB_REPO.includes('__AUTO_') && !BUILTIN_GITHUB_REPO.includes('${'))
             ? BUILTIN_GITHUB_REPO
-            : (localStorage.getItem('gc_github_repo') || '');
+            : '';
 
         if (activeRepo && activeRepo.includes('/')) {
             try {
                 const res = await fetch(`https://api.github.com/repos/${activeRepo}/releases/latest`);
                 if (res.ok) {
                     const data = await res.json();
-                    const apkAsset = data.assets && data.assets.find(a => a.name && a.name.endsWith('.apk'));
-                    if (apkAsset && apkAsset.browser_download_url) {
+                    const apkAsset = data.assets && data.assets.find(a => a.name && a.name.toLowerCase().endsWith('.apk'));
+                    if (apkAsset && isValidApkDownloadUrl(apkAsset.browser_download_url)) {
+                        // Tag format: v1.0-b100 atau v1.1
+                        const rawTag = String(data.tag_name || 'v1.0');
+                        const verPart = rawTag.split('-b')[0].replace(/^v/i, '');
+                        const codePart = rawTag.includes('-b') ? parseInt(rawTag.split('-b')[1]) : 0;
                         foundRelease = {
-                            version: data.tag_name || data.name || '4.1.0',
-                            versionCode: parseInt((data.tag_name || '').replace(/[^0-9]/g, '')) || 0,
+                            version: verPart || '1.0',
+                            versionCode: codePart || 0,
                             apkUrl: apkAsset.browser_download_url,
-                            notes: data.body || 'Pembaruan otomatis PangDash Headunit Launcher.'
+                            notes: data.body || 'Pembaruan resmi PangDash Headunit Launcher.'
                         };
                     }
                 }
             } catch (_e) {}
         }
 
-        // 3. Fallback: Cek juga dari Channel Cloud OTA Global PangDash
+        // 3. Fallback Cloud Relay (Hanya terima jika URL APK valid & milik repo asli)
         if (!foundRelease) {
             try {
                 const resRelay = await fetch(`https://ntfy.sh/${GLOBAL_OTA_RELAY_TOPIC}/json?poll=1&since=all`);
@@ -3147,7 +3204,7 @@
                             const evt = JSON.parse(lines[i]);
                             if (evt.event === 'message' && evt.message) {
                                 const info = JSON.parse(evt.message);
-                                if (info && info.apkUrl && info.version) {
+                                if (info && isValidApkDownloadUrl(info.apkUrl) && info.version) {
                                     foundRelease = info;
                                     break;
                                 }
@@ -3158,22 +3215,22 @@
             } catch (_e2) {}
         }
 
-        // Pastikan animasi loading tampil minimal 900ms agar terasa responsif dan jelas
         const elapsed = Date.now() - startWait;
         if (elapsed < 900) {
             await new Promise(r => setTimeout(r, 900 - elapsed));
         }
 
-        const hasUpdate = foundRelease && (
-            isNewerVersion(currentVersion, foundRelease.version) ||
-            (foundRelease.versionCode && foundRelease.versionCode > currentCode)
+        // Hanya nyatakan "Pembaruan Tersedia" jika versionCode rilis > currentCode ATAU versi semantik lebih tinggi
+        const hasUpdate = foundRelease && isValidApkDownloadUrl(foundRelease.apkUrl) && (
+            (foundRelease.versionCode > 0 && foundRelease.versionCode > currentCode) ||
+            (foundRelease.versionCode === 0 && isNewerVersion(currentVersion, foundRelease.version))
         );
 
         if (hasUpdate) {
             pendingOtaApkUrl = foundRelease.apkUrl;
             const verStr = String(foundRelease.version).startsWith('v') ? foundRelease.version : ('v' + foundRelease.version);
             document.getElementById('update-version-text').innerText = verStr;
-            document.getElementById('update-changelog-text').innerText = foundRelease.notes || 'Perbaikan stabilitas dan peningkatan fitur PangDash.';
+            document.getElementById('update-changelog-text').innerText = foundRelease.notes || 'Pembaruan stabilitas dan peningkatan fitur PangDash.';
             setOtaModalView('AVAILABLE');
             if (badge) {
                 badge.innerText = 'Pembaruan ' + verStr + ' Tersedia!';
@@ -3194,8 +3251,11 @@
     }
 
     function startOtaDownload() {
-        if (!pendingOtaApkUrl) return;
-        closeOtaModal();
+        if (!isValidApkDownloadUrl(pendingOtaApkUrl)) {
+            showToast('File APK pembaruan tidak valid');
+            return;
+        }
+        setOtaModalView('DOWNLOADING');
         if (window.AndroidBridge && window.AndroidBridge.startUpdateDownload) {
             window.AndroidBridge.startUpdateDownload(pendingOtaApkUrl);
         } else {
@@ -3277,9 +3337,7 @@
         initLiveMap();
         setTripCategory(tripCategory);
         loadRealInstalledApps(false);
-                if (window.AndroidBridge && window.AndroidBridge.getAppVersion) {
-            document.getElementById('current-app-version-label').innerText = 'v' + window.AndroidBridge.getAppVersion();
-        }
+                syncAppVersionLabels();
         const savedOffset = parseInt(localStorage.getItem('gc_gps_offset_v13') || '0');
         setGpsOffsetValue(savedOffset);
         const savedThemeIdx = parseInt(localStorage.getItem('gc_theme_idx_v16') || '0');
