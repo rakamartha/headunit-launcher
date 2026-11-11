@@ -112,6 +112,8 @@ class MainActivity : Activity(), LocationListener {
     private var cachedAppsJson: String? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private var lastPushedVolumePercent: Int = -1
+    private var lastPushedBrightnessPercent: Int = -1
+    private var hasPromptedWriteSettings: Boolean = false
 
     // 1. BroadcastReceiver untuk Metadata Musik
     private val mediaReceiver = object : BroadcastReceiver() {
@@ -149,14 +151,16 @@ class MainActivity : Activity(), LocationListener {
     private val volumeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             pushCurrentSystemVolumeToWeb(force = false)
+            pushCurrentSystemBrightnessToWeb(force = false)
         }
     }
 
-    // 3. ContentObserver untuk memantau perubahan volume level MCU / Settings.System
+    // 3. ContentObserver untuk memantau perubahan Volume & Brightness dari Sistem / Quick Settings / Kabel Lampu Senja Headunit
     private val settingsVolumeObserver = object : ContentObserver(mainHandler) {
         override fun onChange(selfChange: Boolean) {
             super.onChange(selfChange)
             pushCurrentSystemVolumeToWeb(force = false)
+            pushCurrentSystemBrightnessToWeb(force = false)
         }
     }
 
@@ -234,6 +238,7 @@ class MainActivity : Activity(), LocationListener {
             hideSystemUI()
             requestGpsPermissionsSafely()
             pushCurrentSystemVolumeToWeb(force = true)
+            pushCurrentSystemBrightnessToWeb(force = true)
             MediaListenerService.instance?.pollActiveMediaSessions()
         }
     }
@@ -265,9 +270,12 @@ class MainActivity : Activity(), LocationListener {
                 addAction("android.media.RINGER_MODE_CHANGED")
                 // Broadcast khusus berbagai merek Headunit Android (SYU / FYT / Microntek / Topway)
                 addAction("com.microntek.volume")
+                addAction("com.microntek.backlight")
                 addAction("com.syu.ms.vol")
+                addAction("com.syu.ms.brightness")
                 addAction("com.syu.ms")
                 addAction("android.intent.action.VOLUME_CHANGED")
+                addAction("android.intent.action.SCREEN_BRIGHTNESS_CHANGED")
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 registerReceiver(volumeReceiver, volFilter, Context.RECEIVER_EXPORTED)
@@ -307,6 +315,29 @@ class MainActivity : Activity(), LocationListener {
             runOnUiThread {
                 webView?.evaluateJavascript(
                     "if(window.onNativeVolumeChanged) window.onNativeVolumeChanged($pct);",
+                    null
+                )
+            }
+        } catch (_: Throwable) {}
+    }
+
+    private fun readCurrentSystemBrightnessPercent(): Int {
+        return try {
+            val sysVal = Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 230)
+            ((sysVal.coerceIn(0, 255) / 255.0) * 100.0).roundToInt().coerceIn(5, 100)
+        } catch (_: Throwable) {
+            90
+        }
+    }
+
+    private fun pushCurrentSystemBrightnessToWeb(force: Boolean) {
+        try {
+            val pct = readCurrentSystemBrightnessPercent()
+            if (!force && pct == lastPushedBrightnessPercent) return
+            lastPushedBrightnessPercent = pct
+            runOnUiThread {
+                webView?.evaluateJavascript(
+                    "if(window.onNativeBrightnessChanged) window.onNativeBrightnessChanged($pct);",
                     null
                 )
             }
@@ -415,6 +446,7 @@ class MainActivity : Activity(), LocationListener {
         val playing = audioManager?.isMusicActive ?: false
         pushAudioPlayingState(playing)
         pushCurrentSystemVolumeToWeb(force = true)
+        pushCurrentSystemBrightnessToWeb(force = true)
         runOnUiThread {
             webView?.evaluateJavascript("if(window.onNativeResumeCheck) window.onNativeResumeCheck();", null)
         }
@@ -433,6 +465,7 @@ class MainActivity : Activity(), LocationListener {
             hideSystemUI()
             pushAudioPlayingState(audioManager?.isMusicActive ?: false)
             pushCurrentSystemVolumeToWeb(force = false)
+            pushCurrentSystemBrightnessToWeb(force = false)
             MediaListenerService.instance?.pollActiveMediaSessions()
         }
     }
@@ -869,21 +902,81 @@ class MainActivity : Activity(), LocationListener {
         }
 
         @JavascriptInterface
+        fun canWriteSystemSettings(): Boolean {
+            return Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.System.canWrite(context)
+        }
+
+        @JavascriptInterface
+        fun requestWriteSettingsPermission() {
+            runOnUiThread {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        Toast.makeText(
+                            context,
+                            "Aktifkan izin 'Ubah Pengaturan Sistem' agar Brightness terhubung penuh ke Headunit",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                    }
+                } catch (_: Throwable) {}
+            }
+        }
+
+        @JavascriptInterface
+        fun getSystemBrightness(): Int {
+            return readCurrentSystemBrightnessPercent()
+        }
+
+        @JavascriptInterface
         fun setSystemBrightness(percent: Int) {
-            try {
-                val clamped = percent.coerceIn(10, 100)
-                runOnUiThread {
-                    try {
-                        val lp = window.attributes
-                        lp.screenBrightness = clamped / 100f
-                        window.attributes = lp
-                    } catch (_: Throwable) {}
-                }
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.System.canWrite(context)) {
-                    val sysVal = ((clamped / 100.0) * 255).toInt()
-                    Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, sysVal)
-                }
-            } catch (_: Throwable) {}
+            val clamped = percent.coerceIn(5, 100)
+            val sysVal = ((clamped / 100.0) * 255.0).roundToInt().coerceIn(5, 255)
+            runOnUiThread {
+                // 1. Terapkan langsung pada Window Activity saat ini (hardware backlight override untuk window aktif)
+                try {
+                    val lp = window.attributes
+                    lp.screenBrightness = (clamped / 100f).coerceIn(0.05f, 1.0f)
+                    window.attributes = lp
+                } catch (_: Throwable) {}
+
+                // 2. Tulis ke Settings.System.SCREEN_BRIGHTNESS & kirim broadcast MCU Headunit (FYT/SYU/Microntek/Topway)
+                try {
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.System.canWrite(context)) {
+                        try {
+                            Settings.System.putInt(
+                                contentResolver,
+                                Settings.System.SCREEN_BRIGHTNESS_MODE,
+                                Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
+                            )
+                        } catch (_: Throwable) {}
+                        Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, sysVal)
+                        contentResolver.notifyChange(Settings.System.getUriFor(Settings.System.SCREEN_BRIGHTNESS), null)
+                        lastPushedBrightnessPercent = clamped
+
+                        try {
+                            sendBroadcast(Intent("com.microntek.backlight").putExtra("backlight", sysVal))
+                            sendBroadcast(Intent("com.syu.ms.brightness").putExtra("brightness", sysVal))
+                            sendBroadcast(Intent("android.intent.action.SCREEN_BRIGHTNESS_CHANGED").putExtra("brightness", sysVal))
+                        } catch (_: Throwable) {}
+                    } else if (!hasPromptedWriteSettings) {
+                        hasPromptedWriteSettings = true
+                        Toast.makeText(
+                            context,
+                            "Izinkan 'Ubah Pengaturan Sistem' agar bar Brightness dapat mengatur layar Headunit",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                    }
+                } catch (_: Throwable) {}
+            }
         }
 
         // Atur Volume Sistem Headunit dari Slider (Menggunakan FLAG_SHOW_UI + Fallback Step MCU)

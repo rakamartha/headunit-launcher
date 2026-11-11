@@ -11,9 +11,25 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         :root {
+            --bg-deep: #070312;
             --bg-primary: #0d061f;
             --bg-secondary: #150932;
+            --glow-1: rgba(124, 58, 237, 0.36);
+            --glow-2: rgba(168, 85, 247, 0.28);
+            --card-bg: rgba(24, 12, 50, 0.72);
+            --card-border: rgba(168, 85, 247, 0.28);
+            --squircle-bg: #170D2B;
+            --input-bg: #120726;
+            --panel-bg: rgba(20, 9, 42, 0.68);
+            --panel-dark-bg: rgba(15, 7, 34, 0.92);
+            --btn-primary: #9333ea;
+            --btn-secondary: rgba(88, 28, 135, 0.62);
+            --dock-active-bg: rgba(147, 51, 234, 0.38);
             --accent-main: #a855f7;
+            --accent-light: #C49BFF;
+            --text-muted: #d8b4fe;
+            --border-subtle: rgba(196, 155, 255, 0.32);
+            --border-faint: rgba(168, 85, 247, 0.24);
         }
         * {
             box-sizing: border-box;
@@ -27,12 +43,13 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            background-color: #070312;
+            background-color: var(--bg-deep);
             font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
             color: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: background-color 0.3s ease;
         }
         #viewport-scaler {
             width: 1280px;
@@ -45,9 +62,9 @@
             width: 1280px;
             height: 720px;
             background:
-                radial-gradient(circle at 18% 18%, rgba(124, 58, 237, 0.32), transparent 45%),
-                radial-gradient(circle at 82% 78%, rgba(168, 85, 247, 0.25), transparent 50%),
-                linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 52%, #080313 100%);
+                radial-gradient(circle at 18% 18%, var(--glow-1), transparent 46%),
+                radial-gradient(circle at 82% 78%, var(--glow-2), transparent 52%),
+                linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 52%, var(--bg-deep) 100%);
             position: relative;
             overflow: hidden;
             display: flex;
@@ -55,16 +72,18 @@
             justify-content: space-between;
             padding: 14px;
             gap: 12px;
+            transition: background 0.35s ease;
         }
         .glass-card {
-            background: rgba(24, 12, 50, 0.68);
+            background: var(--card-bg);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
-            border: 1px solid rgba(168, 85, 247, 0.26);
-            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+            border: 1px solid var(--card-border);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.48);
+            transition: background 0.3s ease, border-color 0.3s ease;
         }
         input[type="range"] {
-            accent-color: #a855f7;
+            accent-color: var(--accent-main);
             cursor: pointer;
         }
         @keyframes eqBar {
@@ -80,12 +99,12 @@
 
         /* Scrollbar halus */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: rgba(15, 7, 34, 0.4); border-radius: 6px; }
-        ::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.55); border-radius: 6px; }
+        ::-webkit-scrollbar-track { background: var(--panel-dark-bg); border-radius: 6px; }
+        ::-webkit-scrollbar-thumb { background: var(--accent-main); border-radius: 6px; }
 
-        /* Leaflet Map Dark Theme Filter agar peta Google Maps terlihat menyatu dengan tema Cyber Purple */
+        /* Leaflet Map Dark Theme Filter */
         .leaflet-container {
-            background: #0f0722 !important;
+            background: var(--bg-primary) !important;
             font-family: 'Space Grotesk', sans-serif;
         }
         .map-dark-tiles .leaflet-tile-pane {
@@ -159,14 +178,14 @@
                                 PERINGATAN SERVIS SAAT MESIN MENYALA
                             </div>
                             <h3 style="font-size:20px; font-weight:900; color:#ffffff; margin:0;">Komponen Perlu Diservis Segera / H-7</h3>
-                            <p id="srv-startup-alert-subtitle" style="font-size:12px; color:#d8b4fe; margin:3px 0 0 0;">
+                            <p id="srv-startup-alert-subtitle" style="font-size:12px; color:var(--text-muted); margin:3px 0 0 0;">
                                 Ditemukan komponen melewati batas aman (&lt; 500 km / &lt; 17 hari) atau memasuki H-7 penggantian.
                             </p>
                         </div>
                     </div>
-                    <button onclick="dismissStartupServiceAlert()" style="padding:8px 12px; border-radius:10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:#d4d4d8; font-size:12px; font-weight:800; cursor:pointer;">
-                        Tutup
-                    </button>
+                    <div id="srv-startup-count-badge" style="padding:7px 14px; border-radius:999px; background:rgba(239,68,68,0.2); border:1.5px solid rgba(239,68,68,0.55); color:#fca5a5; font-size:12px; font-weight:900; letter-spacing:0.04em; white-space:nowrap; box-shadow:0 0 16px rgba(239,68,68,0.25); flex-shrink:0;">
+                        1 Komponen Kritis
+                    </div>
                 </div>
 
                 <!-- Daftar Komponen Kritis / H-7 -->
@@ -175,7 +194,7 @@
 
                 <!-- Footer Tombol Aksi -->
                 <div style="display:flex; gap:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1);">
-                    <button onclick="dismissStartupServiceAlert()" style="flex:1; padding:13px; border-radius:14px; background:#170D2B; border:1px solid rgba(196,155,255,0.3); color:#e9d5ff; font-size:13px; font-weight:800; cursor:pointer;">
+                    <button onclick="dismissStartupServiceAlert()" style="flex:1; padding:13px; border-radius:14px; background:var(--squircle-bg); border:1px solid var(--border-subtle); color:var(--text-muted); font-size:13px; font-weight:800; cursor:pointer;">
                         Nanti Saja (Mengerti)
                     </button>
                     <button onclick="openServiceTabFromAlert()" style="flex:1.4; padding:13px; border-radius:14px; background:linear-gradient(90deg, #ef4444, #dc2626); border:1px solid #fca5a5; color:#ffffff; font-size:13px; font-weight:900; cursor:pointer; box-shadow:0 6px 20px rgba(239,68,68,0.45);">
@@ -185,46 +204,71 @@
             </div>
         </div>
 
+        
+        <!-- MODAL 4: KONFIRMASI SAAT KLIK RESET PADA KARTU SERVIS -->
+        <div id="srv-reset-confirm-modal" class="hidden" style="position:absolute; inset:0; z-index:110; background:rgba(7,3,18,0.86); backdrop-filter:blur(12px); display:flex; align-items:center; justify-content:center; padding:24px;">
+            <div class="glass-card" style="width:460px; border-radius:22px; padding:24px; background:linear-gradient(145deg, rgba(28,14,56,0.98) 0%, rgba(15,7,32,0.99) 100%); border:1.5px solid var(--border-subtle); box-shadow:0 20px 60px rgba(0,0,0,0.85); text-align:center; display:flex; flex-direction:column; gap:14px;">
+                <div style="width:52px; height:52px; border-radius:16px; background:var(--squircle-bg); border:1.5px solid var(--accent-light); margin:0 auto; display:flex; align-items:center; justify-content:center; box-shadow:0 0 18px var(--border-subtle);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                </div>
+                <div>
+                    <div style="font-size:10px; font-weight:800; color:var(--accent-light); letter-spacing:0.1em; uppercase; margin-bottom:4px;">KONFIRMASI RESET SERVIS</div>
+                    <h3 id="srv-reset-confirm-title" style="font-size:18px; font-weight:900; color:#ffffff; margin:0; line-height:1.35;">Reset umur pakai Oli Mesin ke 100%?</h3>
+                    <p id="srv-reset-confirm-desc" style="font-size:12px; color:var(--text-muted); margin:8px 0 0 0; line-height:1.45;">
+                        Sisa kilometer dan waktu pakai komponen ini akan dikembalikan ke 100% (Sehat) serta dicatat ke riwayat servis.
+                    </p>
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-top:4px;">
+                    <button onclick="cancelResetServiceComponent()" style="padding:12px; border-radius:14px; background:var(--squircle-bg); border:1px solid var(--border-subtle); color:var(--text-muted); font-size:13px; font-weight:800; cursor:pointer;">
+                        Batal
+                    </button>
+                    <button onclick="confirmResetServiceComponent()" style="padding:12px; border-radius:14px; background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); border:1px solid var(--accent-light); color:#ffffff; font-size:13px; font-weight:900; cursor:pointer; box-shadow:0 6px 18px var(--dock-active-bg);">
+                        Ya, Reset 100%
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- MODAL 1: POPUP "JADIKAN LAYAR UTAMA" (MUNCUL OTOMATIS JIKA LAUNCHER BELUM DEFAULT) -->
         <div id="default-launcher-modal" class="hidden" style="position:absolute; inset:0; z-index:96; background:rgba(7,3,18,0.82); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center;">
-            <div class="glass-card" style="width:480px; border-radius:22px; padding:26px; border:1px solid rgba(192,132,252,0.5); text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
-                <div style="width:60px; height:60px; border-radius:18px; background:linear-gradient(135deg,#9333ea,#4f46e5); margin:0 auto 14px auto; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(147,51,234,0.5);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+            <div class="glass-card" style="width:480px; border-radius:22px; padding:26px; border:1px solid var(--border-subtle); text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+                <div style="width:60px; height:60px; border-radius:18px; background:linear-gradient(135deg, var(--btn-primary), var(--accent-main)); margin:0 auto 14px auto; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 24px var(--dock-active-bg);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
                 <h3 style="font-size:20px; font-weight:900; color:#fff; margin:0 0 8px 0;">Jadikan GREYCOAT Sebagai Layar Utama?</h3>
                 <p style="font-size:13px; color:rgba(233,213,255,0.85); line-height:1.5; margin:0 0 22px 0;">
                     Launcher ini belum diatur sebagai <strong>Layar Utama (Default Home)</strong>. Jadikan layar utama agar otomatis terbuka setiap kali headunit menyala atau saat tombol Home ditekan.
                 </p>
                 <div style="display:flex; gap:10px;">
-                    <button onclick="dismissDefaultLauncherModal()" style="flex:1; padding:12px; border-radius:12px; background:rgba(88,28,135,0.45); border:1px solid rgba(168,85,247,0.35); color:#e9d5ff; font-size:13px; font-weight:800;">Nanti Saja</button>
-                    <button onclick="triggerSetDefaultLauncher()" style="flex:1.4; padding:12px; border-radius:12px; background:linear-gradient(90deg,#9333ea,#7c3aed); border:1px solid #c084fc; color:#fff; font-size:13px; font-weight:900; box-shadow:0 6px 20px rgba(147,51,234,0.5);">Jadikan Layar Utama</button>
+                    <button onclick="dismissDefaultLauncherModal()" style="flex:1; padding:12px; border-radius:12px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:var(--text-muted); font-size:13px; font-weight:800;">Nanti Saja</button>
+                    <button onclick="triggerSetDefaultLauncher()" style="flex:1.4; padding:12px; border-radius:12px; background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); border:1px solid var(--accent-light); color:#fff; font-size:13px; font-weight:900; box-shadow:0 6px 20px var(--dock-active-bg);">Jadikan Layar Utama</button>
                 </div>
             </div>
         </div>
 
         <!-- MODAL 2: PEMILIH APLIKASI (UNTUK UBAH PINTASAN CEPAT & PILIH MANUAL APLIKASI MUSIK/SPOTIFY) -->
         <div id="app-picker-modal" class="hidden" style="position:absolute; inset:0; z-index:97; background:rgba(7,3,18,0.85); backdrop-filter:blur(12px); display:flex; align-items:center; justify-content:center; padding:28px;">
-            <div class="glass-card" style="width:920px; height:560px; border-radius:22px; padding:22px; border:1px solid rgba(192,132,252,0.45); display:flex; flex-direction:column; justify-content:space-between;">
-                <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:1px solid rgba(168,85,247,0.25);">
+            <div class="glass-card" style="width:920px; height:560px; border-radius:22px; padding:22px; border:1px solid var(--border-subtle); display:flex; flex-direction:column; justify-content:space-between;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:1px solid var(--border-faint);">
                     <div>
                         <div id="picker-subtitle" style="font-size:11px; font-weight:800; color:#facc15; letter-spacing:0.08em;">KUSTOMISASI LAUNCHER</div>
                         <h3 id="picker-title" style="font-size:18px; font-weight:900; color:#fff; margin:2px 0 0 0;">Pilih Aplikasi</h3>
                     </div>
-                    <button onclick="closeAppPickerModal()" style="padding:8px 16px; border-radius:10px; background:rgba(220,38,38,0.25); border:1px solid rgba(248,113,113,0.4); color:#fca5a5; font-size:12px; font-weight:800;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> <span style="margin-left:4px;">Tutup</span></button>
+                    <button onclick="closeAppPickerModal()" style="padding:8px 16px; border-radius:10px; background:rgba(220,38,38,0.25); border:1px solid rgba(248,113,113,0.4); color:#fca5a5; font-size:12px; font-weight:800;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> <span style="margin-left:4px;">Tutup</span></button>
                 </div>
 
                 <!-- Pilihan Slot (Khusus saat klik tombol Ubah Pintasan Cepat) -->
                 <div id="shortcut-slot-tabs" class="hidden" style="display:flex; gap:8px; margin-top:12px;">
-                    <button onclick="selectShortcutSlotToEdit(0)" id="slot-tab-0" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:#9333ea; color:#fff; border:1px solid #c084fc;">Slot Pintasan 1</button>
-                    <button onclick="selectShortcutSlotToEdit(1)" id="slot-tab-1" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">Slot Pintasan 2</button>
-                    <button onclick="selectShortcutSlotToEdit(2)" id="slot-tab-2" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">Slot Pintasan 3</button>
-                    <button onclick="selectShortcutSlotToEdit(3)" id="slot-tab-3" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">Slot Pintasan 4</button>
+                    <button onclick="selectShortcutSlotToEdit(0)" id="slot-tab-0" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:var(--btn-primary); color:#fff; border:1px solid var(--accent-light);">Slot Pintasan 1</button>
+                    <button onclick="selectShortcutSlotToEdit(1)" id="slot-tab-1" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:var(--panel-bg); color:var(--text-muted); border:1px solid var(--border-faint);">Slot Pintasan 2</button>
+                    <button onclick="selectShortcutSlotToEdit(2)" id="slot-tab-2" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:var(--panel-bg); color:var(--text-muted); border:1px solid var(--border-faint);">Slot Pintasan 3</button>
+                    <button onclick="selectShortcutSlotToEdit(3)" id="slot-tab-3" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:var(--panel-bg); color:var(--text-muted); border:1px solid var(--border-faint);">Slot Pintasan 4</button>
                 </div>
 
                 <!-- Pilihan Tab Sumber Musik (Khusus saat pilih aplikasi untuk tab SPOTIFY / MUSIK / FM / BT) -->
                 <div id="music-source-tabs" class="hidden" style="display:flex; gap:8px; margin-top:12px;">
-                    <button onclick="selectMusicSourceToEdit('SPOTIFY')" id="msrc-tab-SPOTIFY" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:#9333ea; color:#fff; border:1px solid #c084fc;">Tab 1: SPOTIFY</button>
-                    <button onclick="selectMusicSourceToEdit('MUSIK')" id="msrc-tab-MUSIK" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">Tab 2: MUSIK</button>
-                    <button onclick="selectMusicSourceToEdit('FM')" id="msrc-tab-FM" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">Tab 3: RADIO FM</button>
-                    <button onclick="selectMusicSourceToEdit('BT')" id="msrc-tab-BT" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">Tab 4: BT AUDIO</button>
+                    <button onclick="selectMusicSourceToEdit('SPOTIFY')" id="msrc-tab-SPOTIFY" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:var(--btn-primary); color:#fff; border:1px solid var(--accent-light);">Tab 1: SPOTIFY</button>
+                    <button onclick="selectMusicSourceToEdit('MUSIK')" id="msrc-tab-MUSIK" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:var(--panel-bg); color:var(--text-muted); border:1px solid var(--border-faint);">Tab 2: MUSIK</button>
+                    <button onclick="selectMusicSourceToEdit('FM')" id="msrc-tab-FM" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:var(--panel-bg); color:var(--text-muted); border:1px solid var(--border-faint);">Tab 3: RADIO FM</button>
+                    <button onclick="selectMusicSourceToEdit('BT')" id="msrc-tab-BT" style="flex:1; padding:8px; border-radius:10px; font-size:12px; font-weight:800; background:var(--panel-bg); color:var(--text-muted); border:1px solid var(--border-faint);">Tab 4: BT AUDIO</button>
                 </div>
 
                 <div id="picker-apps-grid" style="display:grid; grid-template-columns:repeat(6,1fr); grid-auto-rows:100px; gap:12px; flex:1; margin-top:14px; overflow-y:auto; padding:8px; align-items:center; justify-items:center;"></div>
@@ -235,9 +279,9 @@
         <header class="hu-header glass-card shrink-0">
             <div style="display:flex; align-items:center; gap:12px;">
                 <span id="net-dot" style="width:10px; height:10px; border-radius:999px; background:#10b981; box-shadow:0 0 10px #10b981;"></span>
-                <span id="vehicle-brand" style="font-size:14px; font-weight:800; letter-spacing:0.12em; color:#e9d5ff;">GREYCOAT</span>
+                <span id="vehicle-brand" style="font-size:14px; font-weight:800; letter-spacing:0.12em; color:var(--text-muted);">GREYCOAT</span>
                 <span style="font-size:12px; color:rgba(216,180,254,0.7);">| 29°C</span>
-                <span id="trip-badge" style="font-size:10px; font-weight:800; padding:3px 10px; border-radius:999px; background:rgba(147,51,234,0.35); border:1px solid rgba(192,132,252,0.4); color:#f3e8ff;">MODE: PRIBADI</span>
+                <span id="trip-badge" style="font-size:10px; font-weight:800; padding:3px 10px; border-radius:999px; background:var(--dock-active-bg); border:1px solid var(--border-subtle); color:var(--text-muted);">MODE: PRIBADI</span>
             </div>
 
             <div style="display:flex; align-items:baseline; gap:8px;">
@@ -246,12 +290,12 @@
             </div>
 
             <!-- Pojok Kanan Atas: Bar Brightness Headunit -->
-            <div style="display:flex; align-items:center; gap:8px; background:rgba(20,9,42,0.75); border:1px solid rgba(168,85,247,0.3); padding:5px 12px; border-radius:12px;">
-                <span style="display:inline-flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
-                <button onclick="adjustBrightness(-10)" style="width:24px; height:24px; border-radius:6px; background:rgba(107,33,168,0.6); color:#fff; border:none; font-weight:800;">-</button>
-                <input id="brightness-slider" type="range" min="20" max="100" value="95" oninput="setBrightness(this.value)" style="width:105px; height:6px;">
-                <button onclick="adjustBrightness(10)" style="width:24px; height:24px; border-radius:6px; background:rgba(107,33,168,0.6); color:#fff; border:none; font-weight:800;">+</button>
-                <span id="brightness-val" style="font-size:12px; font-weight:800; min-width:34px; text-align:right; color:#e9d5ff;">95%</span>
+            <div style="display:flex; align-items:center; gap:8px; background:var(--panel-bg); border:1px solid var(--border-faint); padding:5px 12px; border-radius:12px;">
+                <span style="display:inline-flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                <button onclick="adjustBrightness(-10)" style="width:24px; height:24px; border-radius:6px; background:var(--btn-secondary); color:#fff; border:none; font-weight:800;">-</button>
+                <input id="brightness-slider" type="range" min="5" max="100" value="90" ontouchstart="isUserDraggingBrightness=true" ontouchend="isUserDraggingBrightness=false" onmousedown="isUserDraggingBrightness=true" onmouseup="isUserDraggingBrightness=false" oninput="setBrightness(this.value)" onchange="isUserDraggingBrightness=false; setBrightness(this.value)" style="width:105px; height:6px;">
+                <button onclick="adjustBrightness(10)" style="width:24px; height:24px; border-radius:6px; background:var(--btn-secondary); color:#fff; border:none; font-weight:800;">+</button>
+                <span id="brightness-val" style="font-size:12px; font-weight:800; min-width:34px; text-align:right; color:var(--text-muted);">95%</span>
             </div>
         </header>
 
@@ -273,10 +317,15 @@
                         <svg viewBox="0 0 220 138" style="width:276px; height:166px; overflow:visible;">
                             <defs>
                                 <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stop-color="#8b5cf6" />
-                                    <stop offset="52%" stop-color="#c49bff" />
+                                    <stop id="speed-grad-stop1" offset="0%" stop-color="#9333ea" />
+                                    <stop id="speed-grad-stop2" offset="52%" stop-color="#C49BFF" />
                                     <stop offset="100%" stop-color="#facc15" />
                                 </linearGradient>
+                                <radialGradient id="originBaseGlow" cx="50%" cy="50%" r="50%">
+                                    <stop id="origin-glow-stop1" offset="0%" stop-color="#C49BFF" stop-opacity="0.95" />
+                                    <stop id="origin-glow-stop2" offset="45%" stop-color="#9333ea" stop-opacity="0.55" />
+                                    <stop id="origin-glow-stop3" offset="100%" stop-color="#9333ea" stop-opacity="0" />
+                                </radialGradient>
                                 <filter id="speedGlow" x="-30%" y="-30%" width="160%" height="160%">
                                     <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blurGlow" />
                                     <feMerge>
@@ -285,39 +334,67 @@
                                     </feMerge>
                                 </filter>
                             </defs>
+                            <!-- Busur Skala Tipis Dalam & Garis Tick Marks (Agar Area Speedometer Hidup Saat 0 km/j) -->
+                            <path d="M 34 120 A 76 76 0 0 1 186 120" fill="none" stroke="var(--border-subtle)" stroke-width="1.2" stroke-dasharray="2 5"/>
+                            <line x1="34.0" y1="120.0" x2="44.0" y2="120.0" stroke="var(--accent-light)" stroke-width="2" opacity="0.8" stroke-linecap="round"/>
+                            <line x1="35.2" y1="106.8" x2="40.1" y2="107.7" stroke="var(--border-subtle)" stroke-width="1.2" opacity="0.45" stroke-linecap="round"/>
+                            <line x1="38.6" y1="94.0" x2="43.3" y2="95.7" stroke="var(--border-subtle)" stroke-width="1.2" opacity="0.45" stroke-linecap="round"/>
+                            <line x1="44.2" y1="82.0" x2="52.8" y2="87.0" stroke="var(--accent-light)" stroke-width="2" opacity="0.8" stroke-linecap="round"/>
+                            <line x1="51.8" y1="71.1" x2="55.6" y2="74.4" stroke="var(--border-subtle)" stroke-width="1.2" opacity="0.45" stroke-linecap="round"/>
+                            <line x1="61.1" y1="61.8" x2="64.4" y2="65.6" stroke="var(--border-subtle)" stroke-width="1.2" opacity="0.45" stroke-linecap="round"/>
+                            <line x1="72.0" y1="54.2" x2="77.0" y2="62.8" stroke="var(--accent-light)" stroke-width="2" opacity="0.8" stroke-linecap="round"/>
+                            <line x1="84.0" y1="48.6" x2="85.7" y2="53.3" stroke="var(--border-subtle)" stroke-width="1.2" opacity="0.45" stroke-linecap="round"/>
+                            <line x1="96.8" y1="45.2" x2="97.7" y2="50.1" stroke="var(--border-subtle)" stroke-width="1.2" opacity="0.45" stroke-linecap="round"/>
+                            <line x1="110.0" y1="44.0" x2="110.0" y2="54.0" stroke="var(--accent-light)" stroke-width="2" opacity="0.8" stroke-linecap="round"/>
+                            <line x1="123.2" y1="45.2" x2="122.3" y2="50.1" stroke="var(--border-subtle)" stroke-width="1.2" opacity="0.45" stroke-linecap="round"/>
+                            <line x1="136.0" y1="48.6" x2="134.3" y2="53.3" stroke="var(--border-subtle)" stroke-width="1.2" opacity="0.45" stroke-linecap="round"/>
+                            <line x1="148.0" y1="54.2" x2="143.0" y2="62.8" stroke="var(--accent-light)" stroke-width="2" opacity="0.8" stroke-linecap="round"/>
+                            <line x1="158.9" y1="61.8" x2="155.6" y2="65.6" stroke="var(--border-subtle)" stroke-width="1.2" opacity="0.45" stroke-linecap="round"/>
+                            <line x1="168.2" y1="71.1" x2="164.4" y2="74.4" stroke="var(--border-subtle)" stroke-width="1.2" opacity="0.45" stroke-linecap="round"/>
+                            <line x1="175.8" y1="82.0" x2="167.2" y2="87.0" stroke="var(--accent-light)" stroke-width="2" opacity="0.8" stroke-linecap="round"/>
+                            <line x1="181.4" y1="94.0" x2="176.7" y2="95.7" stroke="var(--border-subtle)" stroke-width="1.2" opacity="0.45" stroke-linecap="round"/>
+                            <line x1="184.8" y1="106.8" x2="179.9" y2="107.7" stroke="var(--border-subtle)" stroke-width="1.2" opacity="0.45" stroke-linecap="round"/>
+                            <line x1="186.0" y1="120.0" x2="176.0" y2="120.0" stroke="var(--accent-light)" stroke-width="2" opacity="0.8" stroke-linecap="round"/>
                             <!-- Track Dasar 16.dp -->
-                            <path d="M 20 120 A 90 90 0 0 1 200 120" fill="none" stroke="rgba(196,155,255,0.16)" stroke-width="16" stroke-linecap="round"/>
+                            <path d="M 20 120 A 90 90 0 0 1 200 120" fill="none" stroke="var(--border-subtle)" stroke-width="16" stroke-linecap="round"/>
+                            <!-- Glow Ungu Permanen di Pangkal Kiri Busur (Titik Awal 0 km/j) -->
+                            <circle cx="20" cy="120" r="22" fill="url(#originBaseGlow)" pointer-events="none"/>
+                            <path id="speed-origin-cap" d="M 20 120 A 90 90 0 0 1 23.5 104" fill="none" stroke="var(--accent-main)" stroke-width="16" stroke-linecap="round" filter="url(#speedGlow)" opacity="0.9"/>
                             <!-- Lapisan Efek Gradient Glow 16.dp -->
-                            <path id="speed-arc-glow" d="M 20 120 A 90 90 0 0 1 200 120" fill="none" stroke="url(#purpleGrad)" stroke-width="16" stroke-linecap="round" filter="url(#speedGlow)" opacity="0.75" stroke-dasharray="283" stroke-dashoffset="283" style="transition: stroke-dashoffset 0.25s ease;"/>
+                            <path id="speed-arc-glow" d="M 20 120 A 90 90 0 0 1 200 120" fill="none" stroke="url(#purpleGrad)" stroke-width="16" stroke-linecap="round" filter="url(#speedGlow)" opacity="0.8" stroke-dasharray="283" stroke-dashoffset="277" style="transition: stroke-dashoffset 0.25s ease;"/>
                             <!-- Busur Utama Tajam 16.dp -->
-                            <path id="speed-arc" d="M 20 120 A 90 90 0 0 1 200 120" fill="none" stroke="url(#purpleGrad)" stroke-width="16" stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="283" style="transition: stroke-dashoffset 0.25s ease;"/>
+                            <path id="speed-arc" d="M 20 120 A 90 90 0 0 1 200 120" fill="none" stroke="url(#purpleGrad)" stroke-width="16" stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="277" style="transition: stroke-dashoffset 0.25s ease;"/>
+                            <!-- Titik Penanda Pangkal 0 km/j & Label Skala -->
+                            <circle cx="20" cy="120" r="4.5" fill="var(--text-muted)" />
+                            <text x="18" y="135" text-anchor="middle" fill="var(--accent-light)" font-size="9" font-weight="800" opacity="0.85">0</text>
+                            <text x="200" y="135" text-anchor="middle" fill="var(--border-subtle)" font-size="9" font-weight="800">180</text>
                         </svg>
                         <div style="position:absolute; bottom:6px; text-align:center;">
-                            <div id="speed-value" style="font-size:88px; font-weight:900; line-height:0.9; color:#ffffff; letter-spacing:-0.03em; text-shadow:0 0 26px rgba(196,155,255,0.55);">0</div>
-                            <div id="speed-unit" style="font-size:13px; font-weight:800; color:#C49BFF; margin-top:6px; letter-spacing:0.18em;">KM / JAM</div>
+                            <div id="speed-value" style="font-size:88px; font-weight:900; line-height:0.9; color:#ffffff; letter-spacing:-0.03em; text-shadow:0 0 26px var(--border-subtle);">0</div>
+                            <div id="speed-unit" style="font-size:13px; font-weight:800; color:var(--accent-light); margin-top:6px; letter-spacing:0.18em;">KM / JAM</div>
                         </div>
                     </div>
 
                     <!-- 3 Kartu Statistik Sekali Lirik (JARAK JALAN, WAKTU JALAN, KEC. MAKS) -->
                     <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
-                        <div style="background:#170D2B; border:1.5px solid rgba(196,155,255,0.34); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px rgba(196,155,255,0.08);">
-                            <div style="font-size:10px; color:#C49BFF; font-weight:800; letter-spacing:0.06em;">JARAK JALAN</div>
+                        <div style="background:var(--squircle-bg); border:1.5px solid var(--border-subtle); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px var(--border-subtle);">
+                            <div style="font-size:10px; color:var(--accent-light); font-weight:800; letter-spacing:0.06em;">JARAK JALAN</div>
                             <div id="session-dist" style="font-size:21px; font-weight:900; color:#ffffff; margin-top:4px; line-height:1.15; letter-spacing:-0.02em;">0.0 km</div>
                         </div>
-                        <div style="background:#170D2B; border:1.5px solid rgba(196,155,255,0.34); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px rgba(196,155,255,0.08);">
-                            <div style="font-size:10px; color:#C49BFF; font-weight:800; letter-spacing:0.06em;">WAKTU JALAN</div>
+                        <div style="background:var(--squircle-bg); border:1.5px solid var(--border-subtle); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px var(--border-subtle);">
+                            <div style="font-size:10px; color:var(--accent-light); font-weight:800; letter-spacing:0.06em;">WAKTU JALAN</div>
                             <div id="session-time" style="font-size:21px; font-weight:900; color:#ffffff; margin-top:4px; line-height:1.15; letter-spacing:-0.02em;">00:00</div>
                         </div>
-                        <div style="background:#170D2B; border:1.5px solid rgba(250,204,21,0.38); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px rgba(250,204,21,0.08);">
-                            <div style="font-size:10px; color:#C49BFF; font-weight:800; letter-spacing:0.06em;">KEC. MAKS</div>
+                        <div style="background:var(--squircle-bg); border:1.5px solid rgba(250,204,21,0.38); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px rgba(250,204,21,0.08);">
+                            <div style="font-size:10px; color:var(--accent-light); font-weight:800; letter-spacing:0.06em;">KEC. MAKS</div>
                             <div id="session-max" style="font-size:21px; font-weight:900; color:#facc15; margin-top:4px; line-height:1.15; letter-spacing:-0.02em;">0 km/j</div>
                         </div>
                     </div>
 
                     <!-- Kategori Perjalanan -->
                     <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px;">
-                        <button onclick="setTripCategory('PRIBADI')" id="cat-pribadi" style="padding:10px; border-radius:12px; font-size:12px; font-weight:800; background:#9333ea; color:#fff; border:none;">MODE PRIBADI</button>
-                        <button onclick="setTripCategory('KERJA')" id="cat-kerja" style="padding:10px; border-radius:12px; font-size:12px; font-weight:800; background:rgba(20,9,42,0.6); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">MODE KERJA</button>
+                        <button onclick="setTripCategory('PRIBADI')" id="cat-pribadi" style="padding:10px; border-radius:12px; font-size:12px; font-weight:800; background:var(--btn-primary); color:#fff; border:none;">MODE PRIBADI</button>
+                        <button onclick="setTripCategory('KERJA')" id="cat-kerja" style="padding:10px; border-radius:12px; font-size:12px; font-weight:800; background:var(--panel-bg); color:var(--text-muted); border:1px solid var(--border-faint);">MODE KERJA</button>
                     </div>
 
                     <!-- Total Akumulasi Jarak (Dimulai dari 0,0 KM saat instalasi baru & Auto-Sync ke HP) -->
@@ -337,27 +414,27 @@
                     <div id="live-map" class="map-dark-tiles" style="position:absolute; inset:0; width:100%; height:100%; z-index:1;"></div>
 
                     <!-- Bar Atas Peta -->
-                    <div style="position:relative; z-index:10; margin:12px; padding:10px 12px; border-radius:14px; background:rgba(15,7,34,0.92); border:1px solid rgba(168,85,247,0.4); display:flex; justify-content:space-between; align-items:center; backdrop-filter:blur(12px);">
+                    <div style="position:relative; z-index:10; margin:12px; padding:10px 12px; border-radius:14px; background:var(--panel-dark-bg); border:1px solid var(--border-faint); display:flex; justify-content:space-between; align-items:center; backdrop-filter:blur(12px);">
                         <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
-                            <span style="width:30px; height:30px; border-radius:9px; background:#170D2B; border:1px solid rgba(196,155,255,0.35); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+                            <span style="width:30px; height:30px; border-radius:9px; background:var(--squircle-bg); border:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
                             <div style="overflow:hidden;">
-                                <div style="font-size:9px; font-weight:800; color:#c084fc; letter-spacing:0.06em;">PETA PELACAK LOKASI GPS</div>
+                                <div style="font-size:9px; font-weight:800; color:var(--accent-light); letter-spacing:0.06em;">PETA PELACAK LOKASI GPS</div>
                                 <div id="map-coord-text" style="font-size:11px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Mengunci lokasi GPS...</div>
                             </div>
                         </div>
                         <div style="display:flex; gap:5px; flex-shrink:0;">
-                            <button onclick="toggleMapTheme()" id="btn-map-theme" style="padding:7px 9px; border-radius:9px; background:rgba(88,28,135,0.7); border:1px solid rgba(168,85,247,0.4); color:#fff; font-size:10px; font-weight:800;" style="display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> <span>Gelap</span></button>
-                            <button onclick="centerMapOnCar()" style="padding:7px 9px; border-radius:9px; background:rgba(88,28,135,0.7); border:1px solid rgba(168,85,247,0.4); color:#fff; font-size:10px; font-weight:800;" style="display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg> <span>Pusatkan</span></button>
-                            <button onclick="launchHeadunitMaps('')" style="padding:7px 10px; border-radius:9px; background:#9333ea; border:none; color:#fff; font-size:10px; font-weight:800;" style="display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg> <span>Maps</span></button>
+                            <button onclick="toggleMapTheme()" id="btn-map-theme" style="padding:7px 9px; border-radius:9px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:10px; font-weight:800;" style="display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> <span>Gelap</span></button>
+                            <button onclick="centerMapOnCar()" style="padding:7px 9px; border-radius:9px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:10px; font-weight:800;" style="display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg> <span>Pusatkan</span></button>
+                            <button onclick="launchHeadunitMaps('')" style="padding:7px 10px; border-radius:9px; background:var(--btn-primary); border:none; color:#fff; font-size:10px; font-weight:800;" style="display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg> <span>Maps</span></button>
                         </div>
                     </div>
 
                     <!-- Bar Bawah Peta -->
-                    <div style="position:relative; z-index:10; margin:12px; padding:10px; border-radius:14px; background:rgba(15,7,34,0.92); border:1px solid rgba(168,85,247,0.35); display:flex; gap:8px; backdrop-filter:blur(12px);">
-                        <button onclick="launchHeadunitMaps('Rumah')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Rute Rumah</span></button>
-                        <button onclick="launchHeadunitMaps('Kantor')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></svg> <span>Rute Kantor</span></button>
-                        <button onclick="launchHeadunitMaps('SPBU Terdekat')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="3" y1="22" x2="15" y2="22"/><line x1="4" y1="9" x2="14" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg> <span>Cari SPBU</span></button>
-                        <button onclick="launchHeadunitMaps('Bengkel Mobil Terdekat')" style="flex:1; padding:9px; border-radius:10px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.3); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> <span>Bengkel</span></button>
+                    <div style="position:relative; z-index:10; margin:12px; padding:10px; border-radius:14px; background:var(--panel-dark-bg); border:1px solid var(--border-faint); display:flex; gap:8px; backdrop-filter:blur(12px);">
+                        <button onclick="launchHeadunitMaps('Rumah')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Rute Rumah</span></button>
+                        <button onclick="launchHeadunitMaps('Kantor')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></svg> <span>Rute Kantor</span></button>
+                        <button onclick="launchHeadunitMaps('SPBU Terdekat')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="3" y1="22" x2="15" y2="22"/><line x1="4" y1="9" x2="14" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg> <span>Cari SPBU</span></button>
+                        <button onclick="launchHeadunitMaps('Bengkel Mobil Terdekat')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> <span>Bengkel</span></button>
                     </div>
                 </div>
 
@@ -368,47 +445,47 @@
                     <div class="glass-card" style="height:272px; border-radius:16px; padding:14px; display:flex; flex-direction:column; justify-content:space-between;">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:4px;">
                             <div style="display:flex; gap:4px; flex:1;">
-                                <button onclick="activateMusicSourceTab('SPOTIFY')" id="src-btn-SPOTIFY" style="flex:1; font-size:9px; font-weight:800; padding:4px 6px; border-radius:7px; background:#9333ea; color:#fff; border:1px solid #c084fc;">SPOTIFY</button>
-                                <button onclick="activateMusicSourceTab('MUSIK')" id="src-btn-MUSIK" style="flex:1; font-size:9px; font-weight:800; padding:4px 6px; border-radius:7px; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">MUSIK</button>
-                                <button onclick="activateMusicSourceTab('FM')" id="src-btn-FM" style="font-size:9px; font-weight:800; padding:4px 7px; border-radius:7px; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">FM</button>
-                                <button onclick="activateMusicSourceTab('BT')" id="src-btn-BT" style="font-size:9px; font-weight:800; padding:4px 7px; border-radius:7px; background:rgba(20,9,42,0.7); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3);">BT</button>
+                                <button onclick="activateMusicSourceTab('SPOTIFY')" id="src-btn-SPOTIFY" style="flex:1; font-size:9px; font-weight:800; padding:4px 6px; border-radius:7px; background:var(--btn-primary); color:#fff; border:1px solid var(--accent-light);">SPOTIFY</button>
+                                <button onclick="activateMusicSourceTab('MUSIK')" id="src-btn-MUSIK" style="flex:1; font-size:9px; font-weight:800; padding:4px 6px; border-radius:7px; background:var(--panel-bg); color:var(--text-muted); border:1px solid var(--border-faint);">MUSIK</button>
+                                <button onclick="activateMusicSourceTab('FM')" id="src-btn-FM" style="font-size:9px; font-weight:800; padding:4px 7px; border-radius:7px; background:var(--panel-bg); color:var(--text-muted); border:1px solid var(--border-faint);">FM</button>
+                                <button onclick="activateMusicSourceTab('BT')" id="src-btn-BT" style="font-size:9px; font-weight:800; padding:4px 7px; border-radius:7px; background:var(--panel-bg); color:var(--text-muted); border:1px solid var(--border-faint);">BT</button>
                             </div>
-                            <button onclick="openMusicSourcePickerModal()" title="Pilih Aplikasi Musik Manual" style="font-size:10px; font-weight:800; padding:4px 8px; border-radius:7px; background:rgba(250,204,21,0.18); color:#facc15; border:1px solid rgba(250,204,21,0.4);" style="display:inline-flex;align-items:center;gap:4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> <span>Pilih</span></button>
+                            <button onclick="openMusicSourcePickerModal()" title="Pilih Aplikasi Musik Manual" style="font-size:10px; font-weight:800; padding:4px 8px; border-radius:7px; background:rgba(250,204,21,0.18); color:#facc15; border:1px solid rgba(250,204,21,0.4);" style="display:inline-flex;align-items:center;gap:4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> <span>Pilih</span></button>
                         </div>
 
                         <!-- Kartu Info Aplikasi Musik & Status Audio Aktif (Klik untuk membuka aplikasi musik yang dipilih) -->
-                        <div onclick="openCurrentMusicSourceApp()" style="display:flex; align-items:center; gap:11px; cursor:pointer; background:rgba(20,9,42,0.52); padding:10px; border-radius:14px; border:1px solid rgba(168,85,247,0.24);">
-                            <div style="width:48px; height:48px; border-radius:999px; background:linear-gradient(135deg,#a855f7,#4f46e5); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; border:2px solid rgba(255,255,255,0.2); box-shadow:0 0 15px rgba(168,85,247,0.4);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+                        <div onclick="openCurrentMusicSourceApp()" style="display:flex; align-items:center; gap:11px; cursor:pointer; background:var(--panel-bg); padding:10px; border-radius:14px; border:1px solid var(--border-faint);">
+                            <div style="width:48px; height:48px; border-radius:999px; background:linear-gradient(135deg, var(--accent-main), var(--btn-primary)); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; border:2px solid rgba(255,255,255,0.2); box-shadow:0 0 15px var(--border-faint);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
                             <div style="overflow:hidden; flex:1;">
                                 <div id="song-title" style="font-size:13px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Memuat Audio...</div>
                                 <div id="song-artist" style="font-size:11px; color:rgba(216,180,254,0.85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">Putar musik di headunit</div>
                             </div>
                             <div id="eq-bars" style="display:flex; align-items:flex-end; gap:3px; height:20px;">
-                                <span style="width:3px; background:#c084fc; border-radius:2px; height:6px;"></span>
+                                <span style="width:3px; background:var(--accent-light); border-radius:2px; height:6px;"></span>
                                 <span style="width:3px; background:#facc15; border-radius:2px; height:6px;"></span>
-                                <span style="width:3px; background:#c084fc; border-radius:2px; height:6px;"></span>
-                                <span style="width:3px; background:#a855f7; border-radius:2px; height:6px;"></span>
+                                <span style="width:3px; background:var(--accent-light); border-radius:2px; height:6px;"></span>
+                                <span style="width:3px; background:var(--accent-main); border-radius:2px; height:6px;"></span>
                             </div>
                         </div>
 
                         <!-- Bar Status Pemutaran -->
                         <div style="display:flex; justify-content:space-between; align-items:center; padding:0 2px;">
                             <span id="playback-status-text" style="font-size:10px; font-weight:700; color:rgba(216,180,254,0.75);">Audio Dijeda</span>
-                            <button onclick="openCurrentMusicSourceApp()" style="background:none; border:none; color:#c084fc; font-size:10px; font-weight:800;">Buka Aplikasi ↗</button>
+                            <button onclick="openCurrentMusicSourceApp()" style="background:none; border:none; color:var(--accent-light); font-size:10px; font-weight:800;">Buka Aplikasi ↗</button>
                         </div>
 
                         <!-- Tombol Kontrol Media dengan Ikon SVG Play / Pause yang Berubah Otomatis -->
                         <div style="display:flex; justify-content:space-around; align-items:center;">
-                            <button onclick="sendNativeMediaKey('prev')" style="width:44px; height:40px; border-radius:12px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.32); color:#fff; display:flex; align-items:center; justify-content:center;">
+                            <button onclick="sendNativeMediaKey('prev')" style="width:44px; height:40px; border-radius:12px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; display:flex; align-items:center; justify-content:center;">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
                             </button>
-                            <button onclick="sendNativeMediaKey('play_pause')" id="btn-play" style="width:52px; height:52px; border-radius:999px; background:linear-gradient(135deg,#a855f7,#7c3aed); color:#fff; border:2px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; box-shadow:0 6px 20px rgba(168,85,247,0.55); transition:all 0.2s;">
+                            <button onclick="sendNativeMediaKey('play_pause')" id="btn-play" style="width:52px; height:52px; border-radius:999px; background:linear-gradient(135deg, var(--accent-main), var(--btn-primary)); color:#fff; border:2px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; box-shadow:0 6px 20px var(--border-faint); transition:all 0.2s;">
                                 <!-- Default SVG Play Icon -->
                                 <svg id="svg-play-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="margin-left:2px;"><path d="M8 5v14l11-7z"/></svg>
                                 <!-- SVG Pause Icon (Hidden when paused) -->
                                 <svg id="svg-pause-icon" class="hidden" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                             </button>
-                            <button onclick="sendNativeMediaKey('next')" style="width:44px; height:40px; border-radius:12px; background:rgba(88,28,135,0.55); border:1px solid rgba(168,85,247,0.32); color:#fff; display:flex; align-items:center; justify-content:center;">
+                            <button onclick="sendNativeMediaKey('next')" style="width:44px; height:40px; border-radius:12px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; display:flex; align-items:center; justify-content:center;">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
                             </button>
                         </div>
@@ -416,15 +493,15 @@
 
                     <!-- Bar Volume Headunit -->
                     <div class="glass-card" style="height:92px; border-radius:16px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; font-weight:800; color:#d8b4fe;">
-                            <span style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/></svg> <span>VOLUME HEADUNIT</span></span>
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; font-weight:800; color:var(--text-muted);">
+                            <span style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/></svg> <span>VOLUME HEADUNIT</span></span>
                             <span id="volume-val" style="color:#facc15; font-weight:900;">75%</span>
                         </div>
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <button onclick="toggleMute()" id="btn-mute" style="width:28px; height:28px; border-radius:8px; background:#170D2B; border:1px solid rgba(196,155,255,0.28); color:#C49BFF; display:inline-flex; align-items:center; justify-content:center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>
-                            <button onclick="adjustVolume(-10)" style="width:28px; height:28px; border-radius:8px; background:rgba(88,28,135,0.7); color:#fff; border:none; font-weight:800;">-</button>
+                            <button onclick="toggleMute()" id="btn-mute" style="width:28px; height:28px; border-radius:8px; background:var(--squircle-bg); border:1px solid var(--border-subtle); color:var(--accent-light); display:inline-flex; align-items:center; justify-content:center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>
+                            <button onclick="adjustVolume(-10)" style="width:28px; height:28px; border-radius:8px; background:var(--btn-secondary); color:#fff; border:none; font-weight:800;">-</button>
                             <input id="volume-slider" type="range" min="0" max="100" value="75" ontouchstart="isUserDraggingVolume=true" ontouchend="isUserDraggingVolume=false" onmousedown="isUserDraggingVolume=true" onmouseup="isUserDraggingVolume=false" oninput="setVolume(this.value)" onchange="isUserDraggingVolume=false; setVolume(this.value)" style="flex:1; height:6px;">
-                            <button onclick="adjustVolume(10)" style="width:28px; height:28px; border-radius:8px; background:rgba(88,28,135,0.7); color:#fff; border:none; font-weight:800;">+</button>
+                            <button onclick="adjustVolume(10)" style="width:28px; height:28px; border-radius:8px; background:var(--btn-secondary); color:#fff; border:none; font-weight:800;">+</button>
                         </div>
                     </div>
 
@@ -432,7 +509,7 @@
                     <div class="glass-card" style="height:168px; border-radius:16px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span style="font-size:10px; font-weight:800; letter-spacing:0.08em; color:rgba(216,180,254,0.85);">PINTASAN CEPAT</span>
-                            <button onclick="openShortcutPickerModal(0)" style="font-size:10px; font-weight:800; padding:2px 8px; border-radius:6px; background:rgba(168,85,247,0.22); color:#e9d5ff; border:1px solid rgba(168,85,247,0.4);" style="display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> <span>Ubah</span></button>
+                            <button onclick="openShortcutPickerModal(0)" style="font-size:10px; font-weight:800; padding:2px 8px; border-radius:6px; background:var(--border-faint); color:var(--text-muted); border:1px solid var(--border-faint);" style="display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> <span>Ubah</span></button>
                         </div>
                         <div id="quick-shortcuts-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; flex:1; margin-top:8px; align-items:center; justify-items:center;"></div>
                     </div>
@@ -442,8 +519,8 @@
             <!-- TAB 2: MENU APLIKASI REAL YANG TERINSTAL DI PERANGKAT -->
             <section id="view-apps" class="hidden glass-card" style="border-radius:16px; padding:18px 20px; height:100%; display:flex; flex-direction:column; justify-content:space-between;">
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <div id="category-bar" style="flex:1; display:flex; align-items:center; background:rgba(15,7,34,0.92); border:1px solid rgba(168,85,247,0.28); border-radius:999px; padding:5px; gap:4px;"></div>
-                    <button onclick="loadRealInstalledApps(true)" style="padding:10px 14px; border-radius:999px; background:rgba(88,28,135,0.65); border:1px solid rgba(168,85,247,0.35); color:#fff; font-size:12px; font-weight:800;" style="display:inline-flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> <span>Segarkan (</span><span id="app-count-badge">0</span>)</span></button>
+                    <div id="category-bar" style="flex:1; display:flex; align-items:center; background:var(--panel-dark-bg); border:1px solid var(--border-faint); border-radius:999px; padding:5px; gap:4px;"></div>
+                    <button onclick="loadRealInstalledApps(true)" style="padding:10px 14px; border-radius:999px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:12px; font-weight:800;" style="display:inline-flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> <span>Segarkan (</span><span id="app-count-badge">0</span>)</span></button>
                 </div>
                 <div id="apps-grid" style="display:grid; grid-template-columns:repeat(6,1fr); grid-auto-rows:110px; gap:14px; flex:1; margin-top:14px; overflow-y:auto; padding:6px 4px; align-items:center; justify-items:center;"></div>
             </section>
@@ -454,15 +531,15 @@
                 <!-- TAMPILAN 1: DASHBOARD DAFTAR KATEGORI KOMPONEN (PERLU PERHATIAN / PERIKSA SEGERA / SEHAT) -->
                 <div id="srv-dashboard-view" style="display:flex; flex-direction:column; height:100%; justify-content:space-between;">
                     <!-- Header Atas Dashboard Servis -->
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:1px solid rgba(168,85,247,0.22); flex-shrink:0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:1px solid var(--border-faint); flex-shrink:0;">
                         <div>
-                            <div style="font-size:10px; font-weight:800; color:#c084fc; letter-spacing:0.08em;">PEMANTAU KONDISI 17 KOMPONEN KENDARAAN</div>
+                            <div style="font-size:10px; font-weight:800; color:var(--accent-light); letter-spacing:0.08em;">PEMANTAU KONDISI 17 KOMPONEN KENDARAAN</div>
                             <h2 style="font-size:18px; font-weight:900; color:#fff; margin:2px 0 0 0;">PENGINGAT SERVIS & UMUR KOMPONEN</h2>
                         </div>
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <span style="font-size:11px; color:#e9d5ff; font-weight:700;">Odometer Aktual (KM):</span>
-                            <input id="odo-input" type="number" value="0" style="width:110px; padding:6px 10px; border-radius:10px; background:#120726; border:1px solid #a855f7; color:#fff; font-weight:800; font-size:13px;">
-                            <button onclick="updateOdometer()" style="padding:7px 12px; border-radius:10px; background:#9333ea; color:#fff; font-weight:800; font-size:11px; border:none; cursor:pointer;">Simpan Odo</button>
+                            <span style="font-size:11px; color:var(--text-muted); font-weight:700;">Odometer Aktual (KM):</span>
+                            <input id="odo-input" type="number" value="0" style="width:110px; padding:6px 10px; border-radius:10px; background:var(--input-bg); border:1px solid var(--accent-main); color:#fff; font-weight:800; font-size:13px;">
+                            <button onclick="updateOdometer()" style="padding:7px 12px; border-radius:10px; background:var(--btn-primary); color:#fff; font-weight:800; font-size:11px; border:none; cursor:pointer;">Simpan Odo</button>
                             <button onclick="checkAndShowStartupServiceAlert(true)" style="padding:7px 12px; border-radius:10px; background:rgba(239,68,68,0.22); border:1px solid #ef4444; color:#fca5a5; font-weight:800; font-size:11px; cursor:pointer;">Popup Peringatan</button>
                             <button onclick="openAddServiceCompModal()" style="padding:7px 12px; border-radius:10px; background:rgba(59,130,246,0.25); border:1px solid #3b82f6; color:#93c5fd; font-weight:800; font-size:11px; cursor:pointer;">+ Tambah Komponen</button>
                         </div>
@@ -516,7 +593,7 @@
                                 <!-- Bagian Terbaik Hingga (Tanggal & Sisa Hari) -->
                                 <div>
                                     <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-                                        <span style="font-size:14px; color:#a1a1aa; font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> <span style="margin-left:4px;">Terbaik Hingga</span> <strong id="srv-view-best-date" style="color:#fff; font-size:15px; font-weight:800;">23 Jun 2027 &bull; 224hr</strong></span>
+                                        <span style="font-size:14px; color:#a1a1aa; font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> <span style="margin-left:4px;">Terbaik Hingga</span> <strong id="srv-view-best-date" style="color:#fff; font-size:15px; font-weight:800;">23 Jun 2027 &bull; 224hr</strong></span>
                                         <span id="srv-view-time-pct" style="font-size:14px; color:#a1a1aa; font-weight:700;">31%</span>
                                     </div>
                                     <div style="width:100%; height:7px; background:#2c2c2e; border-radius:999px; overflow:hidden;">
@@ -577,7 +654,7 @@
                                     </div>
 
                                     <div style="display:flex; justify-content:space-between; align-items:baseline;">
-                                        <span style="font-size:13px; color:#a1a1aa;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> <span style="margin-left:4px;">Terbaik Hingga</span> <strong id="srv-edit-best-date-label" onclick="document.getElementById('srv-hidden-date-picker').showPicker ? document.getElementById('srv-hidden-date-picker').showPicker() : null" style="color:#38bdf8; font-size:14px; font-weight:800; text-decoration:underline; cursor:pointer;">23 Jun 2027 &bull; 224hr</strong></span>
+                                        <span style="font-size:13px; color:#a1a1aa;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> <span style="margin-left:4px;">Terbaik Hingga</span> <strong id="srv-edit-best-date-label" onclick="document.getElementById('srv-hidden-date-picker').showPicker ? document.getElementById('srv-hidden-date-picker').showPicker() : null" style="color:#38bdf8; font-size:14px; font-weight:800; text-decoration:underline; cursor:pointer;">23 Jun 2027 &bull; 224hr</strong></span>
                                         <input id="srv-hidden-date-picker" type="date" onchange="onPickTargetDate(this.value)" style="position:absolute; opacity:0; pointer-events:none; width:1px; height:1px;">
                                         <span id="srv-edit-time-pct-label" style="font-size:13px; color:#a1a1aa; font-weight:700;">31%</span>
                                     </div>
@@ -607,7 +684,7 @@
                             <!-- Kartu Saran Perawatan -->
                             <div style="background:#1c1c1e; border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:16px;">
                                 <div style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:900; color:#38bdf8; letter-spacing:0.06em; margin-bottom:6px;">
-                                    <span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg></span>
+                                    <span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg></span>
                                     <span>SARAN PERAWATAN</span>
                                 </div>
                                 <p id="srv-detail-advice" style="font-size:12px; color:#d4d4d8; line-height:1.5; margin:0;">
@@ -618,7 +695,7 @@
                             <!-- Kartu Catatan -->
                             <div style="background:#1c1c1e; border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:16px;">
                                 <div style="display:flex; align-items:center; gap:8px; font-size:14px; font-weight:800; color:#fff; margin-bottom:8px;">
-                                    <span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+                                    <span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
                                     <span>Catatan</span>
                                 </div>
                                 <textarea id="srv-detail-note" rows="3" oninput="saveCurrentServiceNote(this.value)" placeholder="Tambah catatan tentang komponen ini..." style="width:100%; padding:10px 12px; border-radius:12px; background:#09090b; border:1px solid #27272a; color:#fff; font-size:12px; resize:none; outline:none;"></textarea>
@@ -642,19 +719,19 @@
                     <div class="glass-card" style="width:440px; border-radius:20px; padding:22px; border:1px solid rgba(56,189,248,0.4); display:flex; flex-direction:column; gap:12px;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <h3 style="font-size:16px; font-weight:900; color:#fff; margin:0;">Tambah Komponen Servis</h3>
-                            <button onclick="closeAddServiceCompModal()" style="background:none; border:none; color:#a1a1aa; font-size:16px; font-weight:800;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                            <button onclick="closeAddServiceCompModal()" style="background:none; border:none; color:#a1a1aa; font-size:16px; font-weight:800;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                         </div>
                         <div>
-                            <label style="font-size:11px; color:#d8b4fe; display:block; margin-bottom:4px;">Nama Komponen:</label>
+                            <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Nama Komponen:</label>
                             <input id="new-comp-name" type="text" placeholder="Contoh: Oli Gardan / V-Belt" style="width:100%; padding:8px 10px; border-radius:10px; background:#09090b; border:1px solid #3f3f46; color:#fff; font-size:12px; font-weight:700;">
                         </div>
                         <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px;">
                             <div>
-                                <label style="font-size:11px; color:#d8b4fe; display:block; margin-bottom:4px;">Interval KM (0 = Hanya Waktu):</label>
+                                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Interval KM (0 = Hanya Waktu):</label>
                                 <input id="new-comp-km" type="number" value="20000" step="1000" style="width:100%; padding:8px 10px; border-radius:10px; background:#09090b; border:1px solid #3f3f46; color:#fff; font-size:12px; font-weight:700;">
                             </div>
                             <div>
-                                <label style="font-size:11px; color:#d8b4fe; display:block; margin-bottom:4px;">Interval Waktu (Bulan):</label>
+                                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Interval Waktu (Bulan):</label>
                                 <input id="new-comp-months" type="number" value="12" min="1" max="120" style="width:100%; padding:8px 10px; border-radius:10px; background:#09090b; border:1px solid #3f3f46; color:#fff; font-size:12px; font-weight:700;">
                             </div>
                         </div>
@@ -671,63 +748,77 @@
             <section id="view-settings" class="hidden glass-card" style="border-radius:16px; padding:20px; height:100%; display:flex; flex-direction:column; justify-content:space-between;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div>
-                        <div style="font-size:12px; font-weight:700; color:#c084fc;">KONFIGURASI INTERNAL LAUNCHER</div>
+                        <div style="font-size:12px; font-weight:700; color:var(--accent-light);">KONFIGURASI INTERNAL LAUNCHER</div>
                         <h2 style="font-size:20px; font-weight:900; color:#fff; margin:2px 0 0 0;">SETELAN GREYCOAT LAUNCHER</h2>
                     </div>
-                    <button onclick="triggerSetDefaultLauncher()" style="padding:10px 16px; border-radius:12px; background:linear-gradient(90deg,#9333ea,#4f46e5); color:#fff; font-size:12px; font-weight:800; border:1px solid #c084fc;" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Atur Sebagai Layar Utama (Default Home)</span></button>
+                    <button onclick="triggerSetDefaultLauncher()" style="padding:10px 16px; border-radius:12px; background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); color:#fff; font-size:12px; font-weight:800; border:1px solid var(--accent-light);" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Atur Sebagai Layar Utama (Default Home)</span></button>
                 </div>
 
                 <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:auto 0;">
-                    <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div style="background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:16px; padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
                         <div>
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                                 <span style="font-size:12px; font-weight:800; color:#facc15;">1. AKUN GMAIL & ID MOBIL</span>
                                 <span id="pairing-code-badge" style="font-size:11px; font-weight:900; padding:2px 8px; border-radius:6px; background:rgba(250,204,21,0.2); color:#facc15; border:1px solid rgba(250,204,21,0.45);">ID: GC-0000</span>
                             </div>
-                            <label style="font-size:10px; color:#d8b4fe; display:block; margin-bottom:3px;">Akun Gmail (Untuk Sinkronisasi Otomatis ke HP):</label>
-                            <input id="setting-gmail-input" type="email" placeholder="nama.anda@gmail.com" onchange="saveGmailAccount(this.value)" style="width:100%; padding:7px 10px; border-radius:8px; background:#120726; border:1px solid #a855f7; color:#fff; font-weight:700; font-size:12px; margin-bottom:7px;">
-                            <label style="font-size:10px; color:#d8b4fe; display:block; margin-bottom:3px;">Nama Mobil (Contoh: Mobil A / Mobil B):</label>
-                            <input id="setting-vehicle-name" type="text" value="GREYCOAT" oninput="updateVehicleName(this.value)" style="width:100%; padding:7px 10px; border-radius:8px; background:#120726; border:1px solid rgba(168,85,247,0.5); color:#fff; font-weight:800; font-size:12px; margin-bottom:8px;">
+                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Akun Gmail (Untuk Sinkronisasi Otomatis ke HP):</label>
+                            <input id="setting-gmail-input" type="email" placeholder="nama.anda@gmail.com" onchange="saveGmailAccount(this.value)" style="width:100%; padding:7px 10px; border-radius:8px; background:var(--input-bg); border:1px solid var(--accent-main); color:#fff; font-weight:700; font-size:12px; margin-bottom:7px;">
+                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Nama Mobil (Contoh: Mobil A / Mobil B):</label>
+                            <input id="setting-vehicle-name" type="text" value="GREYCOAT" oninput="updateVehicleName(this.value)" style="width:100%; padding:7px 10px; border-radius:8px; background:var(--input-bg); border:1px solid var(--border-faint); color:#fff; font-weight:800; font-size:12px; margin-bottom:8px;">
                         </div>
-                        <button onclick="forcePushCloudNow()" style="width:100%; padding:8px; border-radius:10px; background:linear-gradient(90deg,#10b981,#059669); color:#fff; font-size:11px; font-weight:900; border:none;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg> <span>Simpan & Sinkronkan ke HP Sekarang</span></button>
+                        <button onclick="forcePushCloudNow()" style="width:100%; padding:8px; border-radius:10px; background:linear-gradient(90deg,#10b981,#059669); color:#fff; font-size:11px; font-weight:900; border:none;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg> <span>Simpan & Sinkronkan ke HP Sekarang</span></button>
                     </div>
 
-                    <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div style="background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:16px; padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
                         <div>
                             <div style="font-size:12px; font-weight:800; color:#facc15; margin-bottom:10px;">2. TEMA WARNA & PINTASAN</div>
-                            <div id="theme-buttons-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:10px;">
-                                <button id="theme-btn-0" onclick="applyTheme('#0d061f','#150932', 0)" style="padding:10px 8px; border-radius:12px; background:#2e1065; color:#ffffff; font-size:11px; font-weight:800; border:2px solid #C49BFF; box-shadow:0 0 16px rgba(196,155,255,0.65), inset 0 0 8px rgba(196,155,255,0.25); display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; transition:all 0.2s;">
-                                    <span class="theme-check-icon" style="width:16px; height:16px; border-radius:999px; background:#C49BFF; color:#170D2B; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#170D2B" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                    <span>Cyber Purple</span>
+                            <div id="theme-buttons-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:7px; margin-bottom:10px;">
+                                <button id="theme-btn-0" onclick="applyThemeByIndex(0)" style="padding:8px 8px; border-radius:11px; background:linear-gradient(135deg, #2e1065 0%, #170d2b 100%); color:#ffffff; font-size:11px; font-weight:800; border:2px solid #facc15; box-shadow:0 0 14px rgba(196,155,255,0.55); display:flex; align-items:center; justify-content:flex-start; gap:6px; cursor:pointer; transition:all 0.2s;">
+                                    <span class="theme-swatch" style="width:12px; height:12px; border-radius:999px; background:#a855f7; border:1.5px solid #e9d5ff; flex-shrink:0;"></span>
+                                    <span style="flex:1; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Cyber Purple</span>
+                                    <span class="theme-check-icon" style="width:15px; height:15px; border-radius:999px; background:#facc15; color:#09090b; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#09090b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
                                 </button>
-                                <button id="theme-btn-1" onclick="applyTheme('#11052C','#1F0A4D', 1)" style="padding:10px 8px; border-radius:12px; background:#3b0764; color:#d8b4fe; font-size:11px; font-weight:800; border:1px solid rgba(196,155,255,0.28); display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; transition:all 0.2s;">
-                                    <span class="theme-check-icon hidden" style="width:16px; height:16px; border-radius:999px; background:#C49BFF; color:#170D2B; display:none; align-items:center; justify-content:center; flex-shrink:0;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#170D2B" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                    <span>Deep Violet</span>
+                                <button id="theme-btn-1" onclick="applyThemeByIndex(1)" style="padding:8px 8px; border-radius:11px; background:linear-gradient(135deg, #4c0519 0%, #26050d 100%); color:#fecdd3; font-size:11px; font-weight:800; border:1px solid rgba(244,63,94,0.35); display:flex; align-items:center; justify-content:flex-start; gap:6px; cursor:pointer; transition:all 0.2s;">
+                                    <span class="theme-swatch" style="width:12px; height:12px; border-radius:999px; background:#e11d48; border:1.5px solid #fda4af; flex-shrink:0;"></span>
+                                    <span style="flex:1; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Royal Burgundy</span>
+                                    <span class="theme-check-icon hidden" style="width:15px; height:15px; border-radius:999px; background:#facc15; color:#09090b; display:none; align-items:center; justify-content:center; flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#09090b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
                                 </button>
-                                <button id="theme-btn-2" onclick="applyTheme('#090414','#140826', 2)" style="padding:10px 8px; border-radius:12px; background:#1e1b4b; color:#d8b4fe; font-size:11px; font-weight:800; border:1px solid rgba(196,155,255,0.28); display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; transition:all 0.2s;">
-                                    <span class="theme-check-icon hidden" style="width:16px; height:16px; border-radius:999px; background:#C49BFF; color:#170D2B; display:none; align-items:center; justify-content:center; flex-shrink:0;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#170D2B" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                    <span>Midnight Indigo</span>
+                                <button id="theme-btn-2" onclick="applyThemeByIndex(2)" style="padding:8px 8px; border-radius:11px; background:linear-gradient(135deg, #0f2952 0%, #061226 100%); color:#bfdbfe; font-size:11px; font-weight:800; border:1px solid rgba(59,130,246,0.35); display:flex; align-items:center; justify-content:flex-start; gap:6px; cursor:pointer; transition:all 0.2s;">
+                                    <span class="theme-swatch" style="width:12px; height:12px; border-radius:999px; background:#2563eb; border:1.5px solid #93c5fd; flex-shrink:0;"></span>
+                                    <span style="flex:1; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Midnight Navy</span>
+                                    <span class="theme-check-icon hidden" style="width:15px; height:15px; border-radius:999px; background:#facc15; color:#09090b; display:none; align-items:center; justify-content:center; flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#09090b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
                                 </button>
-                                <button id="theme-btn-3" onclick="applyTheme('#1a0524','#2d093d', 3)" style="padding:10px 8px; border-radius:12px; background:#4a044e; color:#d8b4fe; font-size:11px; font-weight:800; border:1px solid rgba(196,155,255,0.28); display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; transition:all 0.2s;">
-                                    <span class="theme-check-icon hidden" style="width:16px; height:16px; border-radius:999px; background:#C49BFF; color:#170D2B; display:none; align-items:center; justify-content:center; flex-shrink:0;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#170D2B" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                    <span>Neon Magenta</span>
+                                <button id="theme-btn-3" onclick="applyThemeByIndex(3)" style="padding:8px 8px; border-radius:11px; background:linear-gradient(135deg, #27272a 0%, #09090b 100%); color:#e4e4e7; font-size:11px; font-weight:800; border:1px solid rgba(161,161,170,0.35); display:flex; align-items:center; justify-content:flex-start; gap:6px; cursor:pointer; transition:all 0.2s;">
+                                    <span class="theme-swatch" style="width:12px; height:12px; border-radius:999px; background:#52525b; border:1.5px solid #d4d4d8; flex-shrink:0;"></span>
+                                    <span style="flex:1; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Stealth Dark</span>
+                                    <span class="theme-check-icon hidden" style="width:15px; height:15px; border-radius:999px; background:#facc15; color:#09090b; display:none; align-items:center; justify-content:center; flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#09090b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                </button>
+                                <button id="theme-btn-4" onclick="applyThemeByIndex(4)" style="padding:8px 8px; border-radius:11px; background:linear-gradient(135deg, #1c1917 0%, #050505 100%); color:#fde68a; font-size:11px; font-weight:800; border:1px solid rgba(245,158,11,0.35); display:flex; align-items:center; justify-content:flex-start; gap:6px; cursor:pointer; transition:all 0.2s;">
+                                    <span class="theme-swatch" style="width:12px; height:12px; border-radius:999px; background:#d97706; border:1.5px solid #fde68a; flex-shrink:0;"></span>
+                                    <span style="flex:1; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Pitch Black</span>
+                                    <span class="theme-check-icon hidden" style="width:15px; height:15px; border-radius:999px; background:#facc15; color:#09090b; display:none; align-items:center; justify-content:center; flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#09090b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                </button>
+                                <button id="theme-btn-5" onclick="applyThemeByIndex(5)" style="padding:8px 8px; border-radius:11px; background:linear-gradient(135deg, #064e3b 0%, #022c22 100%); color:#a7f3d0; font-size:11px; font-weight:800; border:1px solid rgba(16,185,129,0.35); display:flex; align-items:center; justify-content:flex-start; gap:6px; cursor:pointer; transition:all 0.2s;">
+                                    <span class="theme-swatch" style="width:12px; height:12px; border-radius:999px; background:#059669; border:1.5px solid #6ee7b7; flex-shrink:0;"></span>
+                                    <span style="flex:1; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Racing Green</span>
+                                    <span class="theme-check-icon hidden" style="width:15px; height:15px; border-radius:999px; background:#facc15; color:#09090b; display:none; align-items:center; justify-content:center; flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#09090b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
                                 </button>
                             </div>
                         </div>
-                        <button onclick="openMusicSourcePickerModal()" style="width:100%; padding:8px; border-radius:10px; background:rgba(147,51,234,0.4); border:1px solid #a855f7; color:#fff; font-size:11px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> <span>Atur Aplikasi Tab Musik & Spotify</span></button>
+                        <button onclick="openMusicSourcePickerModal()" style="width:100%; padding:8px; border-radius:10px; background:var(--dock-active-bg); border:1px solid var(--accent-main); color:#fff; font-size:11px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> <span>Atur Aplikasi Tab Musik & Spotify</span></button>
                     </div>
 
-                    <div style="background:rgba(20,9,42,0.65); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div style="background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:16px; padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
                         <div>
                             <div style="font-size:12px; font-weight:800; color:#facc15; margin-bottom:10px;">3. KALIBRASI GPS & RESET JARAK</div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#e9d5ff; margin-bottom:8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--text-muted); margin-bottom:8px;">
                                 <span>Kompensasi Kecepatan GPS:</span>
                                 <strong id="gps-offset-label" style="color:#facc15; font-size:14px; font-weight:900;">+0 km/j</strong>
                             </div>
-                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; background:#120726; padding:6px 8px; border-radius:12px; border:1px solid rgba(196,155,255,0.22);">
-                                <button onclick="adjustGpsOffset(-1)" style="width:34px; height:34px; border-radius:9px; background:#170D2B; border:1px solid rgba(196,155,255,0.45); color:#C49BFF; font-size:16px; font-weight:900; display:flex; align-items:center; justify-content:center; cursor:pointer;">-</button>
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; background:var(--input-bg); padding:6px 8px; border-radius:12px; border:1px solid var(--border-subtle);">
+                                <button onclick="adjustGpsOffset(-1)" style="width:34px; height:34px; border-radius:9px; background:var(--squircle-bg); border:1px solid var(--border-subtle); color:var(--accent-light); font-size:16px; font-weight:900; display:flex; align-items:center; justify-content:center; cursor:pointer;">-</button>
                                 <input id="gps-offset-slider" type="range" min="0" max="10" value="0" oninput="setGpsOffsetValue(this.value)" style="flex:1; height:6px;">
-                                <button onclick="adjustGpsOffset(1)" style="width:34px; height:34px; border-radius:9px; background:#170D2B; border:1px solid rgba(196,155,255,0.45); color:#C49BFF; font-size:16px; font-weight:900; display:flex; align-items:center; justify-content:center; cursor:pointer;">+</button>
+                                <button onclick="adjustGpsOffset(1)" style="width:34px; height:34px; border-radius:9px; background:var(--squircle-bg); border:1px solid var(--border-subtle); color:var(--accent-light); font-size:16px; font-weight:900; display:flex; align-items:center; justify-content:center; cursor:pointer;">+</button>
                             </div>
                         </div>
                         <div style="display:flex; gap:6px;">
@@ -743,12 +834,12 @@
             </section>
         </main>
 
-        <!-- 3. DOCK NAVIGASI BAWAH (64px) DENGAN IKON VEKTOR MONOLINE (#C49BFF) -->
+        <!-- 3. DOCK NAVIGASI BAWAH (64px) DENGAN IKON VEKTOR MONOLINE (var(--accent-light)) -->
         <nav class="hu-dock glass-card shrink-0">
-            <button onclick="switchTab('home')" id="dock-home" style="background:rgba(147,51,234,0.38); border:1px solid #a855f7; color:#fff; padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>BERANDA</span></button>
-            <button onclick="switchTab('apps')" id="dock-apps" style="background:transparent; border:1px solid transparent; color:#d8b4fe; padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg> <span>APLIKASI</span></button>
-            <button onclick="switchTab('service')" id="dock-service" style="background:transparent; border:1px solid transparent; color:#d8b4fe; padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> <span>PENGINGAT SERVIS</span></button>
-            <button onclick="switchTab('settings')" id="dock-settings" style="background:transparent; border:1px solid transparent; color:#d8b4fe; padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> <span>SETELAN LAUNCHER</span></button>
+            <button onclick="switchTab('home')" id="dock-home" style="background:var(--dock-active-bg); border:1px solid var(--accent-main); color:#fff; padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>BERANDA</span></button>
+            <button onclick="switchTab('apps')" id="dock-apps" style="background:transparent; border:1px solid transparent; color:var(--text-muted); padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg> <span>APLIKASI</span></button>
+            <button onclick="switchTab('service')" id="dock-service" style="background:transparent; border:1px solid transparent; color:var(--text-muted); padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> <span>PENGINGAT SERVIS</span></button>
+            <button onclick="switchTab('settings')" id="dock-settings" style="background:transparent; border:1px solid transparent; color:var(--text-muted); padding:8px 22px; border-radius:12px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> <span>SETELAN LAUNCHER</span></button>
         </nav>
     </div>
 </div>
@@ -794,10 +885,8 @@
     window.onNativeResumeCheck = function() {
         const savedOffset = parseInt(localStorage.getItem('gc_gps_offset_v13') || '0');
         setGpsOffsetValue(savedOffset);
-        const savedThemeIdx = parseInt(localStorage.getItem('gc_theme_idx') || '0');
-        const savedC1 = localStorage.getItem('gc_theme_c1');
-        const savedC2 = localStorage.getItem('gc_theme_c2');
-        if (savedC1 && savedC2) applyTheme(savedC1, savedC2, savedThemeIdx, true);
+        const savedThemeIdx = parseInt(localStorage.getItem('gc_theme_idx_v16') || '0');
+        applyThemeByIndex(savedThemeIdx, true);
         checkDefaultLauncherStatus();
         syncAudioStateFromBridge();
         setTimeout(() => checkAndShowStartupServiceAlert(false), 450);
@@ -833,7 +922,7 @@
             googleLayer.addTo(mapInstance);
 
             routePolyline = L.polyline([], {
-                color: '#c084fc',
+                color: '#C49BFF',
                 weight: 5,
                 opacity: 0.9
             }).addTo(mapInstance);
@@ -857,10 +946,10 @@
         const btn = document.getElementById('btn-map-theme');
         if (isDarkMap) {
             mapEl.classList.add('map-dark-tiles');
-            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> <span>Gelap</span>';
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> <span>Gelap</span>';
         } else {
             mapEl.classList.remove('map-dark-tiles');
-            btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg> <span>Terang</span>';
+            btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg> <span>Terang</span>';
         }
     }
 
@@ -1019,7 +1108,7 @@
         document.getElementById('speed-value').innerText = calibrated;
         document.getElementById('session-max').innerText = sessionMaxSpeed + ' km/j';
         const ratio = Math.min(1, calibrated / 180);
-        const dashOffset = 283 - (283 * ratio);
+        const dashOffset = calibrated === 0 ? 277 : Math.max(0, 283 - (283 * ratio));
         document.getElementById('speed-arc').style.strokeDashoffset = dashOffset;
         const glowArc = document.getElementById('speed-arc-glow');
         if (glowArc) glowArc.style.strokeDashoffset = dashOffset;
@@ -1182,8 +1271,8 @@
         tripCategory = cat;
         localStorage.setItem('gc_trip_cat', cat);
         document.getElementById('trip-badge').innerText = 'MODE: ' + cat;
-        document.getElementById('cat-pribadi').style.background = cat === 'PRIBADI' ? '#9333ea' : 'rgba(20,9,42,0.6)';
-        document.getElementById('cat-kerja').style.background = cat === 'KERJA' ? '#9333ea' : 'rgba(20,9,42,0.6)';
+        document.getElementById('cat-pribadi').style.background = cat === 'PRIBADI' ? 'var(--btn-primary)' : 'var(--panel-bg)';
+        document.getElementById('cat-kerja').style.background = cat === 'KERJA' ? 'var(--btn-primary)' : 'var(--panel-bg)';
         queueAutoSyncPayload();
     }
 
@@ -1214,7 +1303,7 @@
             eq.classList.remove('eq-active');
             statusTxt.innerText = 'Audio Dijeda';
             statusTxt.style.color = 'rgba(216,180,254,0.75)';
-            btnPlay.style.background = 'linear-gradient(135deg,#a855f7,#7c3aed)';
+            btnPlay.style.background = 'linear-gradient(135deg, var(--accent-main), var(--btn-primary))';
             btnPlay.style.color = '#fff';
         }
     }
@@ -1265,13 +1354,13 @@
             const btn = document.getElementById('src-btn-' + tab);
             if (!btn) return;
             if (tab === activeMusicTab) {
-                btn.style.background = '#9333ea';
+                btn.style.background = 'var(--btn-primary)';
                 btn.style.color = '#fff';
-                btn.style.borderColor = '#c084fc';
+                btn.style.borderColor = 'var(--accent-light)';
             } else {
-                btn.style.background = 'rgba(20,9,42,0.7)';
-                btn.style.color = '#d8b4fe';
-                btn.style.borderColor = 'rgba(168,85,247,0.3)';
+                btn.style.background = 'var(--panel-bg)';
+                btn.style.color = 'var(--text-muted)';
+                btn.style.borderColor = 'var(--border-faint)';
             }
         });
 
@@ -1348,12 +1437,12 @@
             const iconData = (liveApp && liveApp.icon) ? liveApp.icon : item.icon;
             const label = (liveApp && liveApp.name) ? liveApp.name : (item.name || 'Pilih App');
             const iconHtml = (iconData && iconData.startsWith('data:image'))
-                ? `<div style="width:50px; height:50px; border-radius:16px; background:#170D2B; border:1px solid rgba(196,155,255,0.24); display:flex; align-items:center; justify-content:center; padding:6px; box-shadow:inset 0 2px 8px rgba(0,0,0,0.55);"><img src="${iconData}" style="width:100%; height:100%; border-radius:11px; object-fit:contain;" /></div>`
-                : `<div style="width:50px; height:50px; border-radius:16px; background:#170D2B; border:1px solid rgba(196,155,255,0.32); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:900; color:#C49BFF;">${label.charAt(0).toUpperCase()}</div>`;
+                ? `<div style="width:50px; height:50px; border-radius:16px; background:var(--squircle-bg); border:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:center; padding:6px; box-shadow:inset 0 2px 8px rgba(0,0,0,0.55);"><img src="${iconData}" style="width:100%; height:100%; border-radius:11px; object-fit:contain;" /></div>`
+                : `<div style="width:50px; height:50px; border-radius:16px; background:var(--squircle-bg); border:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:900; color:var(--accent-light);">${label.charAt(0).toUpperCase()}</div>`;
             return `
-                <button onclick="handleShortcutClick(${idx})" oncontextmenu="openShortcutPickerModal(${idx}); return false;" style="background:#170D2B; border:1px solid rgba(196,155,255,0.28); border-radius:18px; padding:8px 4px; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:#fff; overflow:hidden; box-shadow:0 6px 16px rgba(0,0,0,0.4);">
+                <button onclick="handleShortcutClick(${idx})" oncontextmenu="openShortcutPickerModal(${idx}); return false;" style="background:var(--squircle-bg); border:1px solid var(--border-subtle); border-radius:18px; padding:8px 4px; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:#fff; overflow:hidden; box-shadow:0 6px 16px rgba(0,0,0,0.4);">
                     ${iconHtml}
-                    <span style="font-size:10px; font-weight:700; color:#f3e8ff; width:95%; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${label}</span>
+                    <span style="font-size:10px; font-weight:700; color:var(--text-muted); width:95%; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${label}</span>
                 </button>
             `;
         }).join('');
@@ -1389,13 +1478,13 @@
         [0, 1, 2, 3].forEach(i => {
             const btn = document.getElementById('slot-tab-' + i);
             if (i === slotIdx) {
-                btn.style.background = '#9333ea';
+                btn.style.background = 'var(--btn-primary)';
                 btn.style.color = '#fff';
-                btn.style.borderColor = '#c084fc';
+                btn.style.borderColor = 'var(--accent-light)';
             } else {
-                btn.style.background = 'rgba(20,9,42,0.7)';
-                btn.style.color = '#d8b4fe';
-                btn.style.borderColor = 'rgba(168,85,247,0.3)';
+                btn.style.background = 'var(--panel-bg)';
+                btn.style.color = 'var(--text-muted)';
+                btn.style.borderColor = 'var(--border-faint)';
             }
         });
         renderPickerAppsGrid();
@@ -1417,13 +1506,13 @@
         ['SPOTIFY', 'MUSIK', 'FM', 'BT'].forEach(t => {
             const btn = document.getElementById('msrc-tab-' + t);
             if (t === tabName) {
-                btn.style.background = '#9333ea';
+                btn.style.background = 'var(--btn-primary)';
                 btn.style.color = '#fff';
-                btn.style.borderColor = '#c084fc';
+                btn.style.borderColor = 'var(--accent-light)';
             } else {
-                btn.style.background = 'rgba(20,9,42,0.7)';
-                btn.style.color = '#d8b4fe';
-                btn.style.borderColor = 'rgba(168,85,247,0.3)';
+                btn.style.background = 'var(--panel-bg)';
+                btn.style.color = 'var(--text-muted)';
+                btn.style.borderColor = 'var(--border-faint)';
             }
         });
         renderPickerAppsGrid();
@@ -1434,11 +1523,11 @@
         grid.innerHTML = installedAppsList.map((a, idx) => {
             const iconHtml = a.icon && a.icon.startsWith('data:image')
                 ? `<img src="${a.icon}" style="width:54px; height:54px; border-radius:14px; object-fit:contain;" />`
-                : `<div style="width:54px; height:54px; border-radius:14px; background:linear-gradient(135deg,#7c3aed,#4338ca); display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:900; color:#fff;">${a.name.charAt(0).toUpperCase()}</div>`;
+                : `<div style="width:54px; height:54px; border-radius:14px; background:linear-gradient(135deg, var(--btn-primary), var(--accent-main)); display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:900; color:#fff;">${a.name.charAt(0).toUpperCase()}</div>`;
             return `
-                <button onclick="assignAppFromPicker(${idx})" style="background:rgba(20,9,42,0.55); border:1px solid rgba(168,85,247,0.25); border-radius:14px; padding:8px; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:#fff;">
+                <button onclick="assignAppFromPicker(${idx})" style="background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:14px; padding:8px; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:#fff;">
                     ${iconHtml}
-                    <span style="font-size:11px; font-weight:700; color:#f3e8ff; max-width:110px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.name}</span>
+                    <span style="font-size:11px; font-weight:700; color:var(--text-muted); max-width:110px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.name}</span>
                 </button>
             `;
         }).join('');
@@ -1480,12 +1569,12 @@
 
     // 8. DAFTAR APLIKASI REAL YANG TERINSTAL DI PERANGKAT
     const CATEGORIES = [
-        { id: 'Semua', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>' },
-        { id: 'Navigasi', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>' },
-        { id: 'Media', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>' },
-        { id: 'Sistem', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' },
-        { id: 'Mobil', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>' },
-        { id: 'Lainnya', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="12" r="1.5"/></svg>' }
+        { id: 'Semua', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>' },
+        { id: 'Navigasi', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>' },
+        { id: 'Media', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>' },
+        { id: 'Sistem', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' },
+        { id: 'Mobil', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>' },
+        { id: 'Lainnya', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="12" r="1.5"/></svg>' }
     ];
     let activeCategory = 'Semua';
     let installedAppsList = [];
@@ -1551,9 +1640,9 @@
         bar.innerHTML = CATEGORIES.map((c, idx) => {
             const active = activeCategory === c.id;
             const style = active
-                ? 'background:linear-gradient(90deg,#7c3aed,#6d28d9); color:#fff; box-shadow:0 4px 14px rgba(124,58,237,0.5);'
+                ? 'background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); color:#fff; box-shadow:0 4px 14px rgba(124,58,237,0.5);'
                 : 'background:transparent; color:rgba(233,213,255,0.75);';
-            const divider = idx < CATEGORIES.length - 1 ? '<span style="width:1px; height:18px; background:rgba(168,85,247,0.2);"></span>' : '';
+            const divider = idx < CATEGORIES.length - 1 ? '<span style="width:1px; height:18px; background:var(--border-faint);"></span>' : '';
             return `<button onclick="filterApps('${c.id}')" style="${style} flex:1; padding:8px 12px; border-radius:999px; border:none; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px;"><span>${c.icon}</span><span>${c.id}</span></button>${divider}`;
         }).join('');
     }
@@ -1573,11 +1662,11 @@
             const safeName = a.name.replace(/'/g, "\'");
             const iconHtml = a.icon && a.icon.startsWith('data:image')
                 ? `<img src="${a.icon}" style="width:64px; height:64px; border-radius:16px; object-fit:contain; filter:drop-shadow(0 6px 14px rgba(0,0,0,0.5));" />`
-                : `<div style="width:64px; height:64px; border-radius:16px; background:linear-gradient(135deg,#7c3aed,#4338ca); display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:900; color:#fff;">${a.name.charAt(0).toUpperCase()}</div>`;
+                : `<div style="width:64px; height:64px; border-radius:16px; background:linear-gradient(135deg, var(--btn-primary), var(--accent-main)); display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:900; color:#fff;">${a.name.charAt(0).toUpperCase()}</div>`;
             return `
                 <button onclick="openApp('${a.pkg}', '${safeName}')" style="background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:6px; color:#fff; width:100%; overflow:hidden;">
                     ${iconHtml}
-                    <span style="font-size:11px; font-weight:700; color:#f3e8ff; max-width:110px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.name}</span>
+                    <span style="font-size:11px; font-weight:700; color:var(--text-muted); max-width:110px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.name}</span>
                 </button>
             `;
         }).join('');
@@ -1597,18 +1686,45 @@
         }
     }
 
-    // 9. BRIGHTNESS & VOLUME HEADUNIT
-    function setBrightness(val) {
-        const v = Math.min(100, Math.max(20, parseInt(val)));
-        document.getElementById('brightness-slider').value = v;
+    // 9. BRIGHTNESS & VOLUME HEADUNIT (SINKRONISASI 2 ARAH KE SISTEM HEADUNIT)
+    let isUserDraggingBrightness = false;
+    let lastUserBrightnessActionTime = 0;
+
+    function updateBrightnessUIFromNative(val) {
+        const parsed = parseInt(val);
+        if (isNaN(parsed)) return;
+        const v = Math.min(100, Math.max(5, parsed));
+        const slider = document.getElementById('brightness-slider');
+        if (slider && parseInt(slider.value) !== v) {
+            slider.value = v;
+        }
         document.getElementById('brightness-val').innerText = v + '%';
-        document.getElementById('brightness-overlay').style.opacity = ((100 - v) / 100) * 0.72;
+        // Gunakan overlay tipis sebagai pendamping backlight hardware agar di bawah 25% tetap nyaman di malam hari
+        const canWriteSys = (window.AndroidBridge && window.AndroidBridge.canWriteSystemSettings)
+            ? window.AndroidBridge.canWriteSystemSettings()
+            : false;
+        const maxOverlay = canWriteSys ? 0.35 : 0.72;
+        document.getElementById('brightness-overlay').style.opacity = ((100 - v) / 100) * maxOverlay;
+    }
+
+    window.onNativeBrightnessChanged = function(pct) {
+        if (!isUserDraggingBrightness && (Date.now() - lastUserBrightnessActionTime > 450)) {
+            updateBrightnessUIFromNative(pct);
+        }
+    };
+
+    function setBrightness(val) {
+        lastUserBrightnessActionTime = Date.now();
+        const v = Math.min(100, Math.max(5, parseInt(val) || 90));
+        updateBrightnessUIFromNative(v);
         if (window.AndroidBridge && window.AndroidBridge.setSystemBrightness) {
             window.AndroidBridge.setSystemBrightness(v);
         }
     }
+
     function adjustBrightness(delta) {
-        setBrightness(parseInt(document.getElementById('brightness-slider').value) + delta);
+        const cur = parseInt(document.getElementById('brightness-slider').value) || 90;
+        setBrightness(cur + delta);
     }
 
     let isMuted = false;
@@ -1627,7 +1743,7 @@
         }
         document.getElementById('volume-val').innerText = v + '%';
         isMuted = (v === 0);
-        document.getElementById('btn-mute').innerHTML = isMuted ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>' : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C49BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+        document.getElementById('btn-mute').innerHTML = isMuted ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>' : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
         if (v > 0) prevVol = v;
     }
 
@@ -1644,6 +1760,12 @@
             if (window.AndroidBridge && window.AndroidBridge.getSystemVolume) {
                 const sysPct = window.AndroidBridge.getSystemVolume();
                 updateVolumeUIFromNative(sysPct);
+            }
+        }
+        if (!isUserDraggingBrightness && (Date.now() - lastUserBrightnessActionTime > 500)) {
+            if (window.AndroidBridge && window.AndroidBridge.getSystemBrightness) {
+                const sysBrt = window.AndroidBridge.getSystemBrightness();
+                updateBrightnessUIFromNative(sysBrt);
             }
         }
     }, 350);
@@ -2015,8 +2137,47 @@
         saveServiceComponentsToStorage();
     }
 
-    // Reset cepat langsung dari tombol "Reset" pada kartu 4 kolom maupun dari Popup Startup
+    let pendingResetCompId = null;
+
+    // Tampilkan dialog konfirmasi ("Reset umur pakai [Nama Komponen] ke 100%?") sebelum mereset
+    function requestResetServiceComponent(compId) {
+        const comp = serviceComponents.find(c => c.id === compId);
+        if (!comp) return;
+        pendingResetCompId = compId;
+        const titleEl = document.getElementById('srv-reset-confirm-title');
+        const descEl = document.getElementById('srv-reset-confirm-desc');
+        if (titleEl) {
+            titleEl.innerText = `Reset umur pakai ${comp.name} ke 100%?`;
+        }
+        if (descEl) {
+            descEl.innerText = `Sisa penggunaan ${comp.name} akan dikembalikan ke 100% (Sehat) dan dicatat pada riwayat servis kendaraan.`;
+        }
+        const modal = document.getElementById('srv-reset-confirm-modal');
+        if (modal) modal.classList.remove('hidden');
+    }
+
+    function cancelResetServiceComponent() {
+        pendingResetCompId = null;
+        const modal = document.getElementById('srv-reset-confirm-modal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    function confirmResetServiceComponent() {
+        if (!pendingResetCompId) return;
+        const targetId = pendingResetCompId;
+        pendingResetCompId = null;
+        const modal = document.getElementById('srv-reset-confirm-modal');
+        if (modal) modal.classList.add('hidden');
+        executeResetServiceComponent(targetId);
+    }
+
+    // Fungsi pemanggil tombol Reset di kartu (membuka dialog konfirmasi terlebih dahulu)
     function quickResetServiceComponent(compId) {
+        requestResetServiceComponent(compId);
+    }
+
+    // Eksekusi reset sesungguhnya setelah dikonfirmasi oleh pengguna
+    function executeResetServiceComponent(compId) {
         const comp = serviceComponents.find(c => c.id === compId);
         if (!comp) return;
 
@@ -2035,7 +2196,7 @@
         comp.history.unshift({
             date: dateFormatted,
             odometerKm: curOdo,
-            note: 'Reset Servis Cepat (Umur dikembalikan ke 100%)'
+            note: 'Reset Servis Terkonfirmasi (Umur dikembalikan ke 100%)'
         });
 
         saveServiceComponentsToStorage();
@@ -2043,13 +2204,12 @@
         if (selectedServiceCompId === compId) {
             refreshServiceDetailUI();
         }
-        // Perbarui juga daftar pada popup startup jika sedang terbuka
         const alertModal = document.getElementById('service-startup-alert-modal');
         if (alertModal && !alertModal.classList.contains('hidden')) {
             checkAndShowStartupServiceAlert(true, true);
         }
         if (typeof queueAutoSyncPayload === 'function') queueAutoSyncPayload(true);
-        showToast('Servis ' + comp.name + ' direset kembali ke 100% (Sehat)');
+        showToast('Umur pakai ' + comp.name + ' berhasil direset ke 100% (Sehat)');
     }
 
     // Render Grid 4 Kolom Kompak Horizontal dengan Tombol Reset & LinearProgressIndicator
@@ -2099,16 +2259,16 @@
                     ? `${formatDotNumber(m.rKm)} km &bull; ${m.rDays} hari`
                     : `Sisa ${formatDotNumber(m.rDays)} hari (${m.estMonthYear})`;
                 return `
-                    <div onclick="openServiceCompDetail('${comp.id}')" style="background:#170D2B; border:1px solid ${m.borderColor}; border-radius:14px; padding:10px 11px; display:flex; flex-direction:column; justify-content:space-between; gap:8px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.35); transition:border-color 0.15s;">
+                    <div onclick="openServiceCompDetail('${comp.id}')" style="background:var(--squircle-bg); border:1px solid ${m.borderColor}; border-radius:14px; padding:10px 11px; display:flex; flex-direction:column; justify-content:space-between; gap:8px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.35); transition:border-color 0.15s;">
                         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                            <div style="width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(196,155,255,0.16); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                            <div style="width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                                 ${getServiceComponentSvg(comp.iconKey, m.color, 26)}
                             </div>
                             <div style="flex:1; min-width:0; overflow:hidden;">
                                 <div style="font-size:12px; font-weight:800; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${comp.name}</div>
                                 <div style="font-size:10px; font-weight:700; color:${m.color}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">${subRemainingText}</div>
                             </div>
-                            <button onclick="event.stopPropagation(); quickResetServiceComponent('${comp.id}')" title="Reset Servis Komponen" style="padding:5px 9px; border-radius:8px; background:rgba(196,155,255,0.14); border:1px solid rgba(196,155,255,0.38); color:#C49BFF; font-size:10px; font-weight:800; flex-shrink:0; cursor:pointer;">
+                            <button onclick="event.stopPropagation(); quickResetServiceComponent('${comp.id}')" title="Reset Servis Komponen" style="padding:5px 9px; border-radius:8px; background:var(--border-subtle); border:1px solid var(--border-subtle); color:var(--accent-light); font-size:10px; font-weight:800; flex-shrink:0; cursor:pointer;">
                                 Reset
                             </button>
                         </div>
@@ -2162,9 +2322,18 @@
             return;
         }
 
+        const countBadge = document.getElementById('srv-startup-count-badge');
+        if (countBadge) {
+            countBadge.innerText = `${criticalItems.length} Komponen Kritis`;
+        }
         subEl.innerText = `Terdapat ${criticalItems.length} komponen berstatus Periksa Segera (Merah: < 500 km / < 17 hari) atau memasuki H-7 penggantian:`;
 
-        listEl.innerHTML = criticalItems.map(({ comp, m }) => {
+        // Jika hanya ada 1 komponen kritis, rentangkan lebar kartu menjadi penuh (1 kolom penuh) agar proporsional dengan tombol di bawahnya
+        listEl.style.gridTemplateColumns = criticalItems.length === 1
+            ? 'minmax(0, 1fr)'
+            : 'repeat(2, minmax(0, 1fr))';
+
+        listEl.innerHTML = criticalItems.map(({ comp, m }, idx) => {
             const badgeText = m.isH7
                 ? `H-${m.rDays} JATUH TEMPO`
                 : (comp.hasKm && m.rKm < 500 ? `KRITIS < 500 KM` : `SEGERA < 17 HARI`);
@@ -2172,8 +2341,13 @@
                 ? `Sisa ${formatDotNumber(m.rKm)} km &bull; Sisa ${m.rDays} hari`
                 : `Sisa ${m.rDays} hari (${m.estMonthYear})`;
 
+            // Jika jumlah item ganjil (> 1) dan ini adalah kartu terakhir, rentangkan penuh 2 kolom agar tidak menggantung setengah lebar
+            const spanFullStyle = (criticalItems.length > 1 && criticalItems.length % 2 === 1 && idx === criticalItems.length - 1)
+                ? 'grid-column: span 2 / span 2;'
+                : '';
+
             return `
-                <div style="background:#170D2B; border:1.5px solid rgba(239,68,68,0.55); border-radius:16px; padding:12px 14px; display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+                <div style="${spanFullStyle} background:var(--squircle-bg); border:1.5px solid rgba(239,68,68,0.55); border-radius:16px; padding:14px 16px; display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
                         <div style="width:40px; height:40px; border-radius:11px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                             ${getServiceComponentSvg(comp.iconKey, '#ef4444', 28)}
@@ -2185,7 +2359,7 @@
                             </div>
                             <div style="font-size:11px; font-weight:700; color:#f87171; margin-top:3px;">${detailText}</div>
                         </div>
-                        <button onclick="quickResetServiceComponent('${comp.id}')" style="padding:7px 11px; border-radius:9px; background:rgba(196,155,255,0.18); border:1px solid #C49BFF; color:#C49BFF; font-size:11px; font-weight:800; flex-shrink:0; cursor:pointer;">
+                        <button onclick="quickResetServiceComponent('${comp.id}')" style="padding:7px 11px; border-radius:9px; background:var(--border-subtle); border:1px solid var(--accent-light); color:var(--accent-light); font-size:11px; font-weight:800; flex-shrink:0; cursor:pointer;">
                             Reset
                         </button>
                     </div>
@@ -2567,36 +2741,210 @@
         setGpsOffsetValue(gpsOffset + delta);
     }
 
-    function applyTheme(c1, c2, activeIdx, silent) {
-        document.documentElement.style.setProperty('--bg-primary', c1);
-        document.documentElement.style.setProperty('--bg-secondary', c2);
-        localStorage.setItem('gc_theme_c1', c1);
-        localStorage.setItem('gc_theme_c2', c2);
-        localStorage.setItem('gc_theme_idx', String(activeIdx ?? 0));
+    const THEME_PRESETS = [
+        {
+            name: 'Cyber Purple',
+            bgDeep: '#070312',
+            bgPrimary: '#0d061f',
+            bgSecondary: '#150932',
+            glow1: 'rgba(124, 58, 237, 0.36)',
+            glow2: 'rgba(168, 85, 247, 0.28)',
+            cardBg: 'rgba(24, 12, 50, 0.72)',
+            cardBorder: 'rgba(168, 85, 247, 0.28)',
+            squircleBg: '#170D2B',
+            inputBg: '#120726',
+            panelBg: 'rgba(20, 9, 42, 0.68)',
+            panelDarkBg: 'rgba(15, 7, 34, 0.92)',
+            btnPrimary: '#9333ea',
+            btnSecondary: 'rgba(88, 28, 135, 0.62)',
+            dockActiveBg: 'rgba(147, 51, 234, 0.38)',
+            accentMain: '#a855f7',
+            accentLight: '#C49BFF',
+            textMuted: '#d8b4fe',
+            borderSubtle: 'rgba(196, 155, 255, 0.32)',
+            borderFaint: 'rgba(168, 85, 247, 0.24)'
+        },
+        {
+            name: 'Royal Burgundy',
+            bgDeep: '#0d0205',
+            bgPrimary: '#1c050b',
+            bgSecondary: '#330915',
+            glow1: 'rgba(190, 18, 60, 0.38)',
+            glow2: 'rgba(225, 29, 72, 0.28)',
+            cardBg: 'rgba(46, 9, 20, 0.75)',
+            cardBorder: 'rgba(244, 63, 94, 0.32)',
+            squircleBg: '#280913',
+            inputBg: '#1d050c',
+            panelBg: 'rgba(36, 7, 16, 0.72)',
+            panelDarkBg: 'rgba(26, 5, 12, 0.92)',
+            btnPrimary: '#be123c',
+            btnSecondary: 'rgba(136, 19, 55, 0.68)',
+            dockActiveBg: 'rgba(190, 18, 60, 0.42)',
+            accentMain: '#e11d48',
+            accentLight: '#FDA4AF',
+            textMuted: '#fecdd3',
+            borderSubtle: 'rgba(253, 164, 175, 0.34)',
+            borderFaint: 'rgba(244, 63, 94, 0.26)'
+        },
+        {
+            name: 'Midnight Navy',
+            bgDeep: '#020712',
+            bgPrimary: '#051026',
+            bgSecondary: '#0a1f44',
+            glow1: 'rgba(29, 78, 216, 0.38)',
+            glow2: 'rgba(56, 189, 248, 0.24)',
+            cardBg: 'rgba(10, 25, 56, 0.76)',
+            cardBorder: 'rgba(59, 130, 246, 0.32)',
+            squircleBg: '#0B1933',
+            inputBg: '#061124',
+            panelBg: 'rgba(8, 20, 44, 0.72)',
+            panelDarkBg: 'rgba(5, 14, 32, 0.92)',
+            btnPrimary: '#1d4ed8',
+            btnSecondary: 'rgba(30, 58, 138, 0.68)',
+            dockActiveBg: 'rgba(29, 78, 216, 0.42)',
+            accentMain: '#3b82f6',
+            accentLight: '#93C5FD',
+            textMuted: '#bfdbfe',
+            borderSubtle: 'rgba(147, 197, 253, 0.34)',
+            borderFaint: 'rgba(59, 130, 246, 0.26)'
+        },
+        {
+            name: 'Stealth Dark',
+            bgDeep: '#040406',
+            bgPrimary: '#090a0f',
+            bgSecondary: '#12151e',
+            glow1: 'rgba(82, 82, 91, 0.32)',
+            glow2: 'rgba(113, 113, 122, 0.20)',
+            cardBg: 'rgba(20, 22, 30, 0.82)',
+            cardBorder: 'rgba(161, 161, 170, 0.25)',
+            squircleBg: '#14171F',
+            inputBg: '#0c0e14',
+            panelBg: 'rgba(16, 18, 24, 0.76)',
+            panelDarkBg: 'rgba(11, 12, 16, 0.94)',
+            btnPrimary: '#3f3f46',
+            btnSecondary: 'rgba(39, 39, 42, 0.78)',
+            dockActiveBg: 'rgba(82, 82, 91, 0.45)',
+            accentMain: '#a1a1aa',
+            accentLight: '#E4E4E7',
+            textMuted: '#d4d4d8',
+            borderSubtle: 'rgba(212, 212, 216, 0.28)',
+            borderFaint: 'rgba(161, 161, 170, 0.20)'
+        },
+        {
+            name: 'Pitch Black',
+            bgDeep: '#000000',
+            bgPrimary: '#040405',
+            bgSecondary: '#0c0b09',
+            glow1: 'rgba(217, 119, 6, 0.25)',
+            glow2: 'rgba(245, 158, 11, 0.16)',
+            cardBg: 'rgba(14, 14, 16, 0.88)',
+            cardBorder: 'rgba(245, 158, 11, 0.26)',
+            squircleBg: '#121110',
+            inputBg: '#090908',
+            panelBg: 'rgba(18, 17, 15, 0.80)',
+            panelDarkBg: 'rgba(8, 8, 8, 0.95)',
+            btnPrimary: '#b45309',
+            btnSecondary: 'rgba(69, 26, 3, 0.72)',
+            dockActiveBg: 'rgba(180, 83, 9, 0.38)',
+            accentMain: '#f59e0b',
+            accentLight: '#FDE68A',
+            textMuted: '#fef3c7',
+            borderSubtle: 'rgba(253, 230, 138, 0.30)',
+            borderFaint: 'rgba(245, 158, 11, 0.22)'
+        },
+        {
+            name: 'Racing Green',
+            bgDeep: '#020b08',
+            bgPrimary: '#041610',
+            bgSecondary: '#08291e',
+            glow1: 'rgba(5, 150, 105, 0.34)',
+            glow2: 'rgba(16, 185, 129, 0.24)',
+            cardBg: 'rgba(8, 35, 26, 0.76)',
+            cardBorder: 'rgba(16, 185, 129, 0.30)',
+            squircleBg: '#082018',
+            inputBg: '#05140f',
+            panelBg: 'rgba(6, 28, 21, 0.72)',
+            panelDarkBg: 'rgba(4, 18, 14, 0.92)',
+            btnPrimary: '#047857',
+            btnSecondary: 'rgba(6, 78, 59, 0.68)',
+            dockActiveBg: 'rgba(5, 150, 105, 0.40)',
+            accentMain: '#10b981',
+            accentLight: '#6EE7B7',
+            textMuted: '#a7f3d0',
+            borderSubtle: 'rgba(110, 231, 183, 0.32)',
+            borderFaint: 'rgba(16, 185, 129, 0.24)'
+        }
+    ];
 
-        [0, 1, 2, 3].forEach(i => {
+    function applyThemeByIndex(idx, silent) {
+        const safeIdx = (idx >= 0 && idx < THEME_PRESETS.length) ? idx : 0;
+        const t = THEME_PRESETS[safeIdx];
+        const root = document.documentElement.style;
+
+        root.setProperty('--bg-deep', t.bgDeep);
+        root.setProperty('--bg-primary', t.bgPrimary);
+        root.setProperty('--bg-secondary', t.bgSecondary);
+        root.setProperty('--glow-1', t.glow1);
+        root.setProperty('--glow-2', t.glow2);
+        root.setProperty('--card-bg', t.cardBg);
+        root.setProperty('--card-border', t.cardBorder);
+        root.setProperty('--squircle-bg', t.squircleBg);
+        root.setProperty('--input-bg', t.inputBg);
+        root.setProperty('--panel-bg', t.panelBg);
+        root.setProperty('--panel-dark-bg', t.panelDarkBg);
+        root.setProperty('--btn-primary', t.btnPrimary);
+        root.setProperty('--btn-secondary', t.btnSecondary);
+        root.setProperty('--dock-active-bg', t.dockActiveBg);
+        root.setProperty('--accent-main', t.accentMain);
+        root.setProperty('--accent-light', t.accentLight);
+        root.setProperty('--text-muted', t.textMuted);
+        root.setProperty('--border-subtle', t.borderSubtle);
+        root.setProperty('--border-faint', t.borderFaint);
+
+        // Update Speedometer SVG Gradients & Route Polyline
+        const s1 = document.getElementById('speed-grad-stop1');
+        const s2 = document.getElementById('speed-grad-stop2');
+        const o1 = document.getElementById('origin-glow-stop1');
+        const o2 = document.getElementById('origin-glow-stop2');
+        const o3 = document.getElementById('origin-glow-stop3');
+        if (s1) s1.setAttribute('stop-color', t.btnPrimary);
+        if (s2) s2.setAttribute('stop-color', t.accentLight);
+        if (o1) o1.setAttribute('stop-color', t.accentLight);
+        if (o2) o2.setAttribute('stop-color', t.btnPrimary);
+        if (o3) o3.setAttribute('stop-color', t.btnPrimary);
+
+        if (typeof routePolyline !== 'undefined' && routePolyline && routePolyline.setStyle) {
+            try { routePolyline.setStyle({ color: t.accentLight }); } catch (_e) {}
+        }
+
+        localStorage.setItem('gc_theme_idx_v16', String(safeIdx));
+
+        for (let i = 0; i < THEME_PRESETS.length; i++) {
             const btn = document.getElementById('theme-btn-' + i);
-            if (!btn) return;
+            if (!btn) continue;
             const checkSpan = btn.querySelector('.theme-check-icon');
-            if (i === (activeIdx ?? 0)) {
-                btn.style.border = '2px solid #C49BFF';
-                btn.style.boxShadow = '0 0 16px rgba(196,155,255,0.65), inset 0 0 8px rgba(196,155,255,0.25)';
+            if (i === safeIdx) {
+                btn.style.border = '2px solid #facc15';
+                btn.style.boxShadow = '0 0 16px ' + t.glow1 + ', inset 0 0 8px rgba(250,204,21,0.22)';
                 btn.style.color = '#ffffff';
                 if (checkSpan) {
                     checkSpan.classList.remove('hidden');
                     checkSpan.style.display = 'inline-flex';
                 }
             } else {
-                btn.style.border = '1px solid rgba(196,155,255,0.28)';
+                btn.style.border = '1px solid rgba(255,255,255,0.16)';
                 btn.style.boxShadow = 'none';
-                btn.style.color = '#d8b4fe';
+                btn.style.color = 'rgba(255,255,255,0.78)';
                 if (checkSpan) {
                     checkSpan.classList.add('hidden');
                     checkSpan.style.display = 'none';
                 }
             }
-        });
-        if (!silent) showToast('Tema Latar Ungu Diperbarui');
+        }
+
+        if (!silent) {
+            showToast('Tema ' + t.name + ' Diterapkan');
+        }
     }
 
     function switchTab(tab) {
@@ -2605,9 +2953,9 @@
             const btn = document.getElementById('dock-' + t);
             if (view) view.classList.toggle('hidden', t !== tab);
             if (btn) {
-                btn.style.background = (t === tab) ? 'rgba(147,51,234,0.38)' : 'transparent';
-                btn.style.borderColor = (t === tab) ? '#a855f7' : 'transparent';
-                btn.style.color = (t === tab) ? '#ffffff' : '#d8b4fe';
+                btn.style.background = (t === tab) ? 'var(--dock-active-bg)' : 'transparent';
+                btn.style.borderColor = (t === tab) ? 'var(--accent-main)' : 'transparent';
+                btn.style.color = (t === tab) ? '#ffffff' : 'var(--text-muted)';
             }
         });
         if (tab === 'apps') {
@@ -2655,15 +3003,16 @@
         loadRealInstalledApps(false);
         const savedOffset = parseInt(localStorage.getItem('gc_gps_offset_v13') || '0');
         setGpsOffsetValue(savedOffset);
-        const savedThemeIdx = parseInt(localStorage.getItem('gc_theme_idx') || '0');
-        const savedC1 = localStorage.getItem('gc_theme_c1');
-        const savedC2 = localStorage.getItem('gc_theme_c2');
-        if (savedC1 && savedC2) applyTheme(savedC1, savedC2, savedThemeIdx, true);
+        const savedThemeIdx = parseInt(localStorage.getItem('gc_theme_idx_v16') || '0');
+        applyThemeByIndex(savedThemeIdx, true);
         checkDefaultLauncherStatus();
         syncAudioStateFromBridge();
         setTimeout(() => checkAndShowStartupServiceAlert(false), 450);
         if (window.AndroidBridge && window.AndroidBridge.getSystemVolume) {
             updateVolumeUIFromNative(window.AndroidBridge.getSystemVolume());
+        }
+        if (window.AndroidBridge && window.AndroidBridge.getSystemBrightness) {
+            updateBrightnessUIFromNative(window.AndroidBridge.getSystemBrightness());
         }
     });
 </script>
