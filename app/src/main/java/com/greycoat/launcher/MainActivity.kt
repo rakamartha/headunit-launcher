@@ -3,6 +3,9 @@ package com.greycoat.launcher
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.Instrumentation
+import android.content.SharedPreferences
+import java.util.concurrent.Executors
 import android.app.role.RoleManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -111,6 +114,15 @@ class MainActivity : Activity(), LocationListener {
     private var connectivityManager: ConnectivityManager? = null
     private var cachedAppsJson: String? = null
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var prefs: SharedPreferences? = null
+    private var trackedVolumePercent: Int = 50
+    private var isFixedStreamHeadunit: Boolean = false
+    private var mcuMaxVolume: Int = 30
+    private var discoveredMcuVolumeKey: String? = null
+    @Volatile private var isInternalVolumeStepping: Boolean = false
+    @Volatile private var lastUserSliderSetTimestamp: Long = 0L
+    private val volumeStepExecutor = Executors.newSingleThreadExecutor()
+
     private var lastPushedVolumePercent: Int = -1
     private var lastPushedBrightnessPercent: Int = -1
     private var hasPromptedWriteSettings: Boolean = false
@@ -147,20 +159,65 @@ class MainActivity : Activity(), LocationListener {
         }
     }
 
-    // 2. BroadcastReceiver Khusus Volume Sistem & Steer Control (SWC) Headunit
+    // 2. BroadcastReceiver Khusus Volume MCU, Steer Control (SWC) & Brightness Headunit
     private val volumeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            pushCurrentSystemVolumeToWeb(force = false)
-            pushCurrentSystemBrightnessToWeb(force = false)
+            if (intent == null) return
+            val act = intent.action ?: ""
+            if (act.contains("BRIGHTNESS", ignoreCase = true) || act.contains("backlight", ignoreCase = true)) {
+                pushCurrentSystemBrightnessToWeb(force = false)
+                return
+            }
+            // Jangan timpa posisi slider jika pengguna baru saja menggeser slider (< 900ms) atau sedang stepping internal
+            if (isInternalVolumeStepping || (SystemClock.uptimeMillis() - lastUserSliderSetTimestamp < 900L)) {
+                return
+            }
+            handleIncomingVolumeBroadcast(intent)
         }
     }
 
-    // 3. ContentObserver untuk memantau perubahan Volume & Brightness dari Sistem / Quick Settings / Kabel Lampu Senja Headunit
+    // 3. ContentObserver untuk mendeteksi otomatis perubahan Volume MCU (SWC) & Brightness di Settings.System / Global
     private val settingsVolumeObserver = object : ContentObserver(mainHandler) {
-        override fun onChange(selfChange: Boolean) {
-            super.onChange(selfChange)
-            pushCurrentSystemVolumeToWeb(force = false)
-            pushCurrentSystemBrightnessToWeb(force = false)
+        override fun onChange(selfChange: Boolean, uri: Uri?) {
+            super.onChange(selfChange, uri)
+            val key = uri?.lastPathSegment ?: ""
+            if (key.contains("brightness", ignoreCase = true) || key.contains("backlight", ignoreCase = true)) {
+                pushCurrentSystemBrightnessToWeb(force = false)
+                return
+            }
+            if (isInternalVolumeStepping || (SystemClock.uptimeMillis() - lastUserSliderSetTimestamp < 900L)) {
+                return
+            }
+            if (key.contains("vol", ignoreCase = true) &&
+                !key.contains("ring", ignoreCase = true) &&
+                !key.contains("alarm", ignoreCase = true) &&
+                !key.contains("notif", ignoreCase = true) &&
+                !key.contains("voice", ignoreCase = true) &&
+                !key.contains("tts", ignoreCase = true)
+            ) {
+                val rawVal = readSettingIntEverywhere(key, -1)
+                if (rawVal >= 0) {
+                    val am = audioManager
+                    val maxStd = am?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
+                    // Abaikan jika ini hanya nilai STREAM_MUSIC standar yang terkunci di 100% (maxStd) pada Headunit
+                    if (isFixedStreamHeadunit && rawVal == maxStd && key.contains("volume_music", ignoreCase = true)) {
+                        return
+                    }
+                    discoveredMcuVolumeKey = key
+                    prefs?.edit()?.putString("mcu_vol_key", key)?.apply()
+                    updateTrackedVolumeFromRawMcu(rawVal, isFromMcuKey = !key.contains("volume_music", ignoreCase = true))
+                    pushCurrentSystemVolumeToWeb(force = true)
+                    return
+                }
+            }
+            // Fallback jika uri null
+            val mcuPct = readMcuHardwareVolumePercent()
+            if (mcuPct != null) {
+                saveTrackedVolumePercent(mcuPct)
+                pushCurrentSystemVolumeToWeb(force = true)
+            } else if (!isFixedStreamHeadunit) {
+                pushCurrentSystemVolumeToWeb(force = false)
+            }
         }
     }
 
@@ -174,11 +231,12 @@ class MainActivity : Activity(), LocationListener {
         } catch (_: Throwable) {}
 
         try {
+            prefs = getSharedPreferences("greycoat_hu_prefs", Context.MODE_PRIVATE)
             audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
             locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
             connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            // Pastikan tombol volume fisik / Steer Control selalu mengatur STREAM_MUSIC
             volumeControlStream = AudioManager.STREAM_MUSIC
+            initHeadunitVolumeState()
         } catch (_: Throwable) {}
 
         val container = FrameLayout(this).apply {
@@ -243,6 +301,162 @@ class MainActivity : Activity(), LocationListener {
         }
     }
 
+    private fun initHeadunitVolumeState() {
+        val p = prefs ?: return
+        trackedVolumePercent = p.getInt("tracked_vol_pct", 50).coerceIn(0, 100)
+        isFixedStreamHeadunit = p.getBoolean("is_fixed_stream_hu", false)
+        mcuMaxVolume = p.getInt("mcu_max_vol", 30).coerceIn(15, 100)
+        discoveredMcuVolumeKey = p.getString("mcu_vol_key", null)
+
+        val sysMax = readSettingIntEverywhere("av_maxvolume", -1)
+        if (sysMax in 15..100) {
+            mcuMaxVolume = sysMax
+            p.edit().putInt("mcu_max_vol", sysMax).apply()
+        }
+
+        // Cek apakah ada nilai volume MCU langsung saat startup
+        val mcuPct = readMcuHardwareVolumePercent()
+        if (mcuPct != null) {
+            isFixedStreamHeadunit = true
+            saveTrackedVolumePercent(mcuPct)
+        } else {
+            val am = audioManager
+            if (am != null) {
+                val maxV = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+                val curV = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+                // Jika STREAM_MUSIC tidak mentok di 100%, baca nilai aslinya (misal di HP atau Headunit non-fixed)
+                if (curV < maxV) {
+                    val stdPct = ((curV * 100.0) / maxV).roundToInt().coerceIn(0, 100)
+                    saveTrackedVolumePercent(stdPct)
+                } else {
+                    // Jika STREAM_MUSIC mentok di maxV (100%), tes apakah dikunci oleh ROM Headunit
+                    isFixedStreamHeadunit = true
+                    p.edit().putBoolean("is_fixed_stream_hu", true).apply()
+                }
+            }
+        }
+    }
+
+    private fun saveTrackedVolumePercent(pct: Int) {
+        val clamped = pct.coerceIn(0, 100)
+        trackedVolumePercent = clamped
+        prefs?.edit()?.putInt("tracked_vol_pct", clamped)?.apply()
+    }
+
+    private fun readSettingIntEverywhere(key: String, defaultVal: Int): Int {
+        if (key.isBlank()) return defaultVal
+        try {
+            val vSys = Settings.System.getInt(contentResolver, key, -9999)
+            if (vSys != -9999) return vSys
+        } catch (_: Throwable) {}
+        try {
+            val vGlob = Settings.Global.getInt(contentResolver, key, -9999)
+            if (vGlob != -9999) return vGlob
+        } catch (_: Throwable) {}
+        return defaultVal
+    }
+
+    private fun updateTrackedVolumeFromRawMcu(rawVal: Int, isFromMcuKey: Boolean) {
+        if (rawVal < 0) return
+        val am = audioManager
+        val stdMax = am?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
+        if (isFromMcuKey || isFixedStreamHeadunit || rawVal > stdMax) {
+            isFixedStreamHeadunit = true
+            prefs?.edit()?.putBoolean("is_fixed_stream_hu", true)?.apply()
+            if (rawVal > mcuMaxVolume && rawVal <= 100) {
+                mcuMaxVolume = if (rawVal <= 36) 36 else if (rawVal <= 40) 40 else 100
+                prefs?.edit()?.putInt("mcu_max_vol", mcuMaxVolume)?.apply()
+            }
+            val pct = ((rawVal * 100.0) / mcuMaxVolume.coerceAtLeast(1)).roundToInt().coerceIn(0, 100)
+            saveTrackedVolumePercent(pct)
+        } else {
+            val pct = ((rawVal * 100.0) / stdMax.coerceAtLeast(1)).roundToInt().coerceIn(0, 100)
+            saveTrackedVolumePercent(pct)
+        }
+    }
+
+    private fun readMcuHardwareVolumePercent(): Int? {
+        try {
+            // 1. Cek parameter AudioManager av_volume (Microntek / HCT / Rockchip Headunit)
+            val am = audioManager
+            if (am != null) {
+                val paramStr = am.getParameters("av_volume=") ?: ""
+                val cleanNum = paramStr.replace("av_volume=", "").trim().toIntOrNull()
+                if (cleanNum != null && cleanNum in 0..100) {
+                    if (cleanNum > mcuMaxVolume) mcuMaxVolume = if (cleanNum <= 40) 40 else 100
+                    return ((cleanNum * 100.0) / mcuMaxVolume).roundToInt().coerceIn(0, 100)
+                }
+            }
+            // 2. Cek key Settings.System / Global yang ditemukan otomatis saat Steer Control ditekan
+            val candidateKeys = mutableListOf<String>()
+            discoveredMcuVolumeKey?.let { candidateKeys.add(it) }
+            candidateKeys.addAll(
+                listOf("av_volume", "mcu_volume", "car_volume", "sys_volume", "tw_volume", "fyt_volume", "xy_volume")
+            )
+            for (k in candidateKeys) {
+                val v = readSettingIntEverywhere(k, -1)
+                if (v in 0..100) {
+                    if (v > mcuMaxVolume) mcuMaxVolume = if (v <= 40) 40 else 100
+                    return ((v * 100.0) / mcuMaxVolume).roundToInt().coerceIn(0, 100)
+                }
+            }
+        } catch (_: Throwable) {}
+        return null
+    }
+
+    private fun handleIncomingVolumeBroadcast(intent: Intent) {
+        try {
+            val act = intent.action ?: ""
+            val extras = intent.extras
+            // 1. Cek extra eksplisit dari broadcast MCU Headunit (Microntek, SYU/FYT, Topway, TS10, XYAuto)
+            if (extras != null) {
+                val mcuKeys = listOf("volume", "vol", "cur_volume", "mcu_vol", "car_vol")
+                for (k in mcuKeys) {
+                    if (extras.containsKey(k)) {
+                        val v = intent.getIntExtra(k, -1)
+                        if (v in 0..100) {
+                            updateTrackedVolumeFromRawMcu(v, isFromMcuKey = true)
+                            pushCurrentSystemVolumeToWeb(force = true)
+                            return
+                        }
+                    }
+                }
+            }
+
+            // 2. Cek VOLUME_CHANGED_ACTION / MASTER_VOLUME_CHANGED_ACTION
+            if (act == "android.media.VOLUME_CHANGED_ACTION" || act == "android.media.MASTER_VOLUME_CHANGED_ACTION") {
+                val streamType = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", AudioManager.STREAM_MUSIC)
+                val newVol = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", -1)
+                val prevVol = intent.getIntExtra("android.media.EXTRA_PREV_VOLUME_STREAM_VALUE", -1)
+                val am = audioManager
+                val maxStd = am?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
+
+                if (newVol >= 0) {
+                    // Jika Headunit mengirim nilai > maxStd (misal 0..30) di dalam EXTRA_VOLUME_STREAM_VALUE
+                    if (newVol > maxStd) {
+                        updateTrackedVolumeFromRawMcu(newVol, isFromMcuKey = true)
+                        pushCurrentSystemVolumeToWeb(force = true)
+                        return
+                    }
+                    // Jika STREAM_MUSIC tidak terkunci di maxStd (berubah nyata), perbarui
+                    if (streamType == AudioManager.STREAM_MUSIC && (newVol < maxStd || (prevVol in 0 until maxStd))) {
+                        val pct = ((newVol * 100.0) / maxStd.coerceAtLeast(1)).roundToInt().coerceIn(0, 100)
+                        saveTrackedVolumePercent(pct)
+                        pushCurrentSystemVolumeToWeb(force = true)
+                        return
+                    }
+                }
+            }
+
+            // 3. Cek apakah nilai MCU di Settings.System berubah
+            val mcuPct = readMcuHardwareVolumePercent()
+            if (mcuPct != null) {
+                saveTrackedVolumePercent(mcuPct)
+                pushCurrentSystemVolumeToWeb(force = true)
+            }
+        } catch (_: Throwable) {}
+    }
+
     // Tangkap langsung tombol Steer Control (SWC) Volume & Media ketika Launcher sedang tampil di layar
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val keyCode = event.keyCode
@@ -250,11 +464,24 @@ class MainActivity : Activity(), LocationListener {
             KeyEvent.KEYCODE_VOLUME_UP,
             KeyEvent.KEYCODE_VOLUME_DOWN,
             KeyEvent.KEYCODE_VOLUME_MUTE -> {
-                val handled = super.dispatchKeyEvent(event)
-                // Segera sinkronkan posisi slider volume di layar WebView mengikuti Steer Control
-                mainHandler.postDelayed({ pushCurrentSystemVolumeToWeb(force = true) }, 15)
-                mainHandler.postDelayed({ pushCurrentSystemVolumeToWeb(force = true) }, 120)
-                return handled
+                if (!isInternalVolumeStepping && event.action == KeyEvent.ACTION_DOWN) {
+                    val mcuPct = readMcuHardwareVolumePercent()
+                    if (mcuPct != null) {
+                        saveTrackedVolumePercent(mcuPct)
+                    } else if (isFixedStreamHeadunit) {
+                        val stepPct = (100.0 / mcuMaxVolume.coerceAtLeast(1)).roundToInt().coerceAtLeast(3)
+                        val updated = when (keyCode) {
+                            KeyEvent.KEYCODE_VOLUME_UP -> (trackedVolumePercent + stepPct).coerceIn(0, 100)
+                            KeyEvent.KEYCODE_VOLUME_DOWN -> (trackedVolumePercent - stepPct).coerceIn(0, 100)
+                            KeyEvent.KEYCODE_VOLUME_MUTE -> if (trackedVolumePercent > 0) 0 else 50
+                            else -> trackedVolumePercent
+                        }
+                        saveTrackedVolumePercent(updated)
+                    }
+                    mainHandler.postDelayed({ pushCurrentSystemVolumeToWeb(force = true) }, 15)
+                    mainHandler.postDelayed({ pushCurrentSystemVolumeToWeb(force = true) }, 140)
+                }
+                return super.dispatchKeyEvent(event)
             }
         }
         return super.dispatchKeyEvent(event)
@@ -268,12 +495,15 @@ class MainActivity : Activity(), LocationListener {
                 addAction("android.media.STREAM_MUTE_CHANGED_ACTION")
                 addAction("android.media.MASTER_MUTE_CHANGED_ACTION")
                 addAction("android.media.RINGER_MODE_CHANGED")
-                // Broadcast khusus berbagai merek Headunit Android (SYU / FYT / Microntek / Topway)
+                // Broadcast khusus berbagai merek Headunit Android (SYU / FYT / Microntek / Topway / TS10 / XYAuto)
                 addAction("com.microntek.volume")
                 addAction("com.microntek.backlight")
                 addAction("com.syu.ms.vol")
                 addAction("com.syu.ms.brightness")
                 addAction("com.syu.ms")
+                addAction("com.tw.volume")
+                addAction("com.ts.main.volume")
+                addAction("com.xyauto.volume")
                 addAction("android.intent.action.VOLUME_CHANGED")
                 addAction("android.intent.action.SCREEN_BRIGHTNESS_CHANGED")
             }
@@ -290,20 +520,38 @@ class MainActivity : Activity(), LocationListener {
                 true,
                 settingsVolumeObserver
             )
+            contentResolver.registerContentObserver(
+                Settings.Global.CONTENT_URI,
+                true,
+                settingsVolumeObserver
+            )
         } catch (_: Throwable) {}
     }
 
     private fun readCurrentSystemVolumePercent(): Int {
         return try {
-            val am = audioManager ?: return 75
+            val am = audioManager ?: return trackedVolumePercent
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && am.isStreamMute(AudioManager.STREAM_MUSIC)) {
                 return 0
             }
-            val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            // 1. Prioritaskan nilai volume MCU Headunit jika tersedia
+            val mcuPct = readMcuHardwareVolumePercent()
+            if (mcuPct != null) {
+                saveTrackedVolumePercent(mcuPct)
+                return mcuPct
+            }
+            // 2. Jika Headunit mengunci STREAM_MUSIC di 100% (Fixed Stream ROM), JANGAN kembalikan 100% palsu!
+            // Kembalikan trackedVolumePercent agar slider tidak pernah mental balik ke 100%!
+            val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
             val curVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
-            if (maxVol > 0) ((curVol * 100.0) / maxVol).roundToInt().coerceIn(0, 100) else 75
+            if (isFixedStreamHeadunit || curVol >= maxVol) {
+                return trackedVolumePercent
+            }
+            val stdPct = ((curVol * 100.0) / maxVol).roundToInt().coerceIn(0, 100)
+            saveTrackedVolumePercent(stdPct)
+            stdPct
         } catch (_: Throwable) {
-            75
+            trackedVolumePercent
         }
     }
 
@@ -318,6 +566,31 @@ class MainActivity : Activity(), LocationListener {
                     null
                 )
             }
+        } catch (_: Throwable) {}
+    }
+
+    private fun writeMcuHardwareVolume(targetPercent: Int) {
+        val mcuVol = ((targetPercent.coerceIn(0, 100) / 100.0) * mcuMaxVolume).roundToInt().coerceIn(0, mcuMaxVolume)
+        try {
+            audioManager?.setParameters("av_volume=$mcuVol")
+        } catch (_: Throwable) {}
+
+        try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.System.canWrite(this)) {
+                discoveredMcuVolumeKey?.let { key ->
+                    try { Settings.System.putInt(contentResolver, key, mcuVol) } catch (_: Throwable) {}
+                }
+                val existingAv = readSettingIntEverywhere("av_volume", -1)
+                if (existingAv >= 0) {
+                    try { Settings.System.putInt(contentResolver, "av_volume", mcuVol) } catch (_: Throwable) {}
+                }
+            }
+        } catch (_: Throwable) {}
+
+        try {
+            sendBroadcast(Intent("com.microntek.setvolume").putExtra("volume", mcuVol))
+            sendBroadcast(Intent("com.syu.ms.vol").putExtra("vol", mcuVol))
+            sendBroadcast(Intent("com.tw.volume").putExtra("volume", mcuVol))
         } catch (_: Throwable) {}
     }
 
@@ -979,14 +1252,22 @@ class MainActivity : Activity(), LocationListener {
             }
         }
 
-        // Atur Volume Sistem Headunit dari Slider (Menggunakan FLAG_SHOW_UI + Fallback Step MCU)
+        // Atur Volume Sistem & MCU Headunit dari Slider (Anti-Mental ke 100% + Emulasi Steer Control)
         @JavascriptInterface
         fun setSystemVolume(percent: Int) {
+            val clamped = percent.coerceIn(0, 100)
+            val prevPct = trackedVolumePercent
+            lastUserSliderSetTimestamp = SystemClock.uptimeMillis()
+            saveTrackedVolumePercent(clamped)
+            lastPushedVolumePercent = clamped
+
+            val prevMcuStep = ((prevPct / 100.0) * mcuMaxVolume).roundToInt().coerceIn(0, mcuMaxVolume)
+            val targetMcuStep = ((clamped / 100.0) * mcuMaxVolume).roundToInt().coerceIn(0, mcuMaxVolume)
+            val deltaMcuSteps = targetMcuStep - prevMcuStep
+
             runOnUiThread {
                 try {
                     val am = audioManager ?: return@runOnUiThread
-                    val clamped = percent.coerceIn(0, 100)
-
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                         if (clamped == 0) {
                             am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_MUTE, AudioManager.FLAG_SHOW_UI)
@@ -996,42 +1277,93 @@ class MainActivity : Activity(), LocationListener {
                     }
 
                     val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
-                    val beforeVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
                     val targetVol = ((clamped / 100.0) * maxVol).roundToInt().coerceIn(0, maxVol)
-
-                    // Gunakan FLAG_SHOW_UI agar MCU amplifier headunit menerima interupsi perubahan volume
                     am.setStreamVolume(AudioManager.STREAM_MUSIC, targetVol, AudioManager.FLAG_SHOW_UI)
 
-                    // Jika MCU Headunit mengunci setStreamVolume langsung, dorong dengan adjustStreamVolume bertahap
                     val afterVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
-                    if (afterVol == beforeVol && targetVol != beforeVol) {
-                        val direction = if (targetVol > beforeVol) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER
-                        val steps = abs(targetVol - beforeVol).coerceAtMost(6)
-                        for (i in 0 until steps) {
-                            am.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, AudioManager.FLAG_SHOW_UI)
-                        }
+                    if (afterVol >= maxVol && targetVol < maxVol) {
+                        isFixedStreamHeadunit = true
+                        prefs?.edit()?.putBoolean("is_fixed_stream_hu", true)?.apply()
                     }
 
-                    lastPushedVolumePercent = readCurrentSystemVolumePercent()
+                    writeMcuHardwareVolume(clamped)
                 } catch (_: Throwable) {}
+            }
+
+            // Jika ROM Headunit mengunci STREAM_MUSIC (MCU Amplifier Mode), kirim step hardware KeyEvent + adjustStreamVolume
+            if (deltaMcuSteps != 0) {
+                volumeStepExecutor.execute {
+                    try {
+                        isInternalVolumeStepping = true
+                        val am = audioManager
+                        val dir = if (deltaMcuSteps > 0) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER
+                        val keyCode = if (deltaMcuSteps > 0) KeyEvent.KEYCODE_VOLUME_UP else KeyEvent.KEYCODE_VOLUME_DOWN
+                        val stepsCount = abs(deltaMcuSteps).coerceAtMost(12)
+                        val inst = Instrumentation()
+
+                        for (i in 0 until stepsCount) {
+                            runOnUiThread {
+                                try {
+                                    am?.adjustStreamVolume(AudioManager.STREAM_MUSIC, dir, AudioManager.FLAG_SHOW_UI)
+                                } catch (_: Throwable) {}
+                            }
+                            try {
+                                inst.sendKeyDownUpSync(keyCode)
+                            } catch (_: Throwable) {}
+                            Thread.sleep(32)
+                        }
+                    } catch (_: Throwable) {
+                    } finally {
+                        lastUserSliderSetTimestamp = SystemClock.uptimeMillis()
+                        isInternalVolumeStepping = false
+                    }
+                }
             }
         }
 
-        // Tombol - dan + Volume menggunakan adjustStreamVolume asli seperti tombol fisik Steer Control
+        // Tombol - dan + Volume menggunakan step MCU & KeyEvent asli seperti tombol fisik Steer Control
         @JavascriptInterface
         fun stepSystemVolume(direction: Int): Int {
-            try {
-                val am = audioManager ?: return 75
-                val adj = if (direction > 0) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && direction > 0 && am.isStreamMute(AudioManager.STREAM_MUSIC)) {
-                    am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
+            return try {
+                val am = audioManager
+                lastUserSliderSetTimestamp = SystemClock.uptimeMillis()
+                val stepPct = (100.0 / mcuMaxVolume.coerceAtLeast(1)).roundToInt().coerceAtLeast(4)
+                val targetPct = if (direction > 0) {
+                    (trackedVolumePercent + stepPct).coerceIn(0, 100)
+                } else {
+                    (trackedVolumePercent - stepPct).coerceIn(0, 100)
                 }
-                am.adjustStreamVolume(AudioManager.STREAM_MUSIC, adj, AudioManager.FLAG_SHOW_UI)
-                val newPct = readCurrentSystemVolumePercent()
-                lastPushedVolumePercent = newPct
-                return newPct
+                saveTrackedVolumePercent(targetPct)
+                lastPushedVolumePercent = targetPct
+
+                val adj = if (direction > 0) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER
+                val keyCode = if (direction > 0) KeyEvent.KEYCODE_VOLUME_UP else KeyEvent.KEYCODE_VOLUME_DOWN
+
+                runOnUiThread {
+                    try {
+                        if (am != null) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && direction > 0 && am.isStreamMute(AudioManager.STREAM_MUSIC)) {
+                                am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
+                            }
+                            am.adjustStreamVolume(AudioManager.STREAM_MUSIC, adj, AudioManager.FLAG_SHOW_UI)
+                        }
+                        writeMcuHardwareVolume(targetPct)
+                    } catch (_: Throwable) {}
+                }
+
+                volumeStepExecutor.execute {
+                    try {
+                        isInternalVolumeStepping = true
+                        Instrumentation().sendKeyDownUpSync(keyCode)
+                    } catch (_: Throwable) {
+                    } finally {
+                        isInternalVolumeStepping = false
+                    }
+                }
+
+                targetPct
             } catch (_: Throwable) {
-                return readCurrentSystemVolumePercent()
+                trackedVolumePercent
             }
         }
 

@@ -391,19 +391,22 @@
                         </div>
                     </div>
 
-                    <!-- Kategori Perjalanan -->
-                    <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px;">
-                        <button onclick="setTripCategory('PRIBADI')" id="cat-pribadi" style="padding:10px; border-radius:12px; font-size:12px; font-weight:800; background:var(--btn-primary); color:#fff; border:none;">MODE PRIBADI</button>
-                        <button onclick="setTripCategory('KERJA')" id="cat-kerja" style="padding:10px; border-radius:12px; font-size:12px; font-weight:800; background:var(--panel-bg); color:var(--text-muted); border:1px solid var(--border-faint);">MODE KERJA</button>
+                    <!-- Tampilan Jam & Tanggal Besar Sekali Lirik (Mengisi Ruang di Atas Mode Pribadi/Kerja) -->
+                    <div style="background:var(--squircle-bg); border:1.5px solid var(--border-subtle); border-radius:14px; padding:10px 15px; display:flex; align-items:center; justify-content:space-between; box-shadow:inset 0 1px 10px var(--border-faint);">
+                        <div style="display:flex; align-items:baseline; gap:4px;">
+                            <span id="hero-clock-text" style="font-size:38px; font-weight:900; line-height:1; color:#ffffff; letter-spacing:0.02em; text-shadow:0 0 18px var(--border-subtle);">09:45</span>
+                            <span id="hero-sec-text" style="font-size:14px; font-weight:800; color:var(--accent-light); letter-spacing:0.04em;">:00</span>
+                        </div>
+                        <div style="text-align:right;">
+                            <div id="hero-day-text" style="font-size:12px; font-weight:900; color:#facc15; text-transform:uppercase; letter-spacing:0.1em;">RABU</div>
+                            <div id="hero-date-text" style="font-size:15px; font-weight:800; color:#ffffff; margin-top:2px;">11 Nov 2026</div>
+                        </div>
                     </div>
 
-                    <!-- Total Akumulasi Jarak (Dimulai dari 0,0 KM saat instalasi baru & Auto-Sync ke HP) -->
-                    <div style="background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.28); border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span id="autosync-dot" style="width:8px; height:8px; border-radius:999px; background:#10b981;"></span>
-                            <span id="autosync-text" style="font-size:11px; font-weight:700; color:#a7f3d0;">Total Jarak (Auto-Sync HP)</span>
-                        </div>
-                        <span id="total-odo-mini" style="font-size:12px; font-weight:900; color:#facc15;">0,0 KM</span>
+                    <!-- Kategori Perjalanan (Digeser ke Paling Bawah Menggantikan Bar Auto-Sync HP) -->
+                    <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px;">
+                        <button onclick="setTripCategory('PRIBADI')" id="cat-pribadi" style="padding:11px 10px; border-radius:12px; font-size:12px; font-weight:800; background:var(--btn-primary); color:#fff; border:none; cursor:pointer;">MODE PRIBADI</button>
+                        <button onclick="setTripCategory('KERJA')" id="cat-kerja" style="padding:11px 10px; border-radius:12px; font-size:12px; font-weight:800; background:var(--panel-bg); color:var(--text-muted); border:1px solid var(--border-faint); cursor:pointer;">MODE KERJA</button>
                     </div>
                 </div>
 
@@ -765,6 +768,14 @@
                             <input id="setting-gmail-input" type="email" placeholder="nama.anda@gmail.com" onchange="saveGmailAccount(this.value)" style="width:100%; padding:7px 10px; border-radius:8px; background:var(--input-bg); border:1px solid var(--accent-main); color:#fff; font-weight:700; font-size:12px; margin-bottom:7px;">
                             <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Nama Mobil (Contoh: Mobil A / Mobil B):</label>
                             <input id="setting-vehicle-name" type="text" value="GREYCOAT" oninput="updateVehicleName(this.value)" style="width:100%; padding:7px 10px; border-radius:8px; background:var(--input-bg); border:1px solid var(--border-faint); color:#fff; font-weight:800; font-size:12px; margin-bottom:8px;">
+                            <!-- Bar Status Auto-Sync HP & Total Jarak (Dipindahkan dari Bawah Speedometer) -->
+                            <div style="background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.28); border-radius:10px; padding:7px 10px; display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                                <div style="display:flex; align-items:center; gap:7px;">
+                                    <span id="autosync-dot" style="width:8px; height:8px; border-radius:999px; background:#10b981;"></span>
+                                    <span id="autosync-text" style="font-size:10px; font-weight:700; color:#a7f3d0;">Auto-Sync HP Aktif</span>
+                                </div>
+                                <span id="total-odo-mini" style="font-size:11px; font-weight:900; color:#facc15;">0,0 KM</span>
+                            </div>
                         </div>
                         <button onclick="forcePushCloudNow()" style="width:100%; padding:8px; border-radius:10px; background:linear-gradient(90deg,#10b981,#059669); color:#fff; font-size:11px; font-weight:900; border:none;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg> <span>Simpan & Sinkronkan ke HP Sekarang</span></button>
                     </div>
@@ -1749,26 +1760,20 @@
 
     // Dipanggil otomatis dari Native Android saat tombol Steer Control (SWC) / Volume sistem berubah
     window.onNativeVolumeChanged = function(pct) {
-        if (!isUserDraggingVolume && (Date.now() - lastUserVolumeActionTime > 400)) {
+        if (!isUserDraggingVolume && (Date.now() - lastUserVolumeActionTime > 950)) {
             updateVolumeUIFromNative(pct);
         }
     };
 
-    // Polling ringan 350ms sebagai jaring pengaman untuk MCU Headunit yang mengubah volume tanpa broadcast standar
+    // Sinkronisasi berkala khusus Brightness (Volume kini murni event-driven dari Steer Control / MCU agar tidak pernah mental balik ke 100%)
     setInterval(() => {
-        if (!isUserDraggingVolume && (Date.now() - lastUserVolumeActionTime > 450)) {
-            if (window.AndroidBridge && window.AndroidBridge.getSystemVolume) {
-                const sysPct = window.AndroidBridge.getSystemVolume();
-                updateVolumeUIFromNative(sysPct);
-            }
-        }
-        if (!isUserDraggingBrightness && (Date.now() - lastUserBrightnessActionTime > 500)) {
+        if (!isUserDraggingBrightness && (Date.now() - lastUserBrightnessActionTime > 600)) {
             if (window.AndroidBridge && window.AndroidBridge.getSystemBrightness) {
                 const sysBrt = window.AndroidBridge.getSystemBrightness();
                 updateBrightnessUIFromNative(sysBrt);
             }
         }
-    }, 350);
+    }, 600);
 
     // Dipanggil saat pengguna menggeser slider volume di layar
     function setVolume(val) {
@@ -2980,8 +2985,23 @@
 
     function updateClock() {
         const now = new Date();
-        document.getElementById('clock-text').innerText = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
-        document.getElementById('date-text').innerText = now.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        const hhmm = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
+        const ss = ':' + String(now.getSeconds()).padStart(2, '0');
+        const shortDate = now.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        const fullDay = now.toLocaleDateString('id-ID', { weekday: 'long' }).toUpperCase();
+        const medDate = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
+        document.getElementById('clock-text').innerText = hhmm;
+        document.getElementById('date-text').innerText = shortDate;
+
+        const heroClock = document.getElementById('hero-clock-text');
+        const heroSec = document.getElementById('hero-sec-text');
+        const heroDay = document.getElementById('hero-day-text');
+        const heroDate = document.getElementById('hero-date-text');
+        if (heroClock) heroClock.innerText = hhmm;
+        if (heroSec) heroSec.innerText = ss;
+        if (heroDay) heroDay.innerText = fullDay;
+        if (heroDate) heroDate.innerText = medDate;
     }
     setInterval(updateClock, 1000);
     updateClock();
