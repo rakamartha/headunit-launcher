@@ -28,20 +28,6 @@ jobs:
 
       - name: Build Debug APK & Inject Automatic OTA Repo
         run: |
-          if [ ! -f "app/build.gradle.kts" ]; then
-            LATEST_ZIP=$(ls -t *.zip 2>/dev/null | head -n 1 || true)
-            if [ -n "$LATEST_ZIP" ]; then
-              unzip -o "$LATEST_ZIP" -d .
-            fi
-          fi
-
-          if [ ! -f "settings.gradle.kts" ]; then
-            SUBDIR=$(ls -dt *Headunit-Launcher-APK-Project* 2>/dev/null | grep -v "\.zip$" | head -n 1 || true)
-            if [ -n "$SUBDIR" ] && [ -d "$SUBDIR" ]; then
-              cd "$SUBDIR"
-            fi
-          fi
-
           if [ -f "app/src/main/assets/index.html" ]; then
             sed -i "s|__AUTO_GITHUB_REPO__|${GITHUB_REPOSITORY}|g" app/src/main/assets/index.html
           fi
