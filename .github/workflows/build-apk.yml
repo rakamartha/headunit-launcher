@@ -65,19 +65,19 @@ jobs:
           name: PangDash-Headunit-Launcher-APK
           path: dist_apk/PangDash-Headunit-Launcher.apk
 
-      - name: Auto-Publish GitHub Release for 1-Click OTA Update
+     - name: Auto-Publish GitHub Release for 1-Click OTA Update
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VER_NAME=$(grep 'versionName =' app/build.gradle.kts | head -n 1 | cut -d'"' -f2 || echo "4.1.0")
-          VER_CODE=$(grep 'versionCode =' app/build.gradle.kts | head -n 1 | awk '{print $3}' || echo "20")
-          TAG_NAME="v${VER_NAME}.${VER_CODE}"
+          VER_NAME=$(grep 'versionName =' app/build.gradle.kts | head -n 1 | cut -d'"' -f2 || echo "1.0")
+          VER_CODE=$(grep 'versionCode =' app/build.gradle.kts | head -n 1 | awk '{print $3}' || echo "100")
+          TAG_NAME="v${VER_NAME}-b${VER_CODE}"
 
-          gh release create "$TAG_NAME" "$GITHUB_WORKSPACE/dist_apk/PangDash-Headunit-Launcher.apk" \
-            --title "PangDash $TAG_NAME" \
-            --notes "Pembaruan otomatis PangDash Headunit Launcher ($TAG_NAME) - Build #${GITHUB_RUN_NUMBER}" \
-            --latest || true
-
-          DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}/PangDash-Headunit-Launcher.apk"
-          curl -s -X POST "https://ntfy.sh/pangdash_global_ota_release_v1" \
-            -d "{\"version\":\"${VER_NAME}.${VER_CODE}\",\"versionCode\":${VER_CODE},\"apkUrl\":\"${DOWNLOAD_URL}\",\"notes\":\"Pembaruan otomatis PangDash (${TAG_NAME}) siap diinstal.\"}" || true
+          if gh release create "$TAG_NAME" "$GITHUB_WORKSPACE/dist_apk/PangDash-Headunit-Launcher.apk" \
+            --title "PangDash v${VER_NAME}" \
+            --notes "Rilis resmi PangDash Headunit Launcher v${VER_NAME} (Build ${VER_CODE})" \
+            --latest; then
+            DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}/PangDash-Headunit-Launcher.apk"
+            curl -s -X POST "https://ntfy.sh/pangdash_ota_channel_v100" \
+              -d "{\"version\":\"${VER_NAME}\",\"versionCode\":${VER_CODE},\"apkUrl\":\"${DOWNLOAD_URL}\",\"notes\":\"Pembaruan resmi PangDash v${VER_NAME} siap diinstal.\"}" || true
+          fi
