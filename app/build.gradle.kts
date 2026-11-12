@@ -37,7 +37,7 @@ android {
         targetSdk = 32
         // CI mengirim versionCodeOverride berbasis nomor build agar OTA selalu naik.
         versionCode = (findProperty("versionCodeOverride") as String?)?.toIntOrNull() ?: 101
-        versionName = "1.2"
+        versionName = "1.3"
     }
 
     signingConfigs {
