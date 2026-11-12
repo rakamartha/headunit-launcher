@@ -56,6 +56,18 @@ jobs:
             echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Validasi keystore & password
+        if: steps.keystore.outputs.signed == 'true'
+        run: |
+          set -euo pipefail
+          if ! OUT=$(keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" 2>&1); then
+            echo "$OUT"
+            echo "::error::Keystore tidak bisa dibuka. Periksa: (1) KEYSTORE_BASE64 harus hasil encode file .p12 yang sama dengan yang passwordnya Anda simpan, (2) KEYSTORE_PASSWORD harus persis sama (tanpa spasi/enter di akhir), (3) KEY_ALIAS harus sesuai (contoh: pangdash)."
+            exit 1
+          fi
+          echo "$OUT"
+          echo "Keystore valid: alias '$KEY_ALIAS' ditemukan."
+
       - name: Inject repo OTA otomatis
         run: |
           if [ -f "app/src/main/assets/index.html" ]; then
