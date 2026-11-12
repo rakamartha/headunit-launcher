@@ -18,7 +18,9 @@
 param(
     [string]$OutDir = (Join-Path $env:USERPROFILE 'PangDash-Keys'),
     [string]$Alias  = 'pangdash',
-    [string]$Dname  = 'CN=PangDash, OU=Greycoat, O=Greycoat, L=Jakarta, ST=DKI Jakarta, C=ID'
+    [string]$Dname  = 'CN=PangDash, OU=Greycoat, O=Greycoat, L=Jakarta, ST=DKI Jakarta, C=ID',
+    # Sengaja tidak default: clipboard bisa berisi data lama dari aplikasi lain.
+    [switch]$CopyToClipboard
 )
 
 $ErrorActionPreference = 'Continue'
@@ -120,9 +122,12 @@ Write-Host ''
 Write-Host 'Membuat nilai base64 untuk GitHub Secret...'
 $base64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($keystorePath))
 [IO.File]::WriteAllText($base64Path, $base64, [Text.Encoding]::ASCII)
+$fileSha256 = (Get-FileHash $keystorePath -Algorithm SHA256).Hash
 
 $copied = $false
-try { Set-Clipboard -Value $base64; $copied = $true } catch { }
+if ($CopyToClipboard) {
+    try { Set-Clipboard -Value $base64; $copied = $true } catch { }
+}
 
 # Sidik jari sertifikat (BUKAN rahasia) berguna untuk memastikan APK rilis
 # ditandatangani keystore yang benar.
@@ -134,11 +139,13 @@ try {
     if ($match.Success) {
         $fingerprint = $match.Groups[1].Value.ToUpperInvariant()
         $lines = @(
-            "SHA-256 : $fingerprint",
-            "Alias   : $Alias",
-            "Dibuat  : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
+            "Fingerprint sertifikat SHA-256 : $fingerprint",
+            "SHA-256 file keystore          : $fileSha256",
+            "Alias                          : $Alias",
+            "Dibuat                         : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
             '',
-            'Bandingkan nilai SHA-256 ini dengan output apksigner verify --print-certs pada APK rilis.'
+            'Fingerprint sertifikat dibandingkan dengan apksigner verify --print-certs pada APK rilis.',
+            'SHA-256 file keystore dibandingkan dengan baris "SHA-256 file keystore" di log GitHub Actions.'
         )
         [IO.File]::WriteAllText($fingerprintPath, ($lines -join [Environment]::NewLine), [Text.Encoding]::ASCII)
     }
@@ -154,10 +161,14 @@ Write-Host "  2) $base64Path"
 if ($fingerprint) {
     Write-Host "  3) $fingerprintPath"
     Write-Host ''
-    Write-Host "Sidik jari SHA-256: $fingerprint" -ForegroundColor Cyan
+    Write-Host "Fingerprint sertifikat SHA-256: $fingerprint" -ForegroundColor Cyan
     Write-Host '(bukan rahasia, boleh disimpan/dicatat untuk verifikasi APK rilis)'
 }
+Write-Host ''
+Write-Host "SHA-256 file keystore: $fileSha256" -ForegroundColor Cyan
+Write-Host 'Nilai ini akan muncul di log GitHub Actions; kalau berbeda, berarti secret KEYSTORE_BASE64 bukan file ini.'
 if ($copied) { Write-Host 'Nilai base64 sudah disalin ke clipboard.' -ForegroundColor Green }
+else { Write-Host 'Base64 TIDAK disalin otomatis. Buka file .base64.txt, Ctrl+A lalu Ctrl+C saat siap paste.' }
 Write-Host ''
 Write-Host 'Langkah selanjutnya:' -ForegroundColor Cyan
 Write-Host "  1. BACKUP file release-keystore.p12 + password ke 2 tempat (drive eksternal / password manager)."

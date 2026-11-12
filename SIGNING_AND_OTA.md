@@ -24,7 +24,18 @@ Script akan:
 1. Mencari `keytool` (JAVA_HOME / Android Studio JBR / PATH).
 2. Meminta password dua kali (input tersembunyi).
 3. Membuat `%USERPROFILE%\PangDash-Keys\release-keystore.p12` (PKCS12, RSA 4096).
-4. Menulis nilai base64 ke `release-keystore.base64.txt` dan menyalinnya ke clipboard.
+4. Menulis nilai base64 ke `release-keystore.base64.txt`, plus file sidik jari
+   (`release-keystore.fingerprint.txt`).
+
+> Base64 **tidak** disalin ke clipboard secara default, karena clipboard bisa
+> berisi data lama dari aplikasi lain. Tambahkan `-CopyToClipboard` bila ingin
+> disalin otomatis, lalu segera paste ke GitHub tanpa menyalin hal lain.
+
+Sebelum menekan **Add secret**, pastikan isi clipboard memang file Anda:
+
+```powershell
+(Get-Clipboard -Raw).Trim().Length   # harus 5884 untuk keystore 4412 byte
+```
 
 ### Cara manual
 
