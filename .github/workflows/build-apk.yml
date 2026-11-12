@@ -60,6 +60,9 @@ jobs:
         if: steps.keystore.outputs.signed == 'true'
         run: |
           set -euo pipefail
+          echo "Keystore hasil decode: $(wc -c < "$KEYSTORE_PATH") byte"
+          echo "SHA-256 file keystore: $(sha256sum "$KEYSTORE_PATH" | cut -d' ' -f1)"
+          echo "Nilai SHA-256 ini ditampilkan agar bisa dibandingkan dengan file .p12 lokal."
           if ! OUT=$(keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" 2>&1); then
             echo "$OUT"
             echo "::error::Keystore tidak bisa dibuka. Periksa: (1) KEYSTORE_BASE64 harus hasil encode file .p12 yang sama dengan yang passwordnya Anda simpan, (2) KEYSTORE_PASSWORD harus persis sama (tanpa spasi/enter di akhir), (3) KEY_ALIAS harus sesuai (contoh: pangdash)."
