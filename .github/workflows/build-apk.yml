@@ -1,0 +1,122 @@
+name: Build, Sign & Publish PangDash OTA APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Isi secrets berikut agar build rilis ditandatangani dengan keystore tetap.
+      # Tanpa KEYSTORE_BASE64, workflow hanya membuat APK debug dan TIDAK mempublikasikan OTA.
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Tentukan versi build
+        run: |
+          set -euo pipefail
+          VER_NAME=$(grep -m1 'versionName =' app/build.gradle.kts | cut -d'"' -f2)
+          # versionCode naik otomatis setiap build agar OTA selalu terdeteksi.
+          VER_CODE=$(( 101 + GITHUB_RUN_NUMBER ))
+          echo "VER_NAME=$VER_NAME" >> "$GITHUB_ENV"
+          echo "VER_CODE=$VER_CODE" >> "$GITHUB_ENV"
+          echo "TAG_NAME=v${VER_NAME}-b${VER_CODE}" >> "$GITHUB_ENV"
+          echo "Build v${VER_NAME} (versionCode ${VER_CODE})"
+
+      - name: Siapkan release keystore
+        id: keystore
+        run: |
+          set -euo pipefail
+          if [ -n "${KEYSTORE_BASE64:-}" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+            test -s "$RUNNER_TEMP/release.jks"
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Secret KEYSTORE_BASE64 belum diset. Build memakai debug signing dan TIDAK dipublikasikan sebagai rilis OTA."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Inject repo OTA otomatis
+        run: |
+          if [ -f "app/src/main/assets/index.html" ]; then
+            sed -i "s|__AUTO_GITHUB_REPO__|${GITHUB_REPOSITORY}|g" app/src/main/assets/index.html
+          fi
+
+      - name: Build APK
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          if [ "${{ steps.keystore.outputs.signed }}" = "true" ]; then
+            ./gradlew assembleRelease -PversionCodeOverride="$VER_CODE" --stacktrace
+            APK="app/build/outputs/apk/release/app-release.apk"
+          else
+            ./gradlew assembleDebug -PversionCodeOverride="$VER_CODE" --stacktrace
+            APK="app/build/outputs/apk/debug/app-debug.apk"
+          fi
+          mkdir -p dist_apk
+          cp "$APK" dist_apk/PangDash-Headunit-Launcher.apk
+          echo "APK_PATH=dist_apk/PangDash-Headunit-Launcher.apk" >> "$GITHUB_ENV"
+          ls -lh "$APK_PATH"
+
+      - name: Verifikasi sertifikat APK
+        if: steps.keystore.outputs.signed == 'true'
+        run: |
+          set -euo pipefail
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)
+          "$APKSIGNER" verify --print-certs "$APK_PATH" | tee apk-certs.txt
+          grep -q "Signer #1 certificate SHA-256 digest" apk-certs.txt
+
+      - name: Upload Compiled APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PangDash-Headunit-Launcher-APK
+          path: dist_apk/PangDash-Headunit-Launcher.apk
+
+      - name: Publish GitHub Release + OTA Relay
+        if: steps.keystore.outputs.signed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          SHA256=$(sha256sum "$APK_PATH" | awk '{print $1}')
+          NOTES="Rilis resmi PangDash Headunit Launcher v${VER_NAME} (Build ${VER_CODE}). SHA256: ${SHA256}"
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" "$APK_PATH" --clobber
+            gh release edit "$TAG_NAME" --title "PangDash v${VER_NAME}" --notes "$NOTES" --latest
+          else
+            gh release create "$TAG_NAME" "$APK_PATH" \
+              --title "PangDash v${VER_NAME}" \
+              --notes "$NOTES" \
+              --latest
+          fi
+
+          DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}/PangDash-Headunit-Launcher.apk"
+          printf '{"version":"%s","versionCode":%s,"apkUrl":"%s","sha256":"%s","notes":"Pembaruan resmi PangDash v%s siap diinstal."}' \
+            "$VER_NAME" "$VER_CODE" "$DOWNLOAD_URL" "$SHA256" "$VER_NAME" > ota_payload.json
+          # Topik relay diturunkan dari repo agar fork tidak saling menimpa (sama dengan logika di index.html).
+          RELAY_REPO=$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/_/g; s/^_+//; s/_+$//')
+          RELAY_TOPIC="pangdash_ota_${RELAY_REPO}"
+          curl -fsS -X POST "https://ntfy.sh/${RELAY_TOPIC}" --data-binary @ota_payload.json || true
+          echo "Published ${DOWNLOAD_URL} (sha256 ${SHA256})"
+          echo "OTA relay topic: ${RELAY_TOPIC}"
