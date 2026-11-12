@@ -91,7 +91,7 @@ jobs:
           mkdir -p dist_apk
           cp "$APK" dist_apk/PangDash-Headunit-Launcher.apk
           echo "APK_PATH=dist_apk/PangDash-Headunit-Launcher.apk" >> "$GITHUB_ENV"
-          ls -lh "$APK_PATH"
+          ls -lh dist_apk/PangDash-Headunit-Launcher.apk
 
       - name: Verifikasi sertifikat APK
         if: steps.keystore.outputs.signed == 'true'
