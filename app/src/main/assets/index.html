@@ -851,10 +851,10 @@
                     <div style="background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:16px; padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
                         <div>
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <span style="font-size:12px; font-weight:800; color:#facc15;">1. AKUN GMAIL & ID MOBIL</span>
-                                <span id="pairing-code-badge" style="font-size:11px; font-weight:900; padding:2px 8px; border-radius:6px; background:rgba(250,204,21,0.2); color:#facc15; border:1px solid rgba(250,204,21,0.45);">ID: GC-0000</span>
+                                <span style="font-size:12px; font-weight:800; color:#facc15;">1. PAIRING & ID MOBIL</span>
+                                <span id="pairing-code-badge" style="font-size:9px; font-weight:900; padding:2px 6px; border-radius:6px; background:rgba(250,204,21,0.2); color:#facc15; border:1px solid rgba(250,204,21,0.45);">ID: PD-0000-0000-0000</span>
                             </div>
-                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Akun Gmail (Untuk Sinkronisasi Otomatis ke HP):</label>
+                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Akun Gmail (opsional, hanya untuk label akun):</label>
                             <input id="setting-gmail-input" type="email" placeholder="nama.anda@gmail.com" onchange="saveGmailAccount(this.value)" style="width:100%; padding:7px 10px; border-radius:8px; background:var(--input-bg); border:1px solid var(--accent-main); color:#fff; font-weight:700; font-size:12px; margin-bottom:7px;">
                             <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Nama Mobil (Contoh: Mobil A / Mobil B):</label>
                             <input id="setting-vehicle-name" type="text" value="PangDash" oninput="updateVehicleName(this.value)" style="width:100%; padding:7px 10px; border-radius:8px; background:var(--input-bg); border:1px solid var(--border-faint); color:#fff; font-weight:800; font-size:12px; margin-bottom:8px;">
@@ -969,6 +969,7 @@
     </div>
 </div>
 
+<script src="sync-secure.js"></script>
 <script>
     // Escape semua data dinamis sebelum dimasukkan ke innerHTML (anti HTML/JS injection).
     function escapeHtml(value) {
@@ -1177,23 +1178,275 @@
         queueAutoSyncPayload(true);
     };
 
-    // Generate Kode Pairing Unik 6 karakter khusus untuk Headunit mobil ini (contoh: GC-4829)
-    let vehiclePairingCode = localStorage.getItem('gc_pairing_code_v8');
-    if (!vehiclePairingCode) {
-        const randNum = Math.floor(1000 + Math.random() * 9000);
-        vehiclePairingCode = 'GC-' + randNum;
-        localStorage.setItem('gc_pairing_code_v8', vehiclePairingCode);
+    // =========================================================================
+    // PAIRING AMAN & SINKRONISASI TERENKRIPSI (PDSync v1)
+    // =========================================================================
+    const PAIRING_SECRET_KEY = 'pd_pairing_secret_v1';
+    let pairingSecret = PDSync.normalizeSecret(localStorage.getItem(PAIRING_SECRET_KEY) || '');
+    if (!PDSync.isValidSecret(pairingSecret)) {
+        pairingSecret = PDSync.generateSecret();
+        localStorage.setItem(PAIRING_SECRET_KEY, pairingSecret);
+    }
+    let vehiclePairingCode = PDSync.formatSecret(pairingSecret);
+    let carId = '';
+    let syncSession = null;
+    let latestStatePayload = null;
+    let serviceEventSource = null;
+    let servicePublishTimer = null;
+    let serviceKmDirty = false;
+    let lastServicePublishAt = 0;
+    let serviceChunkState = null;
+    const seenSyncNonces = new Set();
+
+    function rememberNonce(nonce) {
+        if (!nonce) return false;
+        if (seenSyncNonces.has(nonce)) return true;
+        seenSyncNonces.add(nonce);
+        if (seenSyncNonces.size > 500) {
+            const first = seenSyncNonces.values().next().value;
+            seenSyncNonces.delete(first);
+        }
+        return false;
     }
 
-    function getGmailChannelTopic(email) {
-        if (!email || !email.includes('@')) return '';
-        const clean = email.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-        return 'pangdash_gmail_' + clean;
+    function refreshPairingUI() {
+        const badge = document.getElementById('pairing-code-badge');
+        if (badge) badge.innerText = 'ID: ' + vehiclePairingCode;
+        const auto = document.getElementById('autosync-text');
+        if (auto) auto.innerText = carId ? ('Auto-Sync HP (PD-' + carId + ')') : 'Auto-Sync HP (menyiapkan...)';
     }
 
-    function getCarChannelTopic(code) {
-        const clean = (code || vehiclePairingCode).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-        return 'pangdash_car_' + clean;
+    function localDateIso(date) {
+        const d = date || new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function daysAgoIso(days) {
+        const d = new Date();
+        d.setDate(d.getDate() - Math.max(0, Math.round(days || 0)));
+        return localDateIso(d);
+    }
+
+    function daysBetweenIso(fromIso, toDate) {
+        if (!fromIso) return 0;
+        const from = new Date(fromIso + 'T00:00:00');
+        const to = new Date((toDate || new Date()).getFullYear(), (toDate || new Date()).getMonth(), (toDate || new Date()).getDate());
+        if (isNaN(from.getTime())) return 0;
+        return Math.max(0, Math.round((to.getTime() - from.getTime()) / 86400000));
+    }
+
+    // ---- Payload service ringkas (tanpa advice/history panjang) ----
+    function compactServiceComponent(comp) {
+        // Selalu sertakan definisi komponen agar kedua aplikasi tidak bergantung
+        // pada daftar default yang bisa berbeda versi. Payload besar dipecah otomatis.
+        return {
+            id: comp.id,
+            name: comp.name || comp.id,
+            iconKey: comp.iconKey || 'timing_belt',
+            hasKm: !!comp.hasKm,
+            intervalKm: Number(comp.intervalKm || 0),
+            intervalMonths: Number(comp.intervalMonths || 12),
+            remKm: Number(comp.remKm || 0),
+            remDays: Number(comp.remDays || 0),
+            lastService: comp.lastService || '',
+            lastServiceDateIso: comp.lastServiceDateIso || '',
+            note: String(comp.note || '').slice(0, 160),
+            updatedAt: Number(comp.updatedAt || 0)
+        };
+    }
+
+    function buildServicePayload(components, updatedAt, part, total) {
+        const payload = { components: components, updatedAt: updatedAt };
+        if (part && total > 1) {
+            payload.part = part;
+            payload.total = total;
+        }
+        return payload;
+    }
+
+    async function postNtfy(topic, body) {
+        const res = await fetch('https://ntfy.sh/' + topic, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+            body: body
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+    }
+
+    async function publishServiceSnapshot(force) {
+        if (!syncSession || !navigator.onLine) return;
+        if (typeof serviceComponents === 'undefined') return;
+        const now = Date.now();
+        if (!force && now - lastServicePublishAt < 15000) return;
+        lastServicePublishAt = now;
+        const comps = serviceComponents.map(compactServiceComponent);
+        const updatedAt = now;
+
+        try {
+            const single = await PDSync.seal(syncSession, 'service', buildServicePayload(comps, updatedAt));
+            if (single.length <= 3800) {
+                await postNtfy(syncSession.serviceTopic, single);
+                return;
+            }
+            const chunks = [];
+            let current = [];
+            for (const comp of comps) {
+                current.push(comp);
+                const test = await PDSync.seal(syncSession, 'service', buildServicePayload(current, updatedAt));
+                if (test.length > 3800 && current.length > 1) {
+                    current.pop();
+                    chunks.push(current);
+                    current = [comp];
+                }
+            }
+            if (current.length) chunks.push(current);
+            for (let i = 0; i < chunks.length; i++) {
+                const text = await PDSync.seal(syncSession, 'service', buildServicePayload(chunks[i], updatedAt, i + 1, chunks.length));
+                await postNtfy(syncSession.serviceTopic, text);
+            }
+        } catch (_e) {}
+    }
+
+    function queueServicePublish(immediate) {
+        if (servicePublishTimer) clearTimeout(servicePublishTimer);
+        servicePublishTimer = setTimeout(function () {
+            servicePublishTimer = null;
+            publishServiceSnapshot(true);
+        }, immediate ? 500 : 3000);
+    }
+
+    function applyServiceSnapshot(payload) {
+        if (!payload || !Array.isArray(payload.components)) return false;
+        let changed = false;
+        for (const incoming of payload.components) {
+            if (!incoming || !incoming.id) continue;
+            let comp = serviceComponents.find(c => c.id === incoming.id);
+            if (!comp) {
+                if (!incoming.name) continue;
+                comp = {
+                    id: incoming.id,
+                    name: incoming.name,
+                    iconKey: incoming.iconKey || 'timing_belt',
+                    hasKm: !!incoming.hasKm,
+                    recKm: Number(incoming.intervalKm || 0),
+                    intervalKm: Number(incoming.intervalKm || 0),
+                    remKm: Number(incoming.remKm || 0),
+                    recMonths: Number(incoming.intervalMonths || 12),
+                    intervalMonths: Number(incoming.intervalMonths || 12),
+                    remDays: Number(incoming.remDays || 0),
+                    advice: 'Periksa kondisi ' + incoming.name + ' secara berkala.',
+                    lastService: incoming.lastService || 'Tidak tersedia',
+                    lastServiceDateIso: incoming.lastServiceDateIso || '',
+                    note: incoming.note || '',
+                    history: [],
+                    updatedAt: 0
+                };
+                serviceComponents.push(comp);
+                changed = true;
+            }
+            if (Number(incoming.updatedAt || 0) < Number(comp.updatedAt || 0)) continue;
+            comp.remKm = Number(incoming.remKm ?? comp.remKm);
+            comp.remDays = Number(incoming.remDays ?? comp.remDays);
+            comp.lastService = incoming.lastService || comp.lastService;
+            comp.lastServiceDateIso = incoming.lastServiceDateIso || comp.lastServiceDateIso;
+            comp.note = incoming.note ?? comp.note;
+            // Jangan mengganti timestamp 0 dengan Date.now(): snapshot lama tanpa
+            // updatedAt bisa dianggap lebih baru dan memblokir update berikutnya.
+            comp.updatedAt = Number(incoming.updatedAt || 0);
+            if (incoming.name) comp.name = incoming.name;
+            if (incoming.iconKey) comp.iconKey = incoming.iconKey;
+            if (incoming.hasKm !== undefined) comp.hasKm = !!incoming.hasKm;
+            if (incoming.intervalKm !== undefined) {
+                comp.intervalKm = Number(incoming.intervalKm);
+                comp.recKm = comp.intervalKm;
+            }
+            if (incoming.intervalMonths !== undefined) {
+                comp.intervalMonths = Number(incoming.intervalMonths);
+                comp.recMonths = comp.intervalMonths;
+            }
+            changed = true;
+        }
+        if (!changed) return false;
+        saveServiceComponentsToStorage();
+        renderServiceDashboard();
+        if (selectedServiceCompId && typeof refreshServiceDetailUI === 'function') {
+            refreshServiceDetailUI();
+        }
+        return true;
+    }
+
+    function handleServiceEnvelope(env) {
+        if (!env || !env.payload || rememberNonce(env.nonce)) return;
+        const payload = env.payload;
+        if (payload.part && payload.total > 1) {
+            if (!serviceChunkState || serviceChunkState.updatedAt !== payload.updatedAt) {
+                serviceChunkState = { updatedAt: payload.updatedAt, total: payload.total, parts: {} };
+            }
+            serviceChunkState.parts[payload.part] = payload.components || [];
+            if (Object.keys(serviceChunkState.parts).length < serviceChunkState.total) return;
+            const merged = [];
+            for (let i = 1; i <= serviceChunkState.total; i++) {
+                merged.push(...(serviceChunkState.parts[i] || []));
+            }
+            serviceChunkState = null;
+            applyServiceSnapshot({ components: merged, updatedAt: payload.updatedAt });
+        } else {
+            applyServiceSnapshot(payload);
+        }
+    }
+
+    async function pullServiceHistory() {
+        if (!syncSession || !navigator.onLine) return;
+        try {
+            const res = await fetch('https://ntfy.sh/' + syncSession.serviceTopic + '/json?poll=1&since=all');
+            if (!res.ok) return;
+            const text = await res.text();
+            const lines = text.split('\n').filter(Boolean).slice(-100);
+            for (const line of lines) {
+                try {
+                    const evt = JSON.parse(line);
+                    if (evt.event === 'message' && evt.message) {
+                        const env = await PDSync.open(syncSession, 'service', evt.message);
+                        if (env) handleServiceEnvelope(env);
+                    }
+                } catch (_e) {}
+            }
+        } catch (_e) {}
+    }
+
+    function subscribeServiceTopic() {
+        if (!syncSession || typeof EventSource === 'undefined' || serviceEventSource) return;
+        try {
+            serviceEventSource = new EventSource('https://ntfy.sh/' + syncSession.serviceTopic + '/sse');
+            serviceEventSource.onmessage = async function (e) {
+                try {
+                    const evt = JSON.parse(e.data);
+                    if (!evt.message) return;
+                    const env = await PDSync.open(syncSession, 'service', evt.message);
+                    if (env) handleServiceEnvelope(env);
+                } catch (_e) {}
+            };
+        } catch (_e) {}
+    }
+
+    async function initSecureSync() {
+        if (!PDSync.isSupported()) {
+            console.warn('PDSync: Web Crypto tidak tersedia. Sync aman dinonaktifkan.');
+            const auto = document.getElementById('autosync-text');
+            if (auto) auto.innerText = 'Sync aman tidak didukung WebView ini';
+            return;
+        }
+        try {
+            syncSession = await PDSync.createSession(pairingSecret);
+            carId = syncSession.carId;
+            refreshPairingUI();
+            await pullServiceHistory();
+            subscribeServiceTopic();
+            queueAutoSyncPayload(true);
+            queueServicePublish(true);
+        } catch (e) {
+            console.warn('PDSync init gagal:', e && e.message);
+        }
     }
 
     function renderTotalKm() {
@@ -1330,18 +1583,49 @@
         queueAutoSyncPayload(false);
     };
 
-    function queueAutoSyncPayload(forceImmediate) {
+    function currentMonthKey(date) {
+        const d = date || new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    }
+
+    // Reset agregat bulanan saat berganti bulan. Riwayat trip tetap disimpan.
+    function ensureMonthlyReset(showNotice) {
+        const key = currentMonthKey();
+        const saved = localStorage.getItem('gc_month_key_v1') || '';
+        if (!saved) {
+            localStorage.setItem('gc_month_key_v1', key);
+            return false;
+        }
+        if (saved === key) return false;
+        localStorage.setItem('gc_month_key_v1', key);
+        totalMonthlyKm = 0.0;
+        totalTripsCount = 0;
+        totalDrivingSeconds = 0;
+        longestTripKm = 0.0;
+        activeDaysArr = [];
+        localStorage.setItem('gc_total_km_v6', '0.0');
+        localStorage.setItem('gc_trips_count_v8', '0');
+        localStorage.setItem('gc_total_sec_v8', '0');
+        localStorage.setItem('gc_longest_km_v8', '0.0');
+        localStorage.setItem('gc_active_days_v8', '[]');
+        renderTotalKm();
+        if (showNotice) showToast('Statistik bulan baru dimulai (' + key + ')');
+        return true;
+    }
+
+    function buildStatePayload() {
         upsertCurrentSessionToHistory();
         const odoBase = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
         const avgSpd = totalDrivingSeconds > 60 ? Math.round((totalMonthlyKm / (totalDrivingSeconds / 3600))) : 0;
-        const payload = {
-            pairingCode: vehiclePairingCode,
+        return {
+            v: 1,
+            monthKey: currentMonthKey(),
             gmail: (localStorage.getItem('gc_user_gmail') || '').trim().toLowerCase(),
             vehicleName: localStorage.getItem('gc_vehicle_name') || 'PangDash',
             category: tripCategory,
             sessionDistKm: Number(sessionDistKm.toFixed(2)),
             totalMonthlyKm: Number(totalMonthlyKm.toFixed(2)),
-            tripsCount: Math.max(totalTripsCount, tripHistoryArr.length),
+            tripsCount: Math.max(totalTripsCount, tripHistoryArr.filter(t => (t.dateIso || '').slice(0, 7) === currentMonthKey()).length),
             totalDurationSec: totalDrivingSeconds,
             activeDaysCount: activeDaysArr.length,
             longestTripKm: Number(longestTripKm.toFixed(2)),
@@ -1350,10 +1634,21 @@
             odometerKm: odoBase,
             lastLat: currentLat,
             lastLng: currentLng,
-            tripHistory: tripHistoryArr.slice(0, 35),
-            serviceComponents: typeof serviceComponents !== 'undefined' ? serviceComponents : [],
+            // Dibatasi 12 trip terbaru agar amplop terenkripsi tetap < 4 KB (batas pesan ntfy).
+            tripHistory: tripHistoryArr.slice(0, 12).map(t => ({
+                tripId: t.tripId, dateIso: t.dateIso, startTime: t.startTime, endTime: t.endTime,
+                distanceKm: t.distanceKm, durationMinutes: t.durationMinutes,
+                avgSpeedKmh: t.avgSpeedKmh, maxSpeedKmh: t.maxSpeedKmh,
+                category: t.category, timestamp: t.timestamp
+            })),
             updatedAt: Date.now()
         };
+    }
+
+    function queueAutoSyncPayload(forceImmediate) {
+        ensureMonthlyReset(false);
+        const payload = buildStatePayload();
+        latestStatePayload = payload;
         localStorage.setItem('gc_latest_sync_payload', JSON.stringify(payload));
 
         const now = Date.now();
@@ -1364,44 +1659,43 @@
     }
 
     async function triggerSilentCloudSync() {
-        const payloadRaw = localStorage.getItem('gc_latest_sync_payload');
-        if (!payloadRaw || !navigator.onLine) return;
+        if (!syncSession) return;
+        if (!latestStatePayload) {
+            const raw = localStorage.getItem('gc_latest_sync_payload');
+            if (!raw) return;
+            try { latestStatePayload = JSON.parse(raw); } catch (_e) { return; }
+        }
+        if (!navigator.onLine) return;
         try {
-            // 1. Kirim ke Channel Spesifik Kode Pairing Mobil ini (Tanpa Perlu URL Supabase Manual)
-            const carTopic = getCarChannelTopic(vehiclePairingCode);
-            await fetch('https://ntfy.sh/' + carTopic, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-                body: payloadRaw
-            });
-
-            // 2. Jika Akun Gmail diisi, kirim juga ke Channel Akun Gmail agar HP langsung mendeteksi Mobil A / Mobil B otomatis
-            const userGmail = localStorage.getItem('gc_user_gmail') || '';
-            const gmailTopic = getGmailChannelTopic(userGmail);
-            if (gmailTopic) {
-                await fetch('https://ntfy.sh/' + gmailTopic, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-                    body: payloadRaw
-                });
-            }
-            document.getElementById('autosync-text').innerText = 'Auto-Sync HP (' + vehiclePairingCode + ')';
-        } catch (_e) {}
+            const sealed = await PDSync.seal(syncSession, 'state', latestStatePayload);
+            await postNtfy(syncSession.stateTopic, sealed);
+            const auto = document.getElementById('autosync-text');
+            if (auto) auto.innerText = 'Auto-Sync HP (PD-' + carId + ')';
+            const syncDot = document.getElementById('autosync-dot');
+            if (syncDot) syncDot.style.background = '#10b981';
+        } catch (_e) {
+            const syncDot = document.getElementById('autosync-dot');
+            if (syncDot) syncDot.style.background = '#f59e0b';
+        }
     }
 
     window.onNativeNetworkChange = function(isOnline) {
         const dot = document.getElementById('net-dot');
         const syncDot = document.getElementById('autosync-dot');
         if (isOnline) {
-            dot.style.background = '#10b981';
-            syncDot.style.background = '#10b981';
+            if (dot) dot.style.background = '#10b981';
+            if (syncDot) syncDot.style.background = '#10b981';
             triggerSilentCloudSync();
+            if (syncSession) queueServicePublish(true);
         } else {
-            dot.style.background = '#f59e0b';
-            syncDot.style.background = '#f59e0b';
+            if (dot) dot.style.background = '#f59e0b';
+            if (syncDot) syncDot.style.background = '#f59e0b';
         }
     };
-    setInterval(triggerSilentCloudSync, 30000);
+    setInterval(function () {
+        ensureMonthlyReset(true);
+        triggerSilentCloudSync();
+    }, 30000);
 
     function setTripCategory(cat) {
         tripCategory = cat;
@@ -2072,6 +2366,36 @@
         localStorage.setItem('gc_service_components_v13', JSON.stringify(serviceComponents));
     }
 
+    // Konversi tanggal servis lama ("12 Nov 2026 (12.345 km)") menjadi ISO
+    // supaya sisa hari bisa dihitung ulang setiap hari, bukan nilai statis.
+    function parseIndoDateToIso(text) {
+        if (!text) return '';
+        const m = String(text).match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agu|Sep|Okt|Nov|Des)\s+(\d{4})/i);
+        if (!m) return '';
+        const months = { jan: 1, feb: 2, mar: 3, apr: 4, mei: 5, jun: 6, jul: 7, agu: 8, sep: 9, okt: 10, nov: 11, des: 12 };
+        const mm = months[m[2].toLowerCase()];
+        if (!mm) return '';
+        return m[3] + '-' + String(mm).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0');
+    }
+
+    function migrateServiceComponents() {
+        let changed = false;
+        for (const comp of serviceComponents) {
+            if (!Array.isArray(comp.history)) { comp.history = []; changed = true; }
+            if (typeof comp.updatedAt !== 'number') { comp.updatedAt = 0; changed = true; }
+            if (comp.lastServiceDateIso === undefined) {
+                comp.lastServiceDateIso = parseIndoDateToIso(comp.lastService);
+                changed = true;
+            }
+            if (!comp.remDays && comp.intervalMonths) {
+                comp.remDays = Math.round(comp.intervalMonths * 30.4375);
+                changed = true;
+            }
+        }
+        if (changed) saveServiceComponentsToStorage();
+    }
+    migrateServiceComponents();
+
     let selectedServiceCompId = null;
     let editTempIntervalKm = 50000;
     let editTempRemKm = 45600;
@@ -2095,9 +2419,18 @@
         return '#22c55e';
     }
 
+    function remainingDaysForComp(comp) {
+        const totalDays = Math.max(1, Math.round((comp.intervalMonths || comp.recMonths || 12) * 30.4375));
+        if (comp.lastServiceDateIso) {
+            const elapsed = daysBetweenIso(comp.lastServiceDateIso, new Date());
+            return Math.max(0, totalDays - elapsed);
+        }
+        return Math.max(0, Math.round(comp.remDays ?? totalDays));
+    }
+
     function getCompMetrics(comp) {
         const totalDays = Math.max(1, Math.round((comp.intervalMonths || 12) * 30.4375));
-        const rDays = Math.max(0, Math.round(comp.remDays ?? totalDays));
+        const rDays = remainingDaysForComp(comp);
         const timePct = Math.min(100, Math.max(0, Math.round((rDays / totalDays) * 100)));
 
         let kmPct = 100;
@@ -2267,6 +2600,10 @@
             }
         }
         saveServiceComponentsToStorage();
+        // Kirim snapshot servis secara berkala (maks. tiap 20 detik) saat mobil berjalan.
+        if (syncSession && navigator.onLine && Date.now() - lastServicePublishAt > 20000) {
+            publishServiceSnapshot(false);
+        }
     }
 
     let pendingResetCompId = null;
@@ -2323,10 +2660,13 @@
         }
         comp.remDays = Math.round((comp.intervalMonths || comp.recMonths || 12) * 30.4375);
         comp.lastService = `${dateFormatted} (${formatDotNumber(curOdo)} km)`;
+        comp.lastServiceDateIso = localDateIso(now);
+        comp.updatedAt = now.getTime();
 
         if (!Array.isArray(comp.history)) comp.history = [];
         comp.history.unshift({
             date: dateFormatted,
+            dateIso: localDateIso(now),
             odometerKm: curOdo,
             note: 'Reset Servis Terkonfirmasi (Umur dikembalikan ke 100%)'
         });
@@ -2340,7 +2680,8 @@
         if (alertModal && !alertModal.classList.contains('hidden')) {
             checkAndShowStartupServiceAlert(true, true);
         }
-        if (typeof queueAutoSyncPayload === 'function') queueAutoSyncPayload(true);
+        queueServicePublish(true);
+        queueAutoSyncPayload(true);
         showToast('Umur pakai ' + comp.name + ' berhasil direset ke 100% (Sehat)');
     }
 
@@ -2727,21 +3068,29 @@
         comp.intervalMonths = Math.max(1, parseInt(editTempIntervalMonths || comp.intervalMonths));
         const maxDays = Math.round(comp.intervalMonths * 30.4375);
         comp.remDays = Math.min(maxDays, Math.max(0, parseInt(editTempRemDays || 0)));
+        // Selaraskan tanggal servis agar countdown harian menghasilkan sisa hari yang dipilih.
+        comp.lastServiceDateIso = comp.remDays >= maxDays
+            ? localDateIso(new Date())
+            : daysAgoIso(maxDays - comp.remDays);
+        comp.updatedAt = Date.now();
 
         saveServiceComponentsToStorage();
         document.getElementById('srv-card-edit-mode').classList.add('hidden');
         document.getElementById('srv-card-view-mode').classList.remove('hidden');
         refreshServiceDetailUI();
         renderServiceDashboard();
-        if (typeof queueAutoSyncPayload === 'function') queueAutoSyncPayload(true);
+        queueServicePublish(true);
+        queueAutoSyncPayload(true);
         showToast('Interval & sisa umur ' + comp.name + ' berhasil disimpan');
     }
 
     function saveCurrentServiceNote(val) {
         const comp = serviceComponents.find(c => c.id === selectedServiceCompId);
         if (!comp) return;
-        comp.note = val;
+        comp.note = String(val || '').slice(0, 160);
+        comp.updatedAt = Date.now();
         saveServiceComponentsToStorage();
+        queueServicePublish(false);
     }
 
     function markComponentServicedNow() {
@@ -2807,14 +3156,17 @@
             remDays: Math.round(moVal * 30.4375),
             advice: 'Periksa kondisi ' + name + ' di setiap servis berkala dan ganti sesuai interval.',
             lastService: 'Tidak tersedia',
+            lastServiceDateIso: '',
             note: '',
-            history: []
+            history: [],
+            updatedAt: Date.now()
         };
         serviceComponents.push(newComp);
         saveServiceComponentsToStorage();
         closeAddServiceCompModal();
         renderServiceDashboard();
-        if (typeof queueAutoSyncPayload === 'function') queueAutoSyncPayload(true);
+        queueServicePublish(true);
+        queueAutoSyncPayload(true);
         showToast('Komponen ' + name + ' ditambahkan');
     }
 
@@ -2841,7 +3193,7 @@
         const clean = (email || '').trim().toLowerCase();
         localStorage.setItem('gc_user_gmail', clean);
         queueAutoSyncPayload(true);
-        showToast('Akun Gmail (' + (clean || 'Kosong') + ') disimpan & disinkronkan!');
+        showToast('Label akun (' + (clean || 'Kosong') + ') disimpan');
     }
 
     function forcePushCloudNow() {
@@ -3378,6 +3730,7 @@
         document.getElementById('setting-gmail-input').value = savedGmail;
         const savedOdo = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
         document.getElementById('odo-input').value = savedOdo;
+        ensureMonthlyReset(false);
         renderServiceDashboard();
         renderTotalKm();
         initLiveMap();
@@ -3397,6 +3750,8 @@
         if (window.AndroidBridge && window.AndroidBridge.getSystemBrightness) {
             updateBrightnessUIFromNative(window.AndroidBridge.getSystemBrightness());
         }
+        // Sesi enkripsi disiapkan setelah seluruh fungsi & serviceComponents siap.
+        setTimeout(() => { initSecureSync(); }, 250);
     });
 </script>
 </body>
