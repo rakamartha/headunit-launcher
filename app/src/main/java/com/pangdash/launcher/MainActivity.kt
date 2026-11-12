@@ -72,6 +72,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
+import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -144,20 +145,31 @@ class MainActivity : Activity(), LocationListener {
     
     @Volatile private var pendingOtaApkFile: File? = null
     @Volatile private var isOtaDownloadingNow: Boolean = false
+    @Volatile private var otaSessionToken: String? = null
 
     private val otaDownloadReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == "com.pangdash.launcher.OTA_INSTALL_COMMIT") {
+                // Token acak per sesi: membuktikan broadcast berasal dari PendingIntent
+                // PackageInstaller milik aplikasi ini, bukan dari aplikasi lain.
+                val token = intent.getStringExtra("pangdash_ota_token")
+                if (token == null || token != otaSessionToken) return
+
                 val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
                 if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
                     val confirmIntent = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
-                    if (confirmIntent != null) {
-                        if (!isSafeInstallerIntent(confirmIntent)) {
-                            pushOtaStatusToWeb(0, "ERROR", "Permintaan instalasi ditolak: intent tidak dikenal.")
-                            return
-                        }
+                    if (confirmIntent == null) {
+                        pushOtaStatusToWeb(0, "ERROR", "Installer tidak mengirim intent konfirmasi.")
+                        return
+                    }
+                    // Intent berasal dari sesi PackageInstaller yang kita buat sendiri.
+                    // Beberapa headunit memakai action/komponen non-standar, jadi jangan
+                    // memfilter based on action; cukup jalankan dan tangani kegagalannya.
+                    try {
                         confirmIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         startActivity(confirmIntent)
+                    } catch (e: Throwable) {
+                        pushOtaStatusToWeb(0, "ERROR", "Gagal membuka installer: ${e.message}")
                     }
                 } else if (status != PackageInstaller.STATUS_SUCCESS) {
                     val msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "Gagal memasang paket"
@@ -165,21 +177,6 @@ class MainActivity : Activity(), LocationListener {
                 }
             }
         }
-    }
-
-    /**
-     * Validasi intent konfirmasi dari PackageInstaller. Mencegah intent redirection
-     * bila broadcast OTA diterima dari aplikasi lain pada Android < 13.
-     */
-    private fun isSafeInstallerIntent(intent: Intent): Boolean {
-        val action = intent.action ?: return false
-        if (action != Intent.ACTION_VIEW && action != Intent.ACTION_INSTALL_PACKAGE) return false
-        val pkg = intent.component?.packageName?.lowercase()
-        if (pkg != null && (pkg.contains("installer") || pkg.contains("permissioncontroller") || pkg.contains("settings"))) {
-            return true
-        }
-        val scheme = intent.data?.scheme?.lowercase()
-        return scheme == "content" || scheme == "file"
     }
 
     private fun pushOtaStatusToWeb(pct: Int, state: String, message: String) {
@@ -241,8 +238,11 @@ class MainActivity : Activity(), LocationListener {
                     }
                 }
 
+                val sessionToken = UUID.randomUUID().toString()
+                otaSessionToken = sessionToken
                 val callbackIntent = Intent("com.pangdash.launcher.OTA_INSTALL_COMMIT").apply {
                     setPackage(packageName)
+                    putExtra("pangdash_ota_token", sessionToken)
                 }
                 val pendingFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
