@@ -1,10 +1,10 @@
 /**
- * GREYCOAT CLOUD SYNC ENGINE (Headunit <-> Cloud <-> Companion Phone App)
+ * PANGDASH CLOUD SYNC ENGINE (Headunit <-> Cloud <-> Companion Phone App)
  * Mendukung Offline-First Queue (localStorage) + Realtime Sync ke Firebase / Supabase REST API
  */
-export const GreycoatSyncEngine = {
+export const PangDashSyncEngine = {
     config: {
-        vehicleId: "GREYCOAT-01",
+        vehicleId: "PANGDASH-01",
         vehicleName: "PangDash",
         // Ganti dengan URL Firebase Realtime DB / Firestore / Supabase Project Anda
         endpointUrl: "https://YOUR-PROJECT-ID.firebaseio.com",
@@ -36,9 +36,9 @@ export const GreycoatSyncEngine = {
         };
 
         // 1. Simpan selalu ke antrean lokal (Offline-First) agar data aman walau tanpa sinyal
-        const queue = JSON.parse(localStorage.getItem("greycoat_sync_queue") || "[]");
+        const queue = JSON.parse(localStorage.getItem("pangdash_sync_queue") || "[]");
         queue.push(payload);
-        localStorage.setItem("greycoat_sync_queue", JSON.stringify(queue));
+        localStorage.setItem("pangdash_sync_queue", JSON.stringify(queue));
 
         // 2. Jika Headunit terhubung ke internet (Wi-Fi tethering / SIM 4G), langsung kirim ke Cloud
         if (navigator.onLine) {
@@ -49,7 +49,7 @@ export const GreycoatSyncEngine = {
 
     // Kirim semua antrean perjalanan yang tertunda saat Headunit mendapat koneksi internet
     async flushOfflineQueue() {
-        const queue = JSON.parse(localStorage.getItem("greycoat_sync_queue") || "[]");
+        const queue = JSON.parse(localStorage.getItem("pangdash_sync_queue") || "[]");
         if (queue.length === 0) return { synced: true, count: 0 };
 
         try {
@@ -71,7 +71,7 @@ export const GreycoatSyncEngine = {
                 //     })
                 // });
             }
-            localStorage.setItem("greycoat_sync_queue", "[]");
+            localStorage.setItem("pangdash_sync_queue", "[]");
             return { synced: true, count: queue.length };
         } catch (err) {
             console.warn("Masih offline, data tetap aman di antrean lokal:", err);
@@ -82,5 +82,5 @@ export const GreycoatSyncEngine = {
 
 // Otomatis sinkronisasi begitu Headunit mendeteksi koneksi internet aktif
 window.addEventListener("online", () => {
-    GreycoatSyncEngine.flushOfflineQueue();
+    PangDashSyncEngine.flushOfflineQueue();
 });

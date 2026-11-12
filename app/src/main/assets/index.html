@@ -1188,12 +1188,12 @@
     function getGmailChannelTopic(email) {
         if (!email || !email.includes('@')) return '';
         const clean = email.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-        return 'greycoat_gmail_' + clean;
+        return 'pangdash_gmail_' + clean;
     }
 
     function getCarChannelTopic(code) {
         const clean = (code || vehiclePairingCode).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-        return 'greycoat_car_' + clean;
+        return 'pangdash_car_' + clean;
     }
 
     function renderTotalKm() {
@@ -3367,7 +3367,7 @@
         document.getElementById('pairing-code-badge').innerText = 'ID: ' + vehiclePairingCode;
         document.getElementById('autosync-text').innerText = 'Auto-Sync HP (' + vehiclePairingCode + ')';
         let rawSavedName = localStorage.getItem('gc_vehicle_name');
-        if (!rawSavedName || rawSavedName.toUpperCase() === 'GREYCOAT') {
+        if (!rawSavedName || rawSavedName.toUpperCase() === 'PANGDASH') {
             rawSavedName = 'PangDash';
             localStorage.setItem('gc_vehicle_name', 'PangDash');
         }

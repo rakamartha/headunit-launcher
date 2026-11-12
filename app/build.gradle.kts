@@ -28,11 +28,11 @@ val releaseKeystorePath = signingValue("KEYSTORE_PATH")
 val hasReleaseKeystore = !releaseKeystorePath.isNullOrBlank() && file(releaseKeystorePath).exists()
 
 android {
-    namespace = "com.greycoat.launcher"
+    namespace = "com.pangdash.launcher"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.greycoat.launcher"
+        applicationId = "com.pangdash.launcher"
         minSdk = 24
         targetSdk = 32
         // CI mengirim versionCodeOverride berbasis nomor build agar OTA selalu naik.

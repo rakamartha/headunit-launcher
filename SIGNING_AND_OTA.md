@@ -47,7 +47,7 @@ $plain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR(
   -keystore release-keystore.p12 -storetype PKCS12 `
   -alias pangdash -keyalg RSA -keysize 4096 -validity 10000 `
   -storepass $plain -keypass $plain `
-  -dname "CN=PangDash, OU=Greycoat, O=Greycoat, L=Jakarta, ST=DKI Jakarta, C=ID"
+  -dname "CN=PangDash, OU=PangDash, O=PangDash, L=Jakarta, ST=DKI Jakarta, C=ID"
 ```
 
 Simpan file `release-keystore.p12` + password di tempat aman (password manager /

@@ -1,4 +1,4 @@
-package com.greycoat.launcher
+package com.pangdash.launcher
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -147,7 +147,7 @@ class MainActivity : Activity(), LocationListener {
 
     private val otaDownloadReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == "com.greycoat.launcher.OTA_INSTALL_COMMIT") {
+            if (intent?.action == "com.pangdash.launcher.OTA_INSTALL_COMMIT") {
                 val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
                 if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
                     val confirmIntent = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
@@ -241,7 +241,7 @@ class MainActivity : Activity(), LocationListener {
                     }
                 }
 
-                val callbackIntent = Intent("com.greycoat.launcher.OTA_INSTALL_COMMIT").apply {
+                val callbackIntent = Intent("com.pangdash.launcher.OTA_INSTALL_COMMIT").apply {
                     setPackage(packageName)
                 }
                 val pendingFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -422,7 +422,7 @@ class MainActivity : Activity(), LocationListener {
         } catch (_: Throwable) {}
 
         try {
-            prefs = getSharedPreferences("greycoat_hu_prefs", Context.MODE_PRIVATE)
+            prefs = getSharedPreferences("pangdash_hu_prefs", Context.MODE_PRIVATE)
             audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
             locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
             connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
@@ -504,9 +504,9 @@ class MainActivity : Activity(), LocationListener {
         registerAudioPlaybackWatcher()
         registerAutoNetworkSync()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(otaDownloadReceiver, IntentFilter("com.greycoat.launcher.OTA_INSTALL_COMMIT"), Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(otaDownloadReceiver, IntentFilter("com.pangdash.launcher.OTA_INSTALL_COMMIT"), Context.RECEIVER_NOT_EXPORTED)
         } else {
-            registerReceiver(otaDownloadReceiver, IntentFilter("com.greycoat.launcher.OTA_INSTALL_COMMIT"))
+            registerReceiver(otaDownloadReceiver, IntentFilter("com.pangdash.launcher.OTA_INSTALL_COMMIT"))
         }
 
         window?.decorView?.post {

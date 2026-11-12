@@ -1,6 +1,6 @@
 # =============================================================================
 #  buat-keystore.ps1
-#  Membuat keystore rilis PangDash / Greycoat Companion sekaligus menyiapkan
+#  Membuat keystore rilis PangDash / PangLink sekaligus menyiapkan
 #  nilai base64 untuk GitHub Secrets.
 #
 #  Script ini HANYA bekerja di komputer Anda. Tidak ada data yang dikirim
@@ -18,7 +18,7 @@
 param(
     [string]$OutDir = (Join-Path $env:USERPROFILE 'PangDash-Keys'),
     [string]$Alias  = 'pangdash',
-    [string]$Dname  = 'CN=PangDash, OU=Greycoat, O=Greycoat, L=Jakarta, ST=DKI Jakarta, C=ID',
+    [string]$Dname  = 'CN=PangDash, OU=PangDash, O=PangDash, L=Jakarta, ST=DKI Jakarta, C=ID',
     # Sengaja tidak default: clipboard bisa berisi data lama dari aplikasi lain.
     [switch]$CopyToClipboard
 )
