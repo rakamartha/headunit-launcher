@@ -331,6 +331,60 @@
                     <button onclick="dismissDefaultLauncherModal()" style="flex:1; padding:12px; border-radius:12px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:var(--text-muted); font-size:13px; font-weight:800;">Nanti Saja</button>
                     <button onclick="triggerSetDefaultLauncher()" style="flex:1.4; padding:12px; border-radius:12px; background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); border:1px solid var(--accent-light); color:#fff; font-size:13px; font-weight:900; box-shadow:0 6px 20px var(--dock-active-bg);">Jadikan Layar Utama</button>
                 </div>
+                <button onclick="openHomeDiagnostics()" style="margin-top:12px; background:none; border:none; color:var(--text-muted); font-size:11px; font-weight:700; text-decoration:underline; cursor:pointer;">Layar utama tetap kembali ke bawaan? Buka Diagnostik</button>
+            </div>
+        </div>
+
+        <!-- MODAL 1B: DIAGNOSTIK LAYAR UTAMA (DEFAULT HOME) -->
+        <div id="home-diagnostics-modal" class="hidden" style="position:absolute; inset:0; z-index:98; background:rgba(7,3,18,0.9); backdrop-filter:blur(12px); display:flex; align-items:center; justify-content:center; padding:24px;">
+            <div class="glass-card" style="width:780px; max-height:88vh; overflow-y:auto; border-radius:22px; padding:24px; border:1px solid var(--border-subtle); box-shadow:0 20px 60px rgba(0,0,0,0.8); display:flex; flex-direction:column; gap:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                    <div>
+                        <div style="font-size:11px; font-weight:800; color:var(--accent-light);">DIAGNOSTIK SISTEM</div>
+                        <h3 style="font-size:19px; font-weight:900; color:#fff; margin:2px 0 0 0;">STATUS LAYAR UTAMA</h3>
+                    </div>
+                    <button onclick="closeHomeDiagnostics()" style="background:var(--btn-secondary); border:1px solid var(--border-faint); color:var(--text-muted); width:34px; height:34px; border-radius:10px; font-size:15px; font-weight:900; cursor:pointer;">✕</button>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:10px; background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:12px; padding:12px 14px;">
+                    <span id="home-diag-dot" style="width:10px; height:10px; border-radius:999px; background:#f59e0b; flex:none;"></span>
+                    <div style="min-width:0;">
+                        <div id="home-diag-status" style="font-size:13px; font-weight:900; color:#fff;">Memeriksa…</div>
+                        <div id="home-diag-current" style="font-size:11px; color:var(--text-muted); margin-top:2px;">Launcher aktif: -</div>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <div style="background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:12px; padding:10px 12px;">
+                        <div style="font-size:10px; font-weight:800; color:var(--accent-light); margin-bottom:3px;">PERANGKAT</div>
+                        <div id="home-diag-device" style="font-size:11px; color:#fff; line-height:1.45;">-</div>
+                    </div>
+                    <div style="background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:12px; padding:10px 12px;">
+                        <div style="font-size:10px; font-weight:800; color:var(--accent-light); margin-bottom:3px;">ROLE HOME (ANDROID 10+)</div>
+                        <div id="home-diag-role" style="font-size:11px; color:#fff; line-height:1.45;">-</div>
+                    </div>
+                </div>
+
+                <div style="background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:12px; padding:10px 12px;">
+                    <div style="font-size:10px; font-weight:800; color:var(--accent-light); margin-bottom:5px;">APLIKASI LAYAR UTAMA YANG TERDETEKSI</div>
+                    <div id="home-diag-list" style="max-height:118px; overflow:auto; display:flex; flex-direction:column; gap:4px; font-size:11px; color:#fff;"></div>
+                </div>
+
+                <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.35); border-radius:12px; padding:10px 12px; font-size:11px; color:#fde68a; line-height:1.5;">
+                    Jika pilihan selalu kembali ke launcher bawaan setelah reboot, firmware headunit biasanya mengunci launcher stock.
+                    Atur lewat <strong>factory menu</strong> (cari “Default Launcher” / “Home App”) atau lewat ADB. Jangan ubah setelan lain di factory menu.
+                </div>
+
+                <div style="background:var(--input-bg); border:1px solid var(--border-faint); border-radius:10px; padding:9px 11px; display:flex; align-items:center; gap:8px;">
+                    <code id="home-diag-adb" style="font-size:10px; color:#a7f3d0; flex:1; overflow:auto; white-space:nowrap;">adb shell cmd package set-home-activity com.pangdash.launcher/.MainActivity</code>
+                    <button onclick="copyHomeAdbCommand()" style="flex:none; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; padding:6px 10px; border-radius:8px; font-size:10px; font-weight:800; cursor:pointer;">Salin</button>
+                </div>
+
+                <div style="display:flex; gap:8px;">
+                    <button onclick="openHomeSettingsFromDiag()" style="flex:1; padding:10px; border-radius:10px; background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); border:1px solid var(--accent-light); color:#fff; font-size:12px; font-weight:900; cursor:pointer;">Buka Setelan Layar Utama</button>
+                    <button onclick="openAppInfoFromDiag()" style="flex:1; padding:10px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:var(--text-muted); font-size:12px; font-weight:800; cursor:pointer;">Info Aplikasi PangDash</button>
+                    <button onclick="closeHomeDiagnostics()" style="flex:0.7; padding:10px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:var(--text-muted); font-size:12px; font-weight:800; cursor:pointer;">Tutup</button>
+                </div>
             </div>
         </div>
 
@@ -845,7 +899,10 @@
                         <div style="font-size:12px; font-weight:700; color:var(--accent-light);">KONFIGURASI INTERNAL LAUNCHER</div>
                         <h2 style="font-size:20px; font-weight:900; color:#fff; margin:2px 0 0 0;">SETELAN PANGDASH LAUNCHER</h2>
                     </div>
-                    <button onclick="triggerSetDefaultLauncher()" style="padding:10px 16px; border-radius:12px; background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); color:#fff; font-size:12px; font-weight:800; border:1px solid var(--accent-light);" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Atur Sebagai Layar Utama (Default Home)</span></button>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button onclick="openHomeDiagnostics()" style="padding:10px 14px; border-radius:12px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:var(--text-muted); font-size:12px; font-weight:800; cursor:pointer;">Diagnostik</button>
+                        <button onclick="triggerSetDefaultLauncher()" style="padding:10px 16px; border-radius:12px; background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); color:#fff; font-size:12px; font-weight:800; border:1px solid var(--accent-light); display:inline-flex; align-items:center; gap:6px; cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Atur Sebagai Layar Utama (Default Home)</span></button>
+                    </div>
                 </div>
 
                 <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:auto 0;">
@@ -975,6 +1032,7 @@
 </div>
 
 <script src="sync-secure.js"></script>
+<script src="sync-transport.js"></script>
 <script>
     // Escape semua data dinamis sebelum dimasukkan ke innerHTML (anti HTML/JS injection).
     function escapeHtml(value) {
@@ -1000,16 +1058,17 @@
     // 2. CEK STATUS DEFAULT HOME LAUNCHER & TAMPILKAN POPUP "JADIKAN LAYAR UTAMA"
     let defaultModalDismissed = false;
     function checkDefaultLauncherStatus() {
-        if (defaultModalDismissed) return;
         if (window.AndroidBridge && window.AndroidBridge.isDefaultLauncher) {
             const isDef = window.AndroidBridge.isDefaultLauncher();
             const modal = document.getElementById('default-launcher-modal');
-            if (!isDef) {
+            if (!defaultModalDismissed && !isDef) {
                 modal.classList.remove('hidden');
             } else {
                 modal.classList.add('hidden');
             }
         }
+        const diag = document.getElementById('home-diagnostics-modal');
+        if (diag && !diag.classList.contains('hidden')) renderHomeDiagnostics();
     }
     function dismissDefaultLauncherModal() {
         defaultModalDismissed = true;
@@ -1023,6 +1082,89 @@
             showToast('Membuka pemilihan Aplikasi Layar Utama (Default Home)...');
         }
     }
+
+    // Diagnostik Layar Utama: membantu membedakan masalah aplikasi vs firmware headunit.
+    function openHomeDiagnostics() {
+        document.getElementById('home-diagnostics-modal').classList.remove('hidden');
+        renderHomeDiagnostics();
+    }
+    function closeHomeDiagnostics() {
+        document.getElementById('home-diagnostics-modal').classList.add('hidden');
+    }
+    function renderHomeDiagnostics() {
+        const dot = document.getElementById('home-diag-dot');
+        const status = document.getElementById('home-diag-status');
+        const current = document.getElementById('home-diag-current');
+        const device = document.getElementById('home-diag-device');
+        const role = document.getElementById('home-diag-role');
+        const list = document.getElementById('home-diag-list');
+        const adb = document.getElementById('home-diag-adb');
+        if (!window.AndroidBridge || !window.AndroidBridge.getHomeDiagnosticsJson) {
+            status.textContent = 'Diagnostik hanya tersedia di aplikasi PangDash';
+            return;
+        }
+        let d = {};
+        try {
+            d = JSON.parse(window.AndroidBridge.getHomeDiagnosticsJson());
+        } catch (e) {
+            d = { error: String(e) };
+        }
+        if (d.error) {
+            status.textContent = 'Gagal membaca diagnostik: ' + d.error;
+            return;
+        }
+        const isDef = !!d.isDefault;
+        dot.style.background = isDef ? '#10b981' : '#f59e0b';
+        status.textContent = isDef ? 'PangDash aktif sebagai Layar Utama' : 'PangDash BELUM menjadi Layar Utama';
+        current.textContent = 'Launcher aktif: ' + (
+            d.resolvedPackage
+                ? (d.resolvedPackage === d.packageName ? 'PangDash' : d.resolvedPackage)
+                : 'tidak terdeteksi'
+        );
+        device.textContent = `${d.manufacturer || '-'} ${d.model || ''} • Android ${d.androidRelease || '-'} (API ${d.sdkInt || '-'})`;
+        role.textContent = d.roleAvailable
+            ? (d.roleHeld ? 'Tersedia • dipegang PangDash' : 'Tersedia • belum dipegang PangDash')
+            : 'Tidak tersedia di ROM ini';
+
+        list.innerHTML = '';
+        const candidates = d.candidates || [];
+        candidates.forEach(function(c) {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; padding:4px 6px; border-radius:6px; background:' + (c.isSelf ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.03)') + ';';
+            const name = document.createElement('span');
+            name.textContent = (c.label || c.pkg) + (c.isSelf ? ' (PangDash)' : '');
+            name.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+            const pkg = document.createElement('span');
+            pkg.textContent = c.pkg;
+            pkg.style.cssText = 'font-size:9px; color:var(--text-muted); flex:none; max-width:45%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+            row.appendChild(name);
+            row.appendChild(pkg);
+            list.appendChild(row);
+        });
+        if (!candidates.length) {
+            list.textContent = 'Tidak ada aplikasi Home yang terdeteksi.';
+        }
+        adb.textContent = d.adbCommand || 'adb shell cmd package set-home-activity com.pangdash.launcher/.MainActivity';
+    }
+    function copyHomeAdbCommand() {
+        const text = document.getElementById('home-diag-adb').textContent;
+        if (window.AndroidBridge && window.AndroidBridge.copyToClipboard) {
+            window.AndroidBridge.copyToClipboard(text);
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).catch(function() {});
+        }
+    }
+    function openHomeSettingsFromDiag() {
+        if (window.AndroidBridge && window.AndroidBridge.openHomeSettings) {
+            window.AndroidBridge.openHomeSettings();
+        }
+    }
+    function openAppInfoFromDiag() {
+        if (window.AndroidBridge && window.AndroidBridge.openAppDetailsSettings) {
+            window.AndroidBridge.openAppDetailsSettings();
+        }
+    }
+
     window.onNativeResumeCheck = function() {
                 syncAppVersionLabels();
         const savedOffset = parseInt(localStorage.getItem('gc_gps_offset_v13') || '0');
@@ -1131,6 +1273,12 @@
     let lastLat = null;
     let lastLng = null;
     let lastCloudPushTime = 0;
+    let lastForcedPushTime = 0;
+    let lastSentStateSignature = '';
+    let syncQuotaBlockedUntil = 0;
+    // ntfy.sh gratis membatasi 250 pesan/hari. State tidak boleh dikirim tiap 20 detik.
+    const AUTO_STATE_PUSH_INTERVAL_MS = 5 * 60 * 1000;
+    const FORCE_STATE_PUSH_MIN_GAP_MS = 15 * 1000;
     let tripCategory = localStorage.getItem('gc_trip_cat') || 'PRIBADI';
     let totalMonthlyKm = parseFloat(localStorage.getItem('gc_total_km_v6') || '0.0');
     let totalTripsCount = parseInt(localStorage.getItem('gc_trips_count_v8') || '0');
@@ -1213,6 +1361,8 @@
         startupServiceAlertDismissedInSession = false;
         upsertCurrentSessionToHistory(true);
         queueAutoSyncPayload(true);
+        // Simpan snapshot servis terakhir sebelum proses WebView dihentikan.
+        if (typeof publishServiceSnapshot === 'function') publishServiceSnapshot(true);
         flushStorageWrites();
     };
     window.addEventListener('pagehide', flushStorageWrites);
@@ -1232,9 +1382,14 @@
     let latestStatePayload = null;
     let serviceEventSource = null;
     let servicePublishTimer = null;
-    let serviceKmDirty = false;
+    let servicePublishInFlight = false;
+    let servicePublishQueued = false;
+    let serviceKmSincePublish = 0;
     let lastServicePublishAt = 0;
+    let lastServiceSignature = '';
     let serviceChunkState = null;
+    const SERVICE_AUTO_PUBLISH_MIN_MS = 5 * 60 * 1000;
+    const SERVICE_AUTO_PUBLISH_MIN_KM = 10;
     const seenSyncNonces = new Set();
 
     function rememberNonce(nonce) {
@@ -1252,9 +1407,16 @@
         const badge = document.getElementById('pairing-code-badge');
         if (badge) badge.innerText = 'ID: ' + vehiclePairingCode;
         const auto = document.getElementById('autosync-text');
-        if (auto) auto.innerText = !navigator.onLine
-            ? 'HP Offline - Menunggu Koneksi'
-            : (carId ? ('Auto-Sync HP (PD-' + carId + ')') : 'Auto-Sync HP (menyiapkan...)');
+        if (!auto) return;
+        if (typeof PDTransport !== 'undefined' && !PDTransport.ready()) {
+            auto.innerText = 'Sync backend belum dikonfigurasi';
+        } else if (syncQuotaBlockedUntil > Date.now()) {
+            auto.innerText = 'Kuota sync harian habis - pulih otomatis';
+        } else if (!navigator.onLine) {
+            auto.innerText = 'HP Offline - Menunggu Koneksi';
+        } else {
+            auto.innerText = carId ? ('Auto-Sync HP (PD-' + carId + ')') : 'Auto-Sync HP (menyiapkan...)';
+        }
     }
 
     function localDateIso(date) {
@@ -1305,47 +1467,79 @@
         return payload;
     }
 
-    async function postNtfy(topic, body) {
-        const res = await fetch('https://ntfy.sh/' + topic, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-            body: body
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+    async function postSyncMessage(topic, body) {
+        return PDTransport.publish(topic, body);
+    }
+
+    function markSyncQuotaExhausted(err) {
+        const retrySec = Math.max(60, Number(err && err.retryAfter) || 3600);
+        syncQuotaBlockedUntil = Date.now() + retrySec * 1000;
+        const auto = document.getElementById('autosync-text');
+        if (auto) auto.innerText = 'Kuota sync harian habis - pulih otomatis';
+        const dot = document.getElementById('autosync-dot');
+        if (dot) dot.style.background = '#f59e0b';
     }
 
     async function publishServiceSnapshot(force) {
         if (!syncSession || !navigator.onLine) return;
+        if (typeof PDTransport === 'undefined' || !PDTransport.ready()) return;
+        if (syncQuotaBlockedUntil > Date.now()) return;
         if (typeof serviceComponents === 'undefined') return;
+        if (servicePublishInFlight) {
+            // Jangan menumpuk permintaan; kirim sekali lagi setelah selesai.
+            if (force) servicePublishQueued = true;
+            return;
+        }
         const now = Date.now();
-        if (!force && now - lastServicePublishAt < 15000) return;
-        lastServicePublishAt = now;
+        if (!force) {
+            const timeReady = now - lastServicePublishAt >= SERVICE_AUTO_PUBLISH_MIN_MS;
+            const kmReady = serviceKmSincePublish >= SERVICE_AUTO_PUBLISH_MIN_KM;
+            if (!timeReady && !kmReady) return;
+        }
         const comps = serviceComponents.map(compactServiceComponent);
+        const signature = JSON.stringify(comps);
+        if (!force && signature === lastServiceSignature) {
+            lastServicePublishAt = now;
+            return;
+        }
+        servicePublishInFlight = true;
         const updatedAt = now;
+        const maxBytes = PDTransport.maxPayloadBytes();
 
         try {
             const single = await PDSync.seal(syncSession, 'service', buildServicePayload(comps, updatedAt));
-            if (single.length <= 3800) {
-                await postNtfy(syncSession.serviceTopic, single);
-                return;
-            }
-            const chunks = [];
-            let current = [];
-            for (const comp of comps) {
-                current.push(comp);
-                const test = await PDSync.seal(syncSession, 'service', buildServicePayload(current, updatedAt));
-                if (test.length > 3800 && current.length > 1) {
-                    current.pop();
-                    chunks.push(current);
-                    current = [comp];
+            if (single.length <= maxBytes) {
+                await postSyncMessage(syncSession.serviceTopic, single);
+            } else {
+                const chunks = [];
+                let current = [];
+                for (const comp of comps) {
+                    current.push(comp);
+                    const test = await PDSync.seal(syncSession, 'service', buildServicePayload(current, updatedAt));
+                    if (test.length > maxBytes && current.length > 1) {
+                        current.pop();
+                        chunks.push(current);
+                        current = [comp];
+                    }
+                }
+                if (current.length) chunks.push(current);
+                for (let i = 0; i < chunks.length; i++) {
+                    const text = await PDSync.seal(syncSession, 'service', buildServicePayload(chunks[i], updatedAt, i + 1, chunks.length));
+                    await postSyncMessage(syncSession.serviceTopic, text);
                 }
             }
-            if (current.length) chunks.push(current);
-            for (let i = 0; i < chunks.length; i++) {
-                const text = await PDSync.seal(syncSession, 'service', buildServicePayload(chunks[i], updatedAt, i + 1, chunks.length));
-                await postNtfy(syncSession.serviceTopic, text);
+            lastServicePublishAt = Date.now();
+            lastServiceSignature = signature;
+            serviceKmSincePublish = 0;
+        } catch (e) {
+            if (e && e.status === 429) markSyncQuotaExhausted(e);
+        } finally {
+            servicePublishInFlight = false;
+            if (servicePublishQueued) {
+                servicePublishQueued = false;
+                setTimeout(function () { publishServiceSnapshot(true); }, 500);
             }
-        } catch (_e) {}
+        }
     }
 
     function queueServicePublish(immediate) {
@@ -1438,36 +1632,27 @@
 
     async function pullServiceHistory() {
         if (!syncSession || !navigator.onLine) return;
+        if (typeof PDTransport === 'undefined' || !PDTransport.ready()) return;
         try {
-            const res = await fetch('https://ntfy.sh/' + syncSession.serviceTopic + '/json?poll=1&since=all');
-            if (!res.ok) return;
-            const text = await res.text();
-            const lines = text.split('\n').filter(Boolean).slice(-100);
-            for (const line of lines) {
+            const messages = await PDTransport.fetchRecent(syncSession.serviceTopic, 100);
+            for (const message of messages) {
                 try {
-                    const evt = JSON.parse(line);
-                    if (evt.event === 'message' && evt.message) {
-                        const env = await PDSync.open(syncSession, 'service', evt.message);
-                        if (env) handleServiceEnvelope(env);
-                    }
+                    const env = await PDSync.open(syncSession, 'service', message);
+                    if (env) handleServiceEnvelope(env);
                 } catch (_e) {}
             }
         } catch (_e) {}
     }
 
     function subscribeServiceTopic() {
-        if (!syncSession || typeof EventSource === 'undefined' || serviceEventSource) return;
-        try {
-            serviceEventSource = new EventSource('https://ntfy.sh/' + syncSession.serviceTopic + '/sse');
-            serviceEventSource.onmessage = async function (e) {
-                try {
-                    const evt = JSON.parse(e.data);
-                    if (!evt.message) return;
-                    const env = await PDSync.open(syncSession, 'service', evt.message);
-                    if (env) handleServiceEnvelope(env);
-                } catch (_e) {}
-            };
-        } catch (_e) {}
+        if (!syncSession || serviceEventSource) return;
+        if (typeof PDTransport === 'undefined' || !PDTransport.ready()) return;
+        serviceEventSource = PDTransport.subscribe(syncSession.serviceTopic, async function (message) {
+            try {
+                const env = await PDSync.open(syncSession, 'service', message);
+                if (env) handleServiceEnvelope(env);
+            } catch (_e) {}
+        }, function () {});
     }
 
     async function initSecureSync() {
@@ -1481,6 +1666,7 @@
             syncSession = await PDSync.createSession(pairingSecret);
             carId = syncSession.carId;
             refreshPairingUI();
+            if (typeof PDTransport === 'undefined' || !PDTransport.ready()) return;
             await pullServiceHistory();
             subscribeServiceTopic();
             queueAutoSyncPayload(true);
@@ -1708,37 +1894,86 @@
         };
     }
 
+    // Sidik jari data: hanya kirim ulang jika ada perubahan nyata (odo, trip, servis, nama).
+    // Ini mencegah headunit mengirim pesan yang sama terus-menerus saat parkir.
+    function stateSignature(payload) {
+        if (!payload) return '';
+        return [
+            payload.monthKey || '',
+            payload.gmail || '',
+            payload.vehicleName || '',
+            payload.category || '',
+            Number(payload.sessionDistKm || 0).toFixed(2),
+            Number(payload.totalMonthlyKm || 0).toFixed(2),
+            payload.tripsCount || 0,
+            payload.totalDurationSec || 0,
+            payload.activeDaysCount || 0,
+            Number(payload.longestTripKm || 0).toFixed(2),
+            payload.maxSpeedKmh || 0,
+            payload.avgSpeedKmh || 0,
+            payload.odometerKm || 0,
+            Array.isArray(payload.tripHistory) ? payload.tripHistory.length : 0
+        ].join('|');
+    }
+
     function queueAutoSyncPayload(forceImmediate) {
         ensureMonthlyReset(false);
         const payload = buildStatePayload();
         latestStatePayload = payload;
         writeStorageThrottled('gc_latest_sync_payload', JSON.stringify(payload), !!forceImmediate);
 
+        if (!navigator.onLine) return;
         const now = Date.now();
-        if (navigator.onLine && (forceImmediate || (now - lastCloudPushTime > 20000))) {
+        if (syncQuotaBlockedUntil > now) return;
+        if (now < lastCloudPushTime) lastCloudPushTime = 0;
+
+        if (forceImmediate) {
+            // Satu aksi pengguna tidak boleh mengirim dua pesan beruntun.
+            if (now - lastForcedPushTime < FORCE_STATE_PUSH_MIN_GAP_MS) return;
+            lastForcedPushTime = now;
             lastCloudPushTime = now;
             triggerSilentCloudSync();
+            return;
         }
+
+        if (stateSignature(payload) === lastSentStateSignature) return;
+        if (now - lastCloudPushTime < AUTO_STATE_PUSH_INTERVAL_MS) return;
+        lastCloudPushTime = now;
+        triggerSilentCloudSync();
     }
 
     async function triggerSilentCloudSync() {
         if (!syncSession) return;
+        if (typeof PDTransport === 'undefined' || !PDTransport.ready()) return;
+        if (syncQuotaBlockedUntil > Date.now()) return;
         if (!latestStatePayload) {
             const raw = localStorage.getItem('gc_latest_sync_payload');
             if (!raw) return;
             try { latestStatePayload = JSON.parse(raw); } catch (_e) { return; }
         }
         if (!navigator.onLine) return;
+        const payload = latestStatePayload;
         try {
-            const sealed = await PDSync.seal(syncSession, 'state', latestStatePayload);
-            await postNtfy(syncSession.stateTopic, sealed);
+            const sealed = await PDSync.seal(syncSession, 'state', payload);
+            await postSyncMessage(syncSession.stateTopic, sealed);
+            if (latestStatePayload === payload) {
+                lastSentStateSignature = stateSignature(payload);
+            }
             const auto = document.getElementById('autosync-text');
             if (auto) auto.innerText = 'Auto-Sync HP (PD-' + carId + ')';
             const syncDot = document.getElementById('autosync-dot');
             if (syncDot) syncDot.style.background = '#10b981';
-        } catch (_e) {
+        } catch (e) {
+            if (e && e.status === 429) {
+                markSyncQuotaExhausted(e);
+                return;
+            }
             const auto = document.getElementById('autosync-text');
-            if (auto) auto.innerText = 'Gagal sync - mencoba lagi';
+            if (auto) {
+                auto.innerText = (e && (e.status === 401 || e.status === 403 || e.status === 404))
+                    ? 'Sync backend menolak kunci - periksa setelan'
+                    : 'Gagal sync - mencoba lagi';
+            }
             const syncDot = document.getElementById('autosync-dot');
             if (syncDot) syncDot.style.background = '#f59e0b';
         }
@@ -1751,8 +1986,11 @@
         if (isOnline) {
             if (dot) dot.style.background = '#10b981';
             if (syncDot) syncDot.style.background = '#10b981';
-            if (auto) auto.innerText = carId ? ('Auto-Sync HP (PD-' + carId + ')') : 'Auto-Sync HP Aktif';
-            triggerSilentCloudSync();
+            if (auto) auto.innerText = syncQuotaBlockedUntil > Date.now()
+                ? 'Kuota sync harian habis - pulih otomatis'
+                : (carId ? ('Auto-Sync HP (PD-' + carId + ')') : 'Auto-Sync HP Aktif');
+            // Tetap hormati batas kuota; jangan kirim beruntun saat jaringan naik-turun.
+            queueAutoSyncPayload(true);
             if (syncSession) queueServicePublish(true);
         } else {
             if (dot) dot.style.background = '#f59e0b';
@@ -1762,8 +2000,9 @@
     };
     setInterval(function () {
         ensureMonthlyReset(true);
-        triggerSilentCloudSync();
-    }, 30000);
+        // Hanya kirim jika data berubah atau sudah lewat interval 5 menit.
+        queueAutoSyncPayload(false);
+    }, 60000);
 
     function setTripCategory(cat) {
         tripCategory = cat;
@@ -2329,6 +2568,9 @@
     // - MERAH (Periksa Segera): Sisa KM < 500 km ATAU Sisa Hari < 17 hari (termasuk H-7 <= 7 hari)
     // - KUNING (Perlu perhatian): Sisa KM < 1.200 km ATAU Sisa Hari < 35 hari
     // - HIJAU (Sehat): Normal (Sisa KM >= 1.200 km DAN Sisa Hari >= 35 hari)
+    // Catatan: nilai contoh di bawah adalah sisa demo lama. Semua komponen
+    // dinormalisasi ke kondisi Sehat (100%) tepat setelah array ini agar
+    // instalasi pertama tidak memunculkan popup peringatan servis palsu.
     const DEFAULT_SERVICE_COMPONENTS = [
         // Contoh Default Periksa Segera / Merah (< 500 km / < 17 hari & H-7)
         {
@@ -2454,6 +2696,49 @@
         }
     ];
 
+    // Simpan nilai demo lama SEBELUM normalisasi. Dipakai hanya untuk migrasi
+    // aman: data yang masih persis sama dengan demo b149 dan belum pernah
+    // diservis/diedit akan dianggap baru, bukan data pengguna sungguhan.
+    const LEGACY_DEFAULT_SERVICE_SNAPSHOT = DEFAULT_SERVICE_COMPONENTS.map(function (comp) {
+        return { id: comp.id, remKm: Number(comp.remKm), remDays: Number(comp.remDays) };
+    });
+
+    // Awal instal: semua komponen mulai Sehat (100%). Nilai sisa km/hari
+    // disamakan dengan interval agar tidak ada notifikasi servis palsu.
+    DEFAULT_SERVICE_COMPONENTS.forEach(function (comp) {
+        comp.remKm = comp.hasKm ? Number(comp.intervalKm || comp.recKm || 0) : 0;
+        comp.remDays = Math.round((comp.intervalMonths || comp.recMonths || 12) * 30.4375);
+    });
+
+    const SERVICE_DEFAULTS_NORMALIZED_KEY = 'gc_service_defaults_normalized_v1';
+
+    // Migrasi satu kali untuk instalasi lama yang masih memakai data demo b149.
+    // Hanya berjalan jika SELURUH komponen cocok persis dengan snapshot demo,
+    // belum punya riwayat, belum pernah diservis, dan belum pernah diedit.
+    function normalizeUntouchedServiceDefaults() {
+        if (localStorage.getItem(SERVICE_DEFAULTS_NORMALIZED_KEY) === '1') return;
+        const untouched = serviceComponents.length === LEGACY_DEFAULT_SERVICE_SNAPSHOT.length &&
+            serviceComponents.every(function (comp) {
+                const legacy = LEGACY_DEFAULT_SERVICE_SNAPSHOT.find(function (item) {
+                    return item.id === comp.id;
+                });
+                return !!legacy &&
+                    Number(comp.remKm) === legacy.remKm &&
+                    Number(comp.remDays) === legacy.remDays &&
+                    Array.isArray(comp.history) && comp.history.length === 0 &&
+                    (!comp.lastService || comp.lastService === 'Tidak tersedia') &&
+                    !comp.updatedAt;
+            });
+        if (untouched) {
+            serviceComponents.forEach(function (comp) {
+                comp.remKm = comp.hasKm ? Number(comp.intervalKm || comp.recKm || 0) : 0;
+                comp.remDays = Math.round((comp.intervalMonths || comp.recMonths || 12) * 30.4375);
+            });
+            saveServiceComponentsToStorage();
+        }
+        localStorage.setItem(SERVICE_DEFAULTS_NORMALIZED_KEY, '1');
+    }
+
     let serviceComponents = JSON.parse(localStorage.getItem('gc_service_components_v13') || 'null');
     if (!Array.isArray(serviceComponents) || serviceComponents.length === 0) {
         serviceComponents = JSON.parse(JSON.stringify(DEFAULT_SERVICE_COMPONENTS));
@@ -2489,6 +2774,7 @@
         if (changed) saveServiceComponentsToStorage();
     }
     migrateServiceComponents();
+    normalizeUntouchedServiceDefaults();
 
     let selectedServiceCompId = null;
     let editTempIntervalKm = 50000;
@@ -2686,7 +2972,7 @@
     }
 
     // Kurangi sisa KM pada seluruh komponen saat mobil berjalan
-    function deductServiceComponentsKm(deltaKm) {
+    function deductServiceComponentsKm(deltaKm, skipAutoPublish) {
         if (!deltaKm || deltaKm <= 0) return;
         for (const comp of serviceComponents) {
             if (comp.hasKm && comp.remKm > 0) {
@@ -2694,8 +2980,12 @@
             }
         }
         saveServiceComponentsToStorage();
-        // Kirim snapshot servis secara berkala (maks. tiap 20 detik) saat mobil berjalan.
-        if (syncSession && navigator.onLine && Date.now() - lastServicePublishAt > 20000) {
+        if (skipAutoPublish) return;
+        // Snapshot servis otomatis dibatasi: maksimal tiap 5 menit atau 10 km.
+        serviceKmSincePublish += deltaKm;
+        if (syncSession && navigator.onLine &&
+            (serviceKmSincePublish >= SERVICE_AUTO_PUBLISH_MIN_KM ||
+             Date.now() - lastServicePublishAt >= SERVICE_AUTO_PUBLISH_MIN_MS)) {
             publishServiceSnapshot(false);
         }
     }
@@ -3268,12 +3558,16 @@
         const prevOdo = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
         const val = parseInt(document.getElementById('odo-input').value) || 0;
         if (prevOdo > 0 && val > prevOdo) {
-            deductServiceComponentsKm(val - prevOdo);
+            deductServiceComponentsKm(val - prevOdo, true);
         }
         localStorage.setItem('gc_odo_km_v6', String(val));
         renderServiceDashboard();
         queueAutoSyncPayload(true);
-        showToast('Odometer (' + val.toLocaleString('id-ID') + ' KM) disimpan & disinkronkan ke HP');
+        if (syncSession && navigator.onLine) publishServiceSnapshot(true);
+        const quotaNote = syncQuotaBlockedUntil > Date.now()
+            ? ' Kuota sync habis; data dikirim otomatis setelah pulih.'
+            : '';
+        showToast('Odometer (' + val.toLocaleString('id-ID') + ' KM) disimpan.' + quotaNote);
     }
 
     function updateVehicleName(name) {
@@ -3297,6 +3591,14 @@
         if (nameVal) {
             localStorage.setItem('gc_vehicle_name', nameVal.trim());
             document.getElementById('vehicle-brand').innerText = nameVal.trim();
+        }
+        if (!navigator.onLine) {
+            showToast('Headunit offline - sambungkan internet dulu');
+            return;
+        }
+        if (syncQuotaBlockedUntil > Date.now()) {
+            showToast('Kuota sync harian habis - coba lagi setelah kuota pulih');
+            return;
         }
         queueAutoSyncPayload(true);
         showToast('Data ' + (nameVal || 'PangDash') + ' (' + vehiclePairingCode + ') dikirim ke HP!');

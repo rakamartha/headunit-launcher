@@ -18,6 +18,8 @@ import java.net.URL
 import java.util.concurrent.Executors
 import android.app.role.RoleManager
 import android.content.BroadcastReceiver
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -129,6 +131,7 @@ class MainActivity : Activity(), LocationListener {
     private var cachedAppsJson: String? = null
     private val appIconCache = HashMap<String, String>()
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val REQ_HOME_ROLE = 2002
     private var lastGpsFixElapsed: Long = 0L
     private var gpsStaleNotified: Boolean = false
     private val gpsWatchdogRunnable = object : Runnable {
@@ -956,6 +959,21 @@ class MainActivity : Activity(), LocationListener {
         hideSystemUI()
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_HOME_ROLE) {
+            mainHandler.postDelayed({
+                webView?.evaluateJavascript("if(window.onNativeResumeCheck) window.onNativeResumeCheck();", null)
+                val msg = if (resultCode == Activity.RESULT_OK) {
+                    "PangDash diizinkan menjadi Layar Utama"
+                } else {
+                    "Izin Layar Utama belum diberikan"
+                }
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            }, 400)
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         hideSystemUI()
@@ -1261,6 +1279,24 @@ class MainActivity : Activity(), LocationListener {
         }
 
         @JavascriptInterface
+        fun getSyncConfigJson(): String {
+            return try {
+                val key = BuildConfig.ABLY_API_KEY
+                val configured = BuildConfig.SYNC_PROVIDER.ifBlank { "ntfy" }.lowercase()
+                val provider = if (configured == "ably" && key.isBlank()) "ntfy" else configured
+                val ably = org.json.JSONObject()
+                ably.put("key", key)
+                ably.put("namespace", "pangdash")
+                val root = org.json.JSONObject()
+                root.put("provider", provider)
+                root.put("ably", ably)
+                root.toString()
+            } catch (_: Throwable) {
+                "{\"provider\":\"ntfy\"}"
+            }
+        }
+
+        @JavascriptInterface
         fun startUpdateDownload(apkUrl: String) {
             startUpdateDownloadWithHash(apkUrl, "")
         }
@@ -1383,15 +1419,51 @@ class MainActivity : Activity(), LocationListener {
             }.start()
         }
 
+        private fun currentHomePackageName(): String? {
+            return try {
+                val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_HOME) }
+                packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName
+            } catch (_: Throwable) {
+                null
+            }
+        }
+
+        private fun homeRoleManager(): RoleManager? {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+            return try {
+                getSystemService(RoleManager::class.java)
+            } catch (_: Throwable) {
+                null
+            }
+        }
+
+        private fun openHomeSettingsScreen(): Boolean {
+            val candidates = listOf(
+                Intent(Settings.ACTION_HOME_SETTINGS),
+                Intent("android.settings.MANAGE_DEFAULT_APPS_SETTINGS"),
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+            )
+            for (intent in candidates) {
+                try {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
+                    return true
+                } catch (_: Throwable) {}
+            }
+            return false
+        }
+
         @JavascriptInterface
         fun isDefaultLauncher(): Boolean {
             return try {
-                val intent = Intent(Intent.ACTION_MAIN).apply {
-                    addCategory(Intent.CATEGORY_HOME)
+                val resolved = currentHomePackageName()
+                if (!resolved.isNullOrEmpty()) {
+                    // Resolusi CATEGORY_HOME adalah kondisi nyata saat tombol Home ditekan.
+                    resolved == packageName
+                } else {
+                    val rm = homeRoleManager()
+                    rm != null && rm.isRoleAvailable(RoleManager.ROLE_HOME) && rm.isRoleHeld(RoleManager.ROLE_HOME)
                 }
-                val resolveInfo = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
-                val currentHomePkg = resolveInfo?.activityInfo?.packageName
-                currentHomePkg == context.packageName
             } catch (_: Throwable) {
                 false
             }
@@ -1400,44 +1472,110 @@ class MainActivity : Activity(), LocationListener {
         @JavascriptInterface
         fun promptSetDefaultLauncher() {
             runOnUiThread {
-                try {
-                    // Reset cache preferred activity bawaan Android agar dialog tidak langsung melempar kembali ke launcher lama
-                    try {
-                        packageManager.clearPackagePreferredActivities(packageName)
-                    } catch (_: Throwable) {}
-
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        val roleManager = getSystemService(RoleManager::class.java)
-                        if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_HOME) && !roleManager.isRoleHeld(RoleManager.ROLE_HOME)) {
-                            val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME)
-                            startActivityForResult(intent, 2002)
+                // Android 10+: minta role HOME resmi. Ini jalur yang benar tanpa akses sistem.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val rm = homeRoleManager()
+                    if (rm != null && rm.isRoleAvailable(RoleManager.ROLE_HOME)) {
+                        if (rm.isRoleHeld(RoleManager.ROLE_HOME) && currentHomePackageName() == packageName) {
+                            Toast.makeText(context, "PangDash sudah menjadi Layar Utama", Toast.LENGTH_SHORT).show()
                             return@runOnUiThread
                         }
-                    }
-                    
-                    // Pada Headunit Android (khususnya Android 7-10), buka halaman Setelan Aplikasi Default resmi
-                    try {
-                        val homeSettings = Intent(Settings.ACTION_HOME_SETTINGS).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                        startActivity(homeSettings)
-                    } catch (_: Throwable) {
                         try {
-                            val defaultAppsIntent = Intent("android.settings.MANAGE_DEFAULT_APPS_SETTINGS").apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
-                            startActivity(defaultAppsIntent)
-                        } catch (_: Throwable) {
-                            val chooser = Intent(Intent.ACTION_MAIN).apply {
-                                addCategory(Intent.CATEGORY_HOME)
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
-                            startActivity(Intent.createChooser(chooser, "Pilih PangDash sebagai Layar Utama"))
-                        }
+                            startActivityForResult(rm.createRequestRoleIntent(RoleManager.ROLE_HOME), REQ_HOME_ROLE)
+                            return@runOnUiThread
+                        } catch (_: Throwable) {}
                     }
-                } catch (_: Throwable) {
-                    Toast.makeText(context, "Buka Setelan -> Aplikasi -> Aplikasi Default -> Layar Utama (Home)", Toast.LENGTH_LONG).show()
                 }
+
+                // Android 9 ke bawah / ROM tanpa RoleManager: buka halaman Setelan Home.
+                // Chooser ACTION_HOME sengaja tidak dipakai karena bisa langsung melempar
+                // kembali ke launcher bawaan dan membuat pengguna bingung.
+                if (openHomeSettingsScreen()) return@runOnUiThread
+
+                Toast.makeText(
+                    context,
+                    "Setelan Layar Utama tidak tersedia. Buka Diagnostik Layar Utama untuk panduan ADB/factory menu.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+
+        @JavascriptInterface
+        fun getHomeDiagnosticsJson(): String {
+            return try {
+                val pm = context.packageManager
+                val homeIntent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_HOME) }
+                val resolved = pm.resolveActivity(homeIntent, PackageManager.MATCH_DEFAULT_ONLY)
+                val resolvedPkg = resolved?.activityInfo?.packageName ?: ""
+                val resolvedComponent = resolved?.activityInfo?.let { "${it.packageName}/${it.name}" } ?: ""
+                val rm = homeRoleManager()
+                val roleAvailable = rm?.isRoleAvailable(RoleManager.ROLE_HOME) ?: false
+                val roleHeld = rm?.isRoleHeld(RoleManager.ROLE_HOME) ?: false
+
+                val candidates = JSONArray()
+                val seen = HashSet<String>()
+                for (ri in pm.queryIntentActivities(homeIntent, 0)) {
+                    val ai = ri.activityInfo ?: continue
+                    val key = "${ai.packageName}/${ai.name}"
+                    if (!seen.add(key)) continue
+                    val item = JSONObject()
+                    item.put("pkg", ai.packageName)
+                    item.put("activity", ai.name)
+                    item.put("label", try { ri.loadLabel(pm).toString() } catch (_: Throwable) { ai.packageName })
+                    item.put("isSystem", ((ai.applicationInfo?.flags ?: 0) and ApplicationInfo.FLAG_SYSTEM) != 0)
+                    item.put("isSelf", ai.packageName == context.packageName)
+                    candidates.put(item)
+                }
+
+                val result = JSONObject()
+                result.put("isDefault", resolvedPkg == context.packageName)
+                result.put("resolvedPackage", resolvedPkg)
+                result.put("resolvedComponent", resolvedComponent)
+                result.put("roleAvailable", roleAvailable)
+                result.put("roleHeld", roleHeld)
+                result.put("sdkInt", Build.VERSION.SDK_INT)
+                result.put("androidRelease", Build.VERSION.RELEASE ?: "")
+                result.put("manufacturer", Build.MANUFACTURER ?: "")
+                result.put("model", Build.MODEL ?: "")
+                result.put("packageName", context.packageName)
+                result.put("adbCommand", "adb shell cmd package set-home-activity ${context.packageName}/.MainActivity")
+                result.put("candidates", candidates)
+                result.toString()
+            } catch (e: Throwable) {
+                JSONObject().put("error", e.message ?: "unknown").toString()
+            }
+        }
+
+        @JavascriptInterface
+        fun openHomeSettings() {
+            runOnUiThread {
+                if (!openHomeSettingsScreen()) {
+                    Toast.makeText(context, "Setelan Layar Utama tidak tersedia di ROM ini", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun openAppDetailsSettings() {
+            runOnUiThread {
+                try {
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
+                } catch (_: Throwable) {
+                    Toast.makeText(context, "Tidak bisa membuka Info Aplikasi", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun copyToClipboard(text: String) {
+            try {
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("PangDash", text))
+                runOnUiThread { Toast.makeText(context, "Teks disalin", Toast.LENGTH_SHORT).show() }
+            } catch (_: Throwable) {
+                runOnUiThread { Toast.makeText(context, "Gagal menyalin teks", Toast.LENGTH_SHORT).show() }
             }
         }
 

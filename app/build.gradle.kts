@@ -27,7 +27,23 @@ fun signingValue(name: String): String? {
 val releaseKeystorePath = signingValue("KEYSTORE_PATH")
 val hasReleaseKeystore = !releaseKeystorePath.isNullOrBlank() && file(releaseKeystorePath).exists()
 
+// ---------------------------------------------------------------------------
+// Konfigurasi sync. Kunci Ably dibaca dari env/secret, tidak pernah dari repo.
+// Jika kunci kosong, aplikasi tetap memakai ntfy sebagai cadangan.
+// ---------------------------------------------------------------------------
+val ablyApiKey = ((findProperty("ablyKey") as String?) ?: System.getenv("ABLY_API_KEY") ?: "").trim()
+val syncProvider = ((findProperty("syncProvider") as String?) ?: System.getenv("SYNC_PROVIDER") ?: "")
+    .trim()
+    .ifBlank { if (ablyApiKey.isNotBlank()) "ably" else "ntfy" }
+
+fun buildConfigString(value: String): String {
+    return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+}
+
 android {
+    buildFeatures {
+        buildConfig = true
+    }
     namespace = "com.pangdash.launcher"
     compileSdk = 34
 
@@ -38,6 +54,8 @@ android {
         // CI mengirim versionCodeOverride berbasis nomor build agar OTA selalu naik.
         versionCode = (findProperty("versionCodeOverride") as String?)?.toIntOrNull() ?: 148
         versionName = "1.4"
+        buildConfigField("String", "SYNC_PROVIDER", buildConfigString(syncProvider))
+        buildConfigField("String", "ABLY_API_KEY", buildConfigString(ablyApiKey))
     }
 
     signingConfigs {

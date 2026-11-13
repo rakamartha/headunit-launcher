@@ -32,11 +32,18 @@
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode"
             android:stateNotNeeded="true"
             android:clearTaskOnLaunch="true">
+            <!-- Filter 1: ikon aplikasi di launcher/app drawer -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Filter 2: kandidat Layar Utama (Home). Dipisah dari LAUNCHER agar
+                 resolusi CATEGORY_HOME tidak tercampur dengan filter app drawer. -->
             <intent-filter android:priority="1000">
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
