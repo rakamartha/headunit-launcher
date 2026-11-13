@@ -279,7 +279,7 @@
 
                 <!-- STATE 4: PROGRES MENGUNDUH & MEMBUKA PENGINSTAL APK -->
                 <div id="ota-state-downloading" class="hidden" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px 12px 10px 12px; text-align:center; gap:14px;">
-                    <img src="pangdash-logo.png" alt="PangDash" style="width:58px; height:58px; border-radius:16px; object-fit:cover; border:1.5px solid var(--accent-light); box-shadow:0 0 20px var(--dock-active-bg);" />
+                    <img src="pangdash-logo.webp" alt="PangDash" style="width:58px; height:58px; border-radius:16px; object-fit:cover; border:1.5px solid var(--accent-light); box-shadow:0 0 20px var(--dock-active-bg);" />
                     <div style="width:100%;">
                         <div style="font-size:11px; font-weight:900; color:var(--accent-light); letter-spacing:0.1em;">MENGUNDUH PEMBARUAN OTA</div>
                         <h3 id="ota-download-title" style="font-size:19px; font-weight:900; color:#ffffff; margin:6px 0 10px 0;">Mengunduh PangDash APK...</h3>
@@ -322,7 +322,7 @@
         <!-- MODAL 1: POPUP "JADIKAN LAYAR UTAMA" (MUNCUL OTOMATIS JIKA LAUNCHER BELUM DEFAULT) -->
         <div id="default-launcher-modal" class="hidden" style="position:absolute; inset:0; z-index:96; background:rgba(7,3,18,0.82); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center;">
             <div class="glass-card" style="width:480px; border-radius:22px; padding:26px; border:1px solid var(--border-subtle); text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
-                <img src="pangdash-logo.png" alt="PangDash" style="width:68px; height:68px; border-radius:20px; object-fit:cover; margin:0 auto 14px auto; display:block; border:1.5px solid var(--accent-light); box-shadow:0 8px 24px var(--dock-active-bg);" />
+                <img src="pangdash-logo.webp" alt="PangDash" style="width:68px; height:68px; border-radius:20px; object-fit:cover; margin:0 auto 14px auto; display:block; border:1.5px solid var(--accent-light); box-shadow:0 8px 24px var(--dock-active-bg);" />
                 <h3 style="font-size:20px; font-weight:900; color:#fff; margin:0 0 8px 0;">Jadikan PangDash Sebagai Layar Utama?</h3>
                 <p style="font-size:13px; color:rgba(233,213,255,0.85); line-height:1.5; margin:0 0 22px 0;">
                     Launcher ini belum diatur sebagai <strong>Layar Utama (Default Home)</strong>. Jadikan layar utama agar otomatis terbuka setiap kali headunit menyala atau saat tombol Home ditekan.
@@ -422,7 +422,7 @@
         <!-- 1. STATUS BAR ATAS (52px) -->
         <header class="hu-header glass-card shrink-0">
             <div style="display:flex; align-items:center; gap:10px;">
-                <img src="pangdash-logo.png" alt="PangDash" style="width:32px; height:32px; border-radius:9px; object-fit:cover; border:1px solid var(--border-subtle); box-shadow:0 0 10px var(--dock-active-bg);" />
+                <img src="pangdash-logo.webp" alt="PangDash" style="width:32px; height:32px; border-radius:9px; object-fit:cover; border:1px solid var(--border-subtle); box-shadow:0 0 10px var(--dock-active-bg);" />
                 <span id="net-dot" style="width:9px; height:9px; border-radius:999px; background:#10b981; box-shadow:0 0 10px #10b981;"></span>
                 <span id="vehicle-brand" style="font-size:14px; font-weight:800; letter-spacing:0.12em; color:var(--text-muted);">PangDash</span>
                 <span style="font-size:12px; color:rgba(216,180,254,0.7);">| 29°C</span>
@@ -571,18 +571,18 @@
                             </div>
                         </div>
                         <div style="display:flex; gap:5px; flex-shrink:0;">
-                            <button onclick="toggleMapTheme()" id="btn-map-theme" style="padding:7px 9px; border-radius:9px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:10px; font-weight:800;" style="display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> <span>Gelap</span></button>
-                            <button onclick="centerMapOnCar()" style="padding:7px 9px; border-radius:9px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:10px; font-weight:800;" style="display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg> <span>Pusatkan</span></button>
-                            <button onclick="launchHeadunitMaps('')" style="padding:7px 10px; border-radius:9px; background:var(--btn-primary); border:none; color:#fff; font-size:10px; font-weight:800;" style="display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg> <span>Maps</span></button>
+                            <button onclick="toggleMapTheme()" id="btn-map-theme" style="padding:7px 9px; border-radius:9px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:10px; font-weight:800; display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> <span>Gelap</span></button>
+                            <button onclick="centerMapOnCar()" style="padding:7px 9px; border-radius:9px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:10px; font-weight:800; display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg> <span>Pusatkan</span></button>
+                            <button onclick="launchHeadunitMaps('')" style="padding:7px 10px; border-radius:9px; background:var(--btn-primary); border:none; color:#fff; font-size:10px; font-weight:800; display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg> <span>Maps</span></button>
                         </div>
                     </div>
 
                     <!-- Bar Bawah Peta -->
                     <div style="position:relative; z-index:10; margin:12px; padding:10px; border-radius:14px; background:var(--panel-dark-bg); border:1px solid var(--border-faint); display:flex; gap:8px; backdrop-filter:blur(12px);">
-                        <button onclick="launchHeadunitMaps('Rumah')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Rute Rumah</span></button>
-                        <button onclick="launchHeadunitMaps('Kantor')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></svg> <span>Rute Kantor</span></button>
-                        <button onclick="launchHeadunitMaps('SPBU Terdekat')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="3" y1="22" x2="15" y2="22"/><line x1="4" y1="9" x2="14" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg> <span>Cari SPBU</span></button>
-                        <button onclick="launchHeadunitMaps('Bengkel Mobil Terdekat')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> <span>Bengkel</span></button>
+                        <button onclick="launchHeadunitMaps('Rumah')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800; display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Rute Rumah</span></button>
+                        <button onclick="launchHeadunitMaps('Kantor')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800; display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></svg> <span>Rute Kantor</span></button>
+                        <button onclick="launchHeadunitMaps('SPBU Terdekat')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800; display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="3" y1="22" x2="15" y2="22"/><line x1="4" y1="9" x2="14" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg> <span>Cari SPBU</span></button>
+                        <button onclick="launchHeadunitMaps('Bengkel Mobil Terdekat')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800; display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> <span>Bengkel</span></button>
                     </div>
                 </div>
 
@@ -598,7 +598,7 @@
                                 <button onclick="activateMusicSourceTab('FM')" id="src-btn-FM" style="font-size:9px; font-weight:800; padding:4px 7px; border-radius:7px; background:var(--panel-bg); color:var(--text-muted); border:1px solid var(--border-faint);">FM</button>
                                 <button onclick="activateMusicSourceTab('BT')" id="src-btn-BT" style="font-size:9px; font-weight:800; padding:4px 7px; border-radius:7px; background:var(--panel-bg); color:var(--text-muted); border:1px solid var(--border-faint);">BT</button>
                             </div>
-                            <button onclick="openMusicSourcePickerModal()" title="Pilih Aplikasi Musik Manual" style="font-size:10px; font-weight:800; padding:4px 8px; border-radius:7px; background:rgba(250,204,21,0.18); color:#facc15; border:1px solid rgba(250,204,21,0.4);" style="display:inline-flex;align-items:center;gap:4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> <span>Pilih</span></button>
+                            <button onclick="openMusicSourcePickerModal()" title="Pilih Aplikasi Musik Manual" style="font-size:10px; font-weight:800; padding:4px 8px; border-radius:7px; background:rgba(250,204,21,0.18); color:#facc15; border:1px solid rgba(250,204,21,0.4); display:inline-flex;align-items:center;gap:4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> <span>Pilih</span></button>
                         </div>
 
                         <!-- Kartu Info Aplikasi Musik & Status Audio Aktif (Klik untuk membuka aplikasi musik yang dipilih) -->
@@ -657,7 +657,7 @@
                     <div class="glass-card" style="height:168px; border-radius:16px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span style="font-size:10px; font-weight:800; letter-spacing:0.08em; color:rgba(216,180,254,0.85);">PINTASAN CEPAT</span>
-                            <button onclick="openShortcutPickerModal(0)" style="font-size:10px; font-weight:800; padding:2px 8px; border-radius:6px; background:var(--border-faint); color:var(--text-muted); border:1px solid var(--border-faint);" style="display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> <span>Ubah</span></button>
+                            <button onclick="openShortcutPickerModal(0)" style="font-size:10px; font-weight:800; padding:2px 8px; border-radius:6px; background:var(--border-faint); color:var(--text-muted); border:1px solid var(--border-faint); display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> <span>Ubah</span></button>
                         </div>
                         <div id="quick-shortcuts-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; flex:1; margin-top:8px; align-items:center; justify-items:center;"></div>
                     </div>
@@ -668,7 +668,7 @@
             <section id="view-apps" class="hidden glass-card" style="border-radius:16px; padding:18px 20px; height:100%; display:flex; flex-direction:column; justify-content:space-between;">
                 <div style="display:flex; align-items:center; gap:10px;">
                     <div id="category-bar" style="flex:1; display:flex; align-items:center; background:var(--panel-dark-bg); border:1px solid var(--border-faint); border-radius:999px; padding:5px; gap:4px;"></div>
-                    <button onclick="loadRealInstalledApps(true)" style="padding:10px 14px; border-radius:999px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:12px; font-weight:800;" style="display:inline-flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> <span>Segarkan (</span><span id="app-count-badge">0</span>)</span></button>
+                    <button onclick="loadRealInstalledApps(true)" style="padding:10px 14px; border-radius:999px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:12px; font-weight:800; display:inline-flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> <span>Segarkan (</span><span id="app-count-badge">0</span>)</span></button>
                 </div>
                 <div id="apps-grid" style="display:grid; grid-template-columns:repeat(6,1fr); grid-auto-rows:110px; gap:14px; flex:1; margin-top:14px; overflow-y:auto; padding:6px 4px; align-items:center; justify-items:center;"></div>
             </section>
@@ -925,7 +925,7 @@
                                 <span id="total-odo-mini" style="font-size:11px; font-weight:900; color:#facc15;">0,0 KM</span>
                             </div>
                         </div>
-                        <button onclick="forcePushCloudNow()" style="width:100%; padding:8px; border-radius:10px; background:linear-gradient(90deg,#10b981,#059669); color:#fff; font-size:11px; font-weight:900; border:none;" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg> <span>Simpan & Sinkronkan ke HP Sekarang</span></button>
+                        <button onclick="forcePushCloudNow()" style="width:100%; padding:8px; border-radius:10px; background:linear-gradient(90deg,#10b981,#059669); color:#fff; font-size:11px; font-weight:900; border:none; display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg> <span>Simpan & Sinkronkan ke HP Sekarang</span></button>
                     </div>
 
                     <div style="background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:16px; padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
@@ -1015,7 +1015,7 @@
                 </div>
 
                 <div style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-muted);">
-                    <img src="pangdash-logo.png" alt="PangDash" style="width:20px; height:20px; border-radius:6px; object-fit:cover;" />
+                    <img src="pangdash-logo.webp" alt="PangDash" style="width:20px; height:20px; border-radius:6px; object-fit:cover;" />
                     <span id="settings-footer-version-text">PangDash Headunit Launcher v1.0 • Resolusi Native 1280×720 HD</span>
                 </div>
             </section>
@@ -2051,7 +2051,8 @@
             setPlayPauseButtonUI(playing);
         }
     }
-    setInterval(syncAudioStateFromBridge, 1500);
+    // Fallback saja; perubahan status audio utama datang dari event native.
+    setInterval(syncAudioStateFromBridge, 5000);
 
     window.onNativeAudioStateChanged = function(playing) {
         setPlayPauseButtonUI(playing);
@@ -2171,12 +2172,10 @@
         const grid = document.getElementById('quick-shortcuts-grid');
         grid.innerHTML = customShortcuts.map((item, idx) => {
             const liveApp = installedAppsList.find(a => a.pkg === item.pkg);
-            const iconData = (liveApp && liveApp.icon) ? liveApp.icon : item.icon;
             const label = (liveApp && liveApp.name) ? liveApp.name : (item.name || 'Pilih App');
             const safeLabel = escapeHtml(label);
-            const iconHtml = (iconData && iconData.startsWith('data:image'))
-                ? `<div style="width:50px; height:50px; border-radius:16px; background:var(--squircle-bg); border:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:center; padding:6px; box-shadow:inset 0 2px 8px rgba(0,0,0,0.55);"><img src="${iconData}" style="width:100%; height:100%; border-radius:11px; object-fit:contain;" /></div>`
-                : `<div style="width:50px; height:50px; border-radius:16px; background:var(--squircle-bg); border:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:900; color:var(--accent-light);">${escapeHtml(label.charAt(0).toUpperCase())}</div>`;
+            const iconSource = (liveApp && liveApp.icon) ? liveApp.icon : (item.icon || '');
+            const iconHtml = `<div style="width:50px; height:50px; border-radius:16px; background:var(--squircle-bg); border:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:center; padding:6px; box-shadow:inset 0 2px 8px rgba(0,0,0,0.55);">${appIconInnerHtml({ name: label, pkg: item.pkg, icon: iconSource }, 'width:100%; height:100%; border-radius:11px; object-fit:contain;', 'width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:900; color:var(--accent-light);')}</div>`;
             return `
                 <button onclick="handleShortcutClick(${idx})" oncontextmenu="openShortcutPickerModal(${idx}); return false;" style="background:var(--squircle-bg); border:1px solid var(--border-subtle); border-radius:18px; padding:8px 4px; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:#fff; overflow:hidden; box-shadow:0 6px 16px rgba(0,0,0,0.4);">
                     ${iconHtml}
@@ -2184,6 +2183,7 @@
                 </button>
             `;
         }).join('');
+        queueAppIconHydration(grid);
     }
 
     function handleShortcutClick(idx) {
@@ -2259,9 +2259,7 @@
     function renderPickerAppsGrid() {
         const grid = document.getElementById('picker-apps-grid');
         grid.innerHTML = installedAppsList.map((a, idx) => {
-            const iconHtml = a.icon && a.icon.startsWith('data:image')
-                ? `<img src="${a.icon}" style="width:54px; height:54px; border-radius:14px; object-fit:contain;" />`
-                : `<div style="width:54px; height:54px; border-radius:14px; background:linear-gradient(135deg, var(--btn-primary), var(--accent-main)); display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:900; color:#fff;">${escapeHtml(a.name.charAt(0).toUpperCase())}</div>`;
+            const iconHtml = appIconInnerHtml(a, 'width:54px; height:54px; border-radius:14px; object-fit:contain;', 'width:54px; height:54px; border-radius:14px; background:linear-gradient(135deg, var(--btn-primary), var(--accent-main)); display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:900; color:#fff;');
             return `
                 <button onclick="assignAppFromPicker(${idx})" style="background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:14px; padding:8px; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:#fff;">
                     ${iconHtml}
@@ -2269,6 +2267,7 @@
                 </button>
             `;
         }).join('');
+        queueAppIconHydration(grid);
     }
 
     function assignAppFromPicker(appIndex) {
@@ -2317,6 +2316,84 @@
     let activeCategory = 'Semua';
     let installedAppsList = [];
 
+    // Cache ikon per paket di JS. Ikon dimuat hanya saat elemen terlihat,
+    // sehingga startup tidak memblokir WebView dengan puluhan base64 sekaligus.
+    const appIconCache = new Map();
+    const appIconQueue = [];
+    let appIconQueueScheduled = false;
+    let appIconObserver = null;
+
+    if ('IntersectionObserver' in window) {
+        appIconObserver = new IntersectionObserver(function(entries, observer) {
+            entries.forEach(function(entry) {
+                if (!entry.isIntersecting) return;
+                observer.unobserve(entry.target);
+                appIconQueue.push(entry.target);
+            });
+            scheduleAppIconQueue();
+        }, { root: null, rootMargin: '120px' });
+    }
+
+    function scheduleAppIconQueue() {
+        if (appIconQueueScheduled) return;
+        appIconQueueScheduled = true;
+        setTimeout(processAppIconQueue, 0);
+    }
+
+    function processAppIconQueue() {
+        appIconQueueScheduled = false;
+        const started = Date.now();
+        while (appIconQueue.length && Date.now() - started < 8) {
+            const el = appIconQueue.shift();
+            if (!el || !el.isConnected) continue;
+            const pkg = el.getAttribute('data-icon-pkg') || '';
+            let data = appIconCache.get(pkg);
+            if (data === undefined) {
+                data = '';
+                try {
+                    if (window.AndroidBridge && window.AndroidBridge.getAppIconBase64) {
+                        data = window.AndroidBridge.getAppIconBase64(pkg) || '';
+                    }
+                } catch (_e) {
+                    data = '';
+                }
+                appIconCache.set(pkg, data);
+            }
+            if (!data) continue;
+            const img = document.createElement('img');
+            img.src = data;
+            img.alt = '';
+            img.style.cssText = el.getAttribute('data-icon-style') || '';
+            el.replaceWith(img);
+        }
+        if (appIconQueue.length) scheduleAppIconQueue();
+    }
+
+    function queueAppIconHydration(root) {
+        const scope = root || document;
+        const nodes = scope.querySelectorAll('[data-icon-pkg]:not([data-icon-queued])');
+        if (!nodes.length) return;
+        nodes.forEach(function(el) {
+            el.dataset.iconQueued = '1';
+            if (appIconObserver) {
+                appIconObserver.observe(el);
+            } else {
+                appIconQueue.push(el);
+            }
+        });
+        if (!appIconObserver) scheduleAppIconQueue();
+    }
+
+    function appIconInnerHtml(app, imgStyle, letterStyle) {
+        const data = (app && app.icon) ? app.icon : (app ? appIconCache.get(app.pkg) : '');
+        const label = escapeHtml(String((app && app.name) ? app.name : '?').charAt(0).toUpperCase());
+        if (data && String(data).startsWith('data:image')) {
+            return `<img src="${data}" style="${imgStyle}" />`;
+        }
+        const pkg = escapeHtml((app && app.pkg) ? app.pkg : '');
+        return `<span data-icon-pkg="${pkg}" data-icon-style="${escapeHtml(imgStyle)}" style="${letterStyle}">${label}</span>`;
+    }
+
     const BROWSER_FALLBACK_APPS = [
         { name: 'Google Maps', cat: 'Navigasi', pkg: 'com.google.android.apps.maps', icon: '' },
         { name: 'Spotify', cat: 'Media', pkg: 'com.spotify.music', icon: '' },
@@ -2350,25 +2427,49 @@
         localStorage.setItem('gc_custom_music_sources_v6', JSON.stringify(customMusicSources));
     }
 
-    function loadRealInstalledApps(forceRefresh) {
-        if (window.AndroidBridge && window.AndroidBridge.getInstalledAppsJson) {
+    function loadInstalledAppsMeta(forceRefresh) {
+        const started = (window.performance && performance.now) ? performance.now() : Date.now();
+        if (forceRefresh) appIconCache.clear();
+        let parsedOk = false;
+        if (window.AndroidBridge && window.AndroidBridge.getInstalledAppsMetaJson) {
+            try {
+                const rawJson = window.AndroidBridge.getInstalledAppsMetaJson(!!forceRefresh);
+                const parsed = JSON.parse(rawJson);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    installedAppsList = parsed.sort((a, b) => a.name.localeCompare(b.name));
+                    parsedOk = true;
+                }
+            } catch (e) {
+                console.error("Failed parsing installed apps metadata:", e);
+            }
+        } else if (window.AndroidBridge && window.AndroidBridge.getInstalledAppsJson) {
+            // Fallback untuk bridge versi lama yang belum punya metadata-only.
             try {
                 const rawJson = window.AndroidBridge.getInstalledAppsJson(!!forceRefresh);
                 const parsed = JSON.parse(rawJson);
                 if (Array.isArray(parsed) && parsed.length > 0) {
                     installedAppsList = parsed.sort((a, b) => a.name.localeCompare(b.name));
+                    parsedOk = true;
                 }
             } catch (e) {
                 console.error("Failed parsing installed apps:", e);
             }
         }
-        if (installedAppsList.length === 0) {
+        if (!parsedOk && installedAppsList.length === 0) {
             installedAppsList = BROWSER_FALLBACK_APPS;
         }
         document.getElementById('app-count-badge').innerText = installedAppsList.length;
         autoInitDefaultMusicSources();
         renderMusicSourceCard();
         renderQuickShortcuts();
+        try {
+            const elapsed = ((window.performance && performance.now) ? performance.now() : Date.now()) - started;
+            console.log('[PangDashPerf] metadata aplikasi ' + Math.round(elapsed) + ' ms, ' + installedAppsList.length + ' app');
+        } catch (_e) {}
+    }
+
+    function loadRealInstalledApps(forceRefresh) {
+        loadInstalledAppsMeta(forceRefresh);
         renderCategories();
         filterApps(activeCategory);
     }
@@ -2399,9 +2500,7 @@
         grid.innerHTML = filtered.map(a => {
             const safeName = String(a.name).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             const displayName = escapeHtml(a.name);
-            const iconHtml = a.icon && a.icon.startsWith('data:image')
-                ? `<img src="${a.icon}" style="width:64px; height:64px; border-radius:16px; object-fit:contain; filter:drop-shadow(0 6px 14px rgba(0,0,0,0.5));" />`
-                : `<div style="width:64px; height:64px; border-radius:16px; background:linear-gradient(135deg, var(--btn-primary), var(--accent-main)); display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:900; color:#fff;">${escapeHtml(a.name.charAt(0).toUpperCase())}</div>`;
+            const iconHtml = appIconInnerHtml(a, 'width:64px; height:64px; border-radius:16px; object-fit:contain; filter:drop-shadow(0 6px 14px rgba(0,0,0,0.5));', 'width:64px; height:64px; border-radius:16px; background:linear-gradient(135deg, var(--btn-primary), var(--accent-main)); display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:900; color:#fff;');
             return `
                 <button onclick="openApp('${a.pkg}', '${safeName}')" style="background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:6px; color:#fff; width:100%; overflow:hidden;">
                     ${iconHtml}
@@ -2409,6 +2508,7 @@
                 </button>
             `;
         }).join('');
+        queueAppIconHydration(grid);
     }
 
     function openApp(pkg, label) {
@@ -2527,7 +2627,7 @@
                 updateBrightnessUIFromNative(sysBrt);
             }
         }
-    }, 600);
+    }, 3000);
 
     // Dipanggil saat pengguna menggeser slider volume di layar
     function setVolume(val) {
@@ -4091,30 +4191,38 @@
         toastTimeout = setTimeout(() => el.classList.add('hidden'), 3000);
     }
 
+    let lastClockDateKey = '';
     function updateClock() {
         const now = new Date();
         const hhmm = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
         const ss = ':' + String(now.getSeconds()).padStart(2, '0');
-        const shortDate = now.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-        const fullDay = now.toLocaleDateString('id-ID', { weekday: 'long' }).toUpperCase();
-        const medDate = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 
         document.getElementById('clock-text').innerText = hhmm;
-        document.getElementById('date-text').innerText = shortDate;
 
         const heroClock = document.getElementById('hero-clock-text');
         const heroSec = document.getElementById('hero-sec-text');
-        const heroDay = document.getElementById('hero-day-text');
-        const heroDate = document.getElementById('hero-date-text');
         if (heroClock) heroClock.innerText = hhmm;
         if (heroSec) heroSec.innerText = ss;
-        if (heroDay) heroDay.innerText = fullDay;
-        if (heroDate) heroDate.innerText = medDate;
+
+        // Format tanggal hanya dihitung sekali per hari, bukan setiap detik.
+        const dateKey = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+        if (dateKey !== lastClockDateKey) {
+            lastClockDateKey = dateKey;
+            document.getElementById('date-text').innerText = now.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+            const heroDay = document.getElementById('hero-day-text');
+            const heroDate = document.getElementById('hero-date-text');
+            if (heroDay) heroDay.innerText = now.toLocaleDateString('id-ID', { weekday: 'long' }).toUpperCase();
+            if (heroDate) heroDate.innerText = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
     }
     setInterval(updateClock, 1000);
     updateClock();
 
     window.addEventListener('DOMContentLoaded', () => {
+        try {
+            const bootMs = (window.performance && performance.now) ? Math.round(performance.now()) : 0;
+            console.log('[PangDashPerf] DOMContentLoaded ' + bootMs + ' ms');
+        } catch (_e) {}
         document.getElementById('pairing-code-badge').innerText = 'ID: ' + vehiclePairingCode;
         document.getElementById('autosync-text').innerText = 'Auto-Sync HP (' + vehiclePairingCode + ')';
         let rawSavedName = localStorage.getItem('gc_vehicle_name');
@@ -4134,7 +4242,7 @@
         renderTotalKm();
         initLiveMap();
         setTripCategory(tripCategory);
-        loadRealInstalledApps(false);
+        loadInstalledAppsMeta(false);
                 syncAppVersionLabels();
         const savedOffset = parseInt(localStorage.getItem('gc_gps_offset_v13') || '0');
         setGpsOffsetValue(savedOffset);

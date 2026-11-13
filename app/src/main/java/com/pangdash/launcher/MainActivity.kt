@@ -27,6 +27,7 @@ import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
 import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -53,6 +54,7 @@ import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Base64
+import android.util.Log
 import android.view.InputDevice
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
@@ -63,6 +65,7 @@ import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
@@ -75,6 +78,7 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -128,8 +132,10 @@ class MainActivity : Activity(), LocationListener {
     private var audioManager: AudioManager? = null
     private var locationManager: LocationManager? = null
     private var connectivityManager: ConnectivityManager? = null
-    private var cachedAppsJson: String? = null
-    private val appIconCache = HashMap<String, String>()
+    @Volatile private var cachedAppsJson: String? = null
+    @Volatile private var cachedAppsMetaJson: String? = null
+    private val appIconCache = ConcurrentHashMap<String, String>()
+    private var activityCreateElapsed: Long = 0L
     private val mainHandler = Handler(Looper.getMainLooper())
     private val REQ_HOME_ROLE = 2002
     private var lastGpsFixElapsed: Long = 0L
@@ -437,6 +443,7 @@ class MainActivity : Activity(), LocationListener {
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
+        activityCreateElapsed = SystemClock.elapsedRealtime()
         super.onCreate(savedInstanceState)
 
         try {
@@ -491,6 +498,34 @@ class MainActivity : Activity(), LocationListener {
             }
 
             wv.webViewClient = object : WebViewClient() {
+                override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+                    // Renderer WebView bisa dibunuh sistem saat memori rendah.
+                    // Jangan biarkan launcher menampilkan layar hitam: restart activity.
+                    try { view?.destroy() } catch (_: Throwable) {}
+                    if (webView === view) webView = null
+                    if (!isFinishing && !isDestroyed) {
+                        Toast.makeText(this@MainActivity, "Memuat ulang tampilan...", Toast.LENGTH_SHORT).show()
+                        mainHandler.postDelayed({
+                            if (isFinishing || isDestroyed) return@postDelayed
+                            try {
+                                val restart = Intent(this@MainActivity, MainActivity::class.java)
+                                restart.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                startActivity(restart)
+                                finish()
+                            } catch (_: Throwable) {}
+                        }, 700L)
+                    }
+                    return true
+                }
+
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    try {
+                        val elapsed = SystemClock.elapsedRealtime() - activityCreateElapsed
+                        Log.d("PangDashPerf", "WebView selesai dimuat dalam ${elapsed} ms")
+                    } catch (_: Throwable) {}
+                }
+
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val target = request?.url ?: return false
                     val scheme = target.scheme?.lowercase() ?: return false
@@ -1584,41 +1619,85 @@ class MainActivity : Activity(), LocationListener {
             if (!forceRefresh && cachedAppsJson != null) {
                 return cachedAppsJson!!
             }
+            if (forceRefresh) {
+                appIconCache.clear()
+                cachedAppsMetaJson = null
+            }
             return try {
-                val pm = context.packageManager
-                if (forceRefresh) appIconCache.clear()
-                val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
-                    addCategory(Intent.CATEGORY_LAUNCHER)
-                }
-                val resolveInfos = pm.queryIntentActivities(mainIntent, 0)
-                val arr = JSONArray()
-                val seenPackages = HashSet<String>()
-
-                for (ri in resolveInfos) {
-                    val pkg = ri.activityInfo?.packageName ?: continue
-                    if (pkg == context.packageName || seenPackages.contains(pkg)) continue
-                    seenPackages.add(pkg)
-
-                    val label = ri.loadLabel(pm)?.toString() ?: pkg
-                    val iconBase64 = appIconCache.getOrPut(pkg) {
-                        val iconDrawable = ri.loadIcon(pm)
-                        if (iconDrawable != null) drawableToBase64(iconDrawable) else ""
-                    }
-                    val cat = categorizeApp(pkg, label, ri.activityInfo?.applicationInfo)
-
-                    val obj = JSONObject()
-                    obj.put("name", label)
-                    obj.put("pkg", pkg)
-                    obj.put("cat", cat)
-                    obj.put("icon", iconBase64)
-                    arr.put(obj)
-                }
-                val result = arr.toString()
-                cachedAppsJson = result
-                result
+                buildInstalledAppsJson(includeIcons = true).also { cachedAppsJson = it }
             } catch (e: Throwable) {
                 "[]"
             }
+        }
+
+        // Metadata ringan untuk startup: nama, paket, dan kategori tanpa ikon base64.
+        // Ikon dimuat terpisah lewat getAppIconBase64() saat item benar-benar terlihat.
+        @JavascriptInterface
+        fun getInstalledAppsMetaJson(forceRefresh: Boolean): String {
+            if (!forceRefresh && cachedAppsMetaJson != null) {
+                return cachedAppsMetaJson!!
+            }
+            if (forceRefresh) {
+                appIconCache.clear()
+                cachedAppsJson = null
+            }
+            return try {
+                buildInstalledAppsJson(includeIcons = false).also { cachedAppsMetaJson = it }
+            } catch (e: Throwable) {
+                "[]"
+            }
+        }
+
+        @JavascriptInterface
+        fun getAppIconBase64(pkg: String): String {
+            if (pkg.isBlank()) return ""
+            appIconCache[pkg]?.let { return it }
+            val data = try {
+                drawableToBase64(context.packageManager.getApplicationIcon(pkg))
+            } catch (_: Throwable) {
+                ""
+            }
+            appIconCache[pkg] = data
+            return data
+        }
+
+        private fun buildInstalledAppsJson(includeIcons: Boolean): String {
+            val pm = context.packageManager
+            val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            }
+            val resolveInfos = pm.queryIntentActivities(mainIntent, 0)
+            val arr = JSONArray()
+            val seenPackages = HashSet<String>()
+
+            for (ri in resolveInfos) {
+                val pkg = ri.activityInfo?.packageName ?: continue
+                if (pkg == context.packageName || seenPackages.contains(pkg)) continue
+                seenPackages.add(pkg)
+
+                val label = ri.loadLabel(pm)?.toString() ?: pkg
+                val obj = JSONObject()
+                obj.put("name", label)
+                obj.put("pkg", pkg)
+                obj.put("cat", categorizeApp(pkg, label, ri.activityInfo?.applicationInfo))
+                if (includeIcons) {
+                    obj.put("icon", iconForResolveInfo(pm, pkg, ri))
+                }
+                arr.put(obj)
+            }
+            return arr.toString()
+        }
+
+        private fun iconForResolveInfo(pm: PackageManager, pkg: String, ri: ResolveInfo): String {
+            appIconCache[pkg]?.let { return it }
+            val data = try {
+                val iconDrawable = ri.loadIcon(pm)
+                if (iconDrawable != null) drawableToBase64(iconDrawable) else ""
+            } catch (_: Throwable) {
+                ""
+            }
+            appIconCache[pkg] = data
+            return data
         }
 
         // Kontrol Media Multi-Jalur (AudioManager + MediaController + Targeted Broadcast ke Aplikasi Musik)
