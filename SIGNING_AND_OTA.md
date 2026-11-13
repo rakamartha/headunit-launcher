@@ -87,7 +87,9 @@ Workflow akan:
 1. Men-decode keystore ke `$RUNNER_TEMP/release.jks`.
 2. Build `assembleRelease` dengan `versionCodeOverride`.
 3. Memverifikasi sertifikat APK memakai `apksigner`.
-4. Membuat/memperbarui GitHub Release dan mengirim payload OTA berisi `sha256`.
+4. Menerbitkan GitHub Release + payload OTA berisi `sha256` **hanya jika** workflow dijalankan manual dengan `publish_release=true`.
+
+Push biasa ke `main` tidak lagi memicu rilis OTA. Hal ini mencegah build yang belum diuji langsung dipublikasikan ke pengguna.
 
 Jika `KEYSTORE_BASE64` belum diisi, workflow **hanya** membuat APK debug dan
 **tidak** mempublikasikan rilis OTA (mencegah update yang pasti gagal).
@@ -131,13 +133,22 @@ apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk
 
 ## 4. Versi & tag rilis
 
-- `versionName` masih manual di `app/build.gradle.kts` (contoh `1.1`).
+- `versionName` masih manual di `app/build.gradle.kts` (contoh `1.4`).
   Naikkan saat ada rilis fitur.
-- `versionCode` di CI dihitung otomatis: `101 + GITHUB_RUN_NUMBER`, sehingga
-  selalu naik dan OTA terdeteksi.
-- Tag rilis: `v<versionName>-b<versionCode>`, contoh `v1.1-b142`.
-- Workflow aman dijalankan berulang: jika tag sudah ada, aset di-upload ulang
-  dengan `--clobber`.
+- `versionCode` headunit diisi lewat input `version_code` saat menjalankan
+  workflow manual (contoh `150`). Jika kosong, nilai otomatis `101 + GITHUB_RUN_NUMBER`.
+- Tag rilis: `v<versionName>-b<versionCode>`, contoh `v1.4-b149`.
+- Rilis headunit bersifat **manual** (`workflow_dispatch` dengan
+  `publish_release=true`) agar push ke `main` tidak mempublikasikan OTA.
+
+### PangLink
+
+- PangLink memakai versionCode terpisah; rilis pertama harus lebih tinggi dari
+  versi terpasang (mis. `8`), dengan `version_name` mis. `1.2`.
+- Workflow **Build PangLink APK** di repo `app-headunit` menerbitkan GitHub
+  Release berisi APK + checksum `.sha256` saat `publish_release` dicentang.
+- Bar pembaruan PangLink membaca `releases/latest` repo tersebut, lalu
+  memverifikasi SHA-256 dan sertifikat APK sebelum memasang.
 
 ---
 
@@ -152,6 +163,10 @@ pangdash_ota_<owner>_<repo>   (huruf kecil, non-alfanumerik → "_")
 Contoh repo `rakamartha/PangDash-Headunit` → `pangdash_ota_rakamartha_pangdash_headunit`.
 
 Ini mencegah fork lain saling menimpa payload update.
+
+PangLink **tidak** memakai topik relay ntfy untuk pembaruan. PangLink membaca
+GitHub Release repo `app-headunit` secara langsung, sehingga tidak butuh
+kunci/token tambahan.
 
 ---
 

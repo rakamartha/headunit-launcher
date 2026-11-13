@@ -42,6 +42,32 @@ Status uji live 13 Nov 2026: **11/11 PASS** untuk app `tNDrjg` — publish state
 
 ---
 
+## Pembaruan OTA PangLink (bar pembaruan di HP)
+
+PangLink sekarang punya bar pembaruan di layar utama, modal rincian rilis, serta unduhan dan pemasangan APK langsung dari aplikasi (tanpa membuka browser).
+
+Sumber pembaruan adalah **GitHub Release** di repo `rakamartha/app-headunit`. Repo di-inject ke `index.html` oleh workflow, sehingga APK hanya memeriksa rilis dari repositori yang benar. Keamanan yang dipakai:
+
+- URL APK wajib HTTPS dan hanya boleh dari `github.com` / `*.githubusercontent.com`.
+- APK harus lebih baru berdasarkan `versionCode` di tag `v<versi>-b<kode>`.
+- SHA-256 dibaca dari aset `.sha256` (atau digest aset GitHub) bila tersedia.
+- Sertifikat APK unduhan harus sama dengan sertifikat PangLink yang terpasang.
+- Pemasangan memakai `PackageInstaller`; Android akan meminta izin **Instal aplikasi tidak dikenal** satu kali.
+
+### Menerbitkan rilis PangLink
+
+1. Buka **Actions → Build PangLink APK → Run workflow** di repo **`rakamartha/app-headunit`**.
+2. Isi `version_code` **lebih tinggi** dari versi terpasang (contoh `8`).
+3. Isi `version_name` (contoh `1.2`).
+4. Centang `publish_release` agar APK dan checksum diunggah sebagai GitHub Release.
+5. Setelah selesai, buka PangLink di HP. Bar pembaruan akan menawarkan versi baru dalam waktu singkat.
+
+Push biasa ke `main` **hanya** membuat artifact; tidak menerbitkan rilis. Rilis hanya terjadi saat `publish_release` dicentang pada run manual.
+
+Catatan: rilis pertama harus memakai `version_code` di atas `7` (versi PangLink yang beredar), misalnya `8`. Jika memakai `7`, aplikasi tidak akan menganggapnya sebagai pembaruan.
+
+---
+
 ## Fitur Native Android yang Aktif Saat Diinstal sebagai APK
 * **Home Launcher Resmi**: Saat menekan tombol *Home* di headunit, Android akan menanyakan apakah Anda ingin menjadikan **PangDash Launcher** sebagai layar utama (*Default Home App*).
 * **Kontrol Brightness Headunit Asli**: Menggeser bar kecerahan di pojok kanan atas langsung mengubah kecerahan layar sistem Android headunit (`WindowManager` & `Settings.System.SCREEN_BRIGHTNESS`).
