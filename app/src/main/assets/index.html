@@ -118,7 +118,8 @@
         .map-dark-tiles .leaflet-tile-pane {
             filter: invert(92%) hue-rotate(190deg) brightness(95%) contrast(92%) saturate(130%);
         }
-        .leaflet-control-attribution { display: none !important; }
+        .leaflet-control-attribution { font-size: 9px !important; background: rgba(0,0,0,0.55) !important; color: #a1a1aa !important; }
+        .leaflet-control-attribution a { color: #d4d4d8 !important; }
 
         /* Fallback Layout Classes */
         .hu-header { height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; border-radius: 16px; }
@@ -921,6 +922,10 @@
                                 <input id="gps-offset-slider" type="range" min="0" max="10" value="0" oninput="setGpsOffsetValue(this.value)" style="flex:1; height:6px;">
                                 <button onclick="adjustGpsOffset(1)" style="width:34px; height:34px; border-radius:9px; background:var(--squircle-bg); border:1px solid var(--border-subtle); color:var(--accent-light); font-size:16px; font-weight:900; display:flex; align-items:center; justify-content:center; cursor:pointer;">+</button>
                             </div>
+                            <button onclick="openNotificationListenerSettings()" style="width:100%; padding:8px 10px; border-radius:10px; background:var(--squircle-bg); border:1px solid var(--border-subtle); color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; margin-bottom:10px;">
+                                <span>Akses Notifikasi Media</span>
+                                <span id="notif-listener-status" style="font-size:10px; font-weight:900; color:#fca5a5;">Memeriksa...</span>
+                            </button>
                         </div>
                         <div style="display:flex; gap:6px;">
                             <button onclick="resetTripDistance()" style="flex:1; padding:8px; border-radius:10px; background:rgba(220,38,38,0.3); border:1px solid rgba(248,113,113,0.4); color:#fca5a5; font-size:11px; font-weight:800; cursor:pointer;">Reset 0,0 KM</button>
@@ -1026,6 +1031,7 @@
         applyThemeByIndex(savedThemeIdx, true);
         checkDefaultLauncherStatus();
         syncAudioStateFromBridge();
+        refreshNotificationListenerUI();
         setTimeout(() => checkAndShowStartupServiceAlert(false), 450);
         checkAndShowStartupServiceAlert(false);
     };
@@ -1044,17 +1050,24 @@
         try {
             if (typeof L === 'undefined') return;
             mapInstance = L.map('live-map', {
-                zoomControl: false,
-                attributionControl: false
+                zoomControl: false
             }).setView([currentLat, currentLng], 16);
 
             // Gunakan Google Maps Standard Road Tiles (Bebas API Key Required & Lengkap Seluruh Jalan Indonesia)
             const googleLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&hl=id&x={x}&y={y}&z={z}', {
-                maxZoom: 20
+                maxZoom: 20,
+                attribution: '&copy; Google'
             });
-            // Fallback ke OpenStreetMap jika koneksi membatasi domain tertentu
+            // Fallback ke OpenStreetMap jika koneksi membatasi domain tertentu.
+            // Hanya tambahkan sekali agar tileerror berulang tidak menumpuk layer.
+            let osmFallbackAdded = false;
             googleLayer.on('tileerror', function() {
-                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(mapInstance);
+                if (osmFallbackAdded) return;
+                osmFallbackAdded = true;
+                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(mapInstance);
             });
             googleLayer.addTo(mapInstance);
 
@@ -1108,7 +1121,7 @@
     // 4. GPS REAL-TIME, PENCATAT SESI PER JAM (START-STOP MESIN) & GMAIL CLOUD SYNC
     let currentSessionId = 'TRIP-' + Date.now();
     let sessionStartClock = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
-    let sessionDateIso = new Date().toISOString().split('T')[0];
+    let sessionDateIso = localDateIso();
     let sessionDistKm = 0.0;
     let sessionSeconds = 0;
     let sessionMaxSpeed = 0;
@@ -1127,11 +1140,35 @@
     let tripHistoryArr = JSON.parse(localStorage.getItem('gc_trip_history_v9') || '[]');
     let gpsOffset = 0;
 
+    // Tulis localStorage secara hemat: maksimal sekali per 5 detik per kunci.
+    // Data yang tertunda tetap dikirim saat headunit tidur / halaman ditutup.
+    const STORAGE_WRITE_THROTTLE_MS = 5000;
+    const pendingStorageWrites = new Map();
+    const lastStorageWriteAt = new Map();
+
+    function writeStorageThrottled(key, value, force) {
+        const now = Date.now();
+        pendingStorageWrites.set(key, value);
+        if (!force && (now - (lastStorageWriteAt.get(key) || 0)) < STORAGE_WRITE_THROTTLE_MS) return;
+        lastStorageWriteAt.set(key, now);
+        const stored = pendingStorageWrites.get(key);
+        pendingStorageWrites.delete(key);
+        try { localStorage.setItem(key, stored); } catch (_e) {}
+    }
+
+    function flushStorageWrites() {
+        pendingStorageWrites.forEach(function(value, key) {
+            try { localStorage.setItem(key, value); } catch (_e) {}
+        });
+        pendingStorageWrites.clear();
+    }
+
+
     function startNewDrivingSession() {
         const now = new Date();
         currentSessionId = 'TRIP-' + now.getTime();
         sessionStartClock = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
-        sessionDateIso = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        sessionDateIso = localDateIso(now);
         sessionDistKm = 0.0;
         sessionSeconds = 0;
         sessionMaxSpeed = 0;
@@ -1141,7 +1178,7 @@
         document.getElementById('session-max').innerText = '0 km/j';
     }
 
-    function upsertCurrentSessionToHistory() {
+    function upsertCurrentSessionToHistory(force) {
         if (sessionDistKm < 0.05 && sessionSeconds < 30) return;
         const now = new Date();
         const endClock = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
@@ -1168,15 +1205,17 @@
             tripHistoryArr.unshift(sessionObj);
             if (tripHistoryArr.length > 60) tripHistoryArr = tripHistoryArr.slice(0, 60);
         }
-        localStorage.setItem('gc_trip_history_v9', JSON.stringify(tripHistoryArr));
+        writeStorageThrottled('gc_trip_history_v9', JSON.stringify(tripHistoryArr), force);
     }
 
     // Dipanggil otomatis saat Headunit mati / ACC OFF / Sleep
     window.onNativeHeadunitSleep = function() {
         startupServiceAlertDismissedInSession = false;
-        upsertCurrentSessionToHistory();
+        upsertCurrentSessionToHistory(true);
         queueAutoSyncPayload(true);
+        flushStorageWrites();
     };
+    window.addEventListener('pagehide', flushStorageWrites);
 
     // =========================================================================
     // PAIRING AMAN & SINKRONISASI TERENKRIPSI (PDSync v1)
@@ -1213,7 +1252,9 @@
         const badge = document.getElementById('pairing-code-badge');
         if (badge) badge.innerText = 'ID: ' + vehiclePairingCode;
         const auto = document.getElementById('autosync-text');
-        if (auto) auto.innerText = carId ? ('Auto-Sync HP (PD-' + carId + ')') : 'Auto-Sync HP (menyiapkan...)';
+        if (auto) auto.innerText = !navigator.onLine
+            ? 'HP Offline - Menunggu Koneksi'
+            : (carId ? ('Auto-Sync HP (PD-' + carId + ')') : 'Auto-Sync HP (menyiapkan...)');
     }
 
     function localDateIso(date) {
@@ -1464,13 +1505,14 @@
         longestTripKm = 0.0;
         activeDaysArr = [];
         tripHistoryArr = [];
-        localStorage.setItem('gc_trip_history_v9', '[]');
+        flushStorageWrites();
         startNewDrivingSession();
-        localStorage.setItem('gc_total_km_v6', '0.0');
-        localStorage.setItem('gc_trips_count_v8', '0');
-        localStorage.setItem('gc_total_sec_v8', '0');
-        localStorage.setItem('gc_longest_km_v8', '0.0');
-        localStorage.setItem('gc_active_days_v8', '[]');
+        writeStorageThrottled('gc_trip_history_v9', '[]', true);
+        writeStorageThrottled('gc_total_km_v6', '0.0', true);
+        writeStorageThrottled('gc_trips_count_v8', '0', true);
+        writeStorageThrottled('gc_total_sec_v8', '0', true);
+        writeStorageThrottled('gc_longest_km_v8', '0.0', true);
+        writeStorageThrottled('gc_active_days_v8', '[]', true);
         document.getElementById('session-dist').innerText = '0.0 km';
         document.getElementById('session-time').innerText = '00:00';
         document.getElementById('session-max').innerText = '0 km/j';
@@ -1504,6 +1546,13 @@
     }
 
     window.onNativeGpsUpdate = function(speedKmh, lat, lng, bearing) {
+        const gpsBadge = document.getElementById('gps-badge');
+        if (gpsBadge) {
+            gpsBadge.innerText = 'GPS REAL-TIME';
+            gpsBadge.style.background = 'rgba(16,185,129,0.2)';
+            gpsBadge.style.color = '#6ee7b7';
+            gpsBadge.style.borderColor = 'rgba(16,185,129,0.35)';
+        }
         updateSpeedUI(speedKmh);
         currentLat = lat;
         currentLng = lng;
@@ -1535,19 +1584,19 @@
                 if (typeof deductServiceComponentsKm === 'function') deductServiceComponentsKm(deltaKm);
                 if (sessionDistKm > longestTripKm) {
                     longestTripKm = sessionDistKm;
-                    localStorage.setItem('gc_longest_km_v8', longestTripKm.toFixed(2));
+                    writeStorageThrottled('gc_longest_km_v8', longestTripKm.toFixed(2));
                 }
                 if (!sessionTripRecorded && sessionDistKm >= 0.05) {
                     sessionTripRecorded = true;
                     totalTripsCount += 1;
                     localStorage.setItem('gc_trips_count_v8', String(totalTripsCount));
-                    const todayKey = new Date().toISOString().split('T')[0];
+                    const todayKey = localDateIso();
                     if (!activeDaysArr.includes(todayKey)) {
                         activeDaysArr.push(todayKey);
                         localStorage.setItem('gc_active_days_v8', JSON.stringify(activeDaysArr));
                     }
                 }
-                localStorage.setItem('gc_total_km_v6', totalMonthlyKm.toFixed(2));
+                writeStorageThrottled('gc_total_km_v6', totalMonthlyKm.toFixed(2));
                 document.getElementById('session-dist').innerText = sessionDistKm.toFixed(1) + ' km';
                 renderTotalKm();
             }
@@ -1557,7 +1606,7 @@
             if (dtSec > 0 && dtSec < 15) {
                 sessionSeconds += dtSec;
                 totalDrivingSeconds += dtSec;
-                localStorage.setItem('gc_total_sec_v8', String(totalDrivingSeconds));
+                writeStorageThrottled('gc_total_sec_v8', String(totalDrivingSeconds));
                 const mins = String(Math.floor(sessionSeconds / 60)).padStart(2, '0');
                 const secs = String(sessionSeconds % 60).padStart(2, '0');
                 document.getElementById('session-time').innerText = mins + ':' + secs;
@@ -1581,6 +1630,20 @@
 
         upsertCurrentSessionToHistory();
         queueAutoSyncPayload(false);
+    };
+
+    // Dipanggil native saat tidak ada fix GPS baru (mis. masuk terowongan).
+    // Kecepatan dipaksa 0 tanpa menambah jarak atau menggeser peta.
+    window.onNativeGpsStale = function() {
+        updateSpeedUI(0);
+        lastGpsTime = null;
+        const gpsBadge = document.getElementById('gps-badge');
+        if (gpsBadge) {
+            gpsBadge.innerText = 'GPS TERTAHAN';
+            gpsBadge.style.background = 'rgba(245,158,11,0.2)';
+            gpsBadge.style.color = '#fcd34d';
+            gpsBadge.style.borderColor = 'rgba(245,158,11,0.35)';
+        }
     };
 
     function currentMonthKey(date) {
@@ -1649,7 +1712,7 @@
         ensureMonthlyReset(false);
         const payload = buildStatePayload();
         latestStatePayload = payload;
-        localStorage.setItem('gc_latest_sync_payload', JSON.stringify(payload));
+        writeStorageThrottled('gc_latest_sync_payload', JSON.stringify(payload), !!forceImmediate);
 
         const now = Date.now();
         if (navigator.onLine && (forceImmediate || (now - lastCloudPushTime > 20000))) {
@@ -1674,6 +1737,8 @@
             const syncDot = document.getElementById('autosync-dot');
             if (syncDot) syncDot.style.background = '#10b981';
         } catch (_e) {
+            const auto = document.getElementById('autosync-text');
+            if (auto) auto.innerText = 'Gagal sync - mencoba lagi';
             const syncDot = document.getElementById('autosync-dot');
             if (syncDot) syncDot.style.background = '#f59e0b';
         }
@@ -1682,14 +1747,17 @@
     window.onNativeNetworkChange = function(isOnline) {
         const dot = document.getElementById('net-dot');
         const syncDot = document.getElementById('autosync-dot');
+        const auto = document.getElementById('autosync-text');
         if (isOnline) {
             if (dot) dot.style.background = '#10b981';
             if (syncDot) syncDot.style.background = '#10b981';
+            if (auto) auto.innerText = carId ? ('Auto-Sync HP (PD-' + carId + ')') : 'Auto-Sync HP Aktif';
             triggerSilentCloudSync();
             if (syncSession) queueServicePublish(true);
         } else {
             if (dot) dot.style.background = '#f59e0b';
             if (syncDot) syncDot.style.background = '#f59e0b';
+            if (auto) auto.innerText = 'HP Offline - Menunggu Koneksi';
         }
     };
     setInterval(function () {
@@ -2117,6 +2185,32 @@
             window.AndroidBridge.openSystemSettings();
         }
     }
+
+    function refreshNotificationListenerUI() {
+        const statusEl = document.getElementById('notif-listener-status');
+        if (!statusEl) return;
+        let enabled = false;
+        try {
+            enabled = !!(window.AndroidBridge && window.AndroidBridge.isNotificationListenerEnabled && window.AndroidBridge.isNotificationListenerEnabled());
+        } catch (_e) {}
+        statusEl.innerText = enabled ? 'Aktif' : 'Belum Aktif - Ketuk';
+        statusEl.style.color = enabled ? '#6ee7b7' : '#fca5a5';
+    }
+
+    function openNotificationListenerSettings() {
+        try {
+            if (window.AndroidBridge && window.AndroidBridge.openNotificationListenerSettings) {
+                window.AndroidBridge.openNotificationListenerSettings();
+                return;
+            }
+        } catch (_e) {}
+        showToast('Buka Setelan Android -> Notifikasi -> Akses Notifikasi');
+    }
+
+    window.addEventListener('focus', refreshNotificationListenerUI);
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) refreshNotificationListenerUI();
+    });
 
     // 9. BRIGHTNESS & VOLUME HEADUNIT (SINKRONISASI 2 ARAH KE SISTEM HEADUNIT)
     let isUserDraggingBrightness = false;
@@ -3678,6 +3772,9 @@
         if (tab === 'service') {
             renderServiceDashboard();
         }
+        if (tab === 'settings') {
+            refreshNotificationListenerUI();
+        }
         if (tab === 'home' && mapInstance) {
             setTimeout(() => mapInstance.invalidateSize(), 100);
         }
@@ -3743,6 +3840,7 @@
         applyThemeByIndex(savedThemeIdx, true);
         checkDefaultLauncherStatus();
         syncAudioStateFromBridge();
+        refreshNotificationListenerUI();
         setTimeout(() => checkAndShowStartupServiceAlert(false), 450);
         if (window.AndroidBridge && window.AndroidBridge.getSystemVolume) {
             updateVolumeUIFromNative(window.AndroidBridge.getSystemVolume());

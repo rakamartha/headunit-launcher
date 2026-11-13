@@ -127,7 +127,27 @@ class MainActivity : Activity(), LocationListener {
     private var locationManager: LocationManager? = null
     private var connectivityManager: ConnectivityManager? = null
     private var cachedAppsJson: String? = null
+    private val appIconCache = HashMap<String, String>()
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var lastGpsFixElapsed: Long = 0L
+    private var gpsStaleNotified: Boolean = false
+    private val gpsWatchdogRunnable = object : Runnable {
+        override fun run() {
+            try {
+                if (lastGpsFixElapsed > 0L &&
+                    SystemClock.elapsedRealtime() - lastGpsFixElapsed >= 5000L &&
+                    !gpsStaleNotified
+                ) {
+                    gpsStaleNotified = true
+                    webView?.evaluateJavascript(
+                        "if(window.onNativeGpsStale) window.onNativeGpsStale();",
+                        null
+                    )
+                }
+            } catch (_: Throwable) {}
+            mainHandler.postDelayed(this, 2000L)
+        }
+    }
     private var prefs: SharedPreferences? = null
     private var trackedVolumePercent: Int = 50
     private var isFixedStreamHeadunit: Boolean = false
@@ -955,6 +975,8 @@ class MainActivity : Activity(), LocationListener {
 
     override fun onDestroy() {
         super.onDestroy()
+        try { mainHandler.removeCallbacks(gpsWatchdogRunnable) } catch (_: Throwable) {}
+        try { locationManager?.removeUpdates(this) } catch (_: Throwable) {}
         try { unregisterReceiver(otaDownloadReceiver) } catch (_: Throwable) {}
         try { unregisterReceiver(mediaReceiver) } catch (_: Throwable) {}
         try { unregisterReceiver(volumeReceiver) } catch (_: Throwable) {}
@@ -1007,6 +1029,10 @@ class MainActivity : Activity(), LocationListener {
     private fun startGpsTrackingSafely() {
         try {
             val lm = locationManager ?: return
+            lastGpsFixElapsed = SystemClock.elapsedRealtime()
+            gpsStaleNotified = false
+            mainHandler.removeCallbacks(gpsWatchdogRunnable)
+            mainHandler.postDelayed(gpsWatchdogRunnable, 2000L)
             if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                 lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, this)
             }
@@ -1023,6 +1049,8 @@ class MainActivity : Activity(), LocationListener {
 
     override fun onLocationChanged(location: Location) {
         try {
+            lastGpsFixElapsed = SystemClock.elapsedRealtime()
+            gpsStaleNotified = false
             val speedKmh = if (location.hasSpeed()) (location.speed * 3.6f).toInt() else 0
             val lat = location.latitude
             val lng = location.longitude
@@ -1064,13 +1092,13 @@ class MainActivity : Activity(), LocationListener {
 
     private fun drawableToBase64(drawable: Drawable): String {
         return try {
-            val size = 72
+            val size = 48
             val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             drawable.setBounds(0, 0, size, size)
             drawable.draw(canvas)
             val stream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.PNG, 85, stream)
+            bitmap.compress(Bitmap.CompressFormat.PNG, 80, stream)
             "data:image/png;base64," + Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
         } catch (_: Throwable) {
             ""
@@ -1420,6 +1448,7 @@ class MainActivity : Activity(), LocationListener {
             }
             return try {
                 val pm = context.packageManager
+                if (forceRefresh) appIconCache.clear()
                 val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
                     addCategory(Intent.CATEGORY_LAUNCHER)
                 }
@@ -1433,8 +1462,10 @@ class MainActivity : Activity(), LocationListener {
                     seenPackages.add(pkg)
 
                     val label = ri.loadLabel(pm)?.toString() ?: pkg
-                    val iconDrawable = ri.loadIcon(pm)
-                    val iconBase64 = if (iconDrawable != null) drawableToBase64(iconDrawable) else ""
+                    val iconBase64 = appIconCache.getOrPut(pkg) {
+                        val iconDrawable = ri.loadIcon(pm)
+                        if (iconDrawable != null) drawableToBase64(iconDrawable) else ""
+                    }
                     val cat = categorizeApp(pkg, label, ri.activityInfo?.applicationInfo)
 
                     val obj = JSONObject()
@@ -1787,6 +1818,36 @@ class MainActivity : Activity(), LocationListener {
                 try {
                     startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 } catch (_: Throwable) {}
+            }
+        }
+
+        @JavascriptInterface
+        fun isNotificationListenerEnabled(): Boolean {
+            return try {
+                val enabled = Settings.Secure.getString(
+                    context.contentResolver,
+                    "enabled_notification_listeners"
+                ) ?: return false
+                val expected = ComponentName(context, MediaListenerService::class.java)
+                enabled.split(":").any { ComponentName.unflattenFromString(it) == expected }
+            } catch (_: Throwable) {
+                false
+            }
+        }
+
+        @JavascriptInterface
+        fun openNotificationListenerSettings() {
+            runOnUiThread {
+                try {
+                    startActivity(
+                        Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                } catch (_: Throwable) {
+                    try {
+                        startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    } catch (_: Throwable) {}
+                }
             }
         }
     }
