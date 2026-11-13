@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PangDash - Android Headunit Launcher (1280x720)</title>
     <!-- Aset lokal: UI tetap tampil walau headunit boot tanpa internet -->
-    <script src="vendor/tailwind.js"></script>
+    <!-- Tailwind statis: hanya preflight + utilitas yang dipakai (runtime 412 KB dihapus) -->
+    <link rel="stylesheet" href="vendor/tailwind.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <!-- Leaflet Real-Time GPS Map CSS & JS (lokal) -->
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />

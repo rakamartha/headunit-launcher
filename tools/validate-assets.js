@@ -66,6 +66,15 @@ while ((scriptMatch = scriptRe.exec(html))) {
     }
 }
 
+// Pastikan runtime Tailwind tidak kembali; b151 memakai CSS statis.
+if (html.includes('vendor/tailwind.js')) {
+    errors.push('Referensi vendor/tailwind.js ditemukan; gunakan vendor/tailwind.min.css statis.');
+}
+const tailwindCssPath = path.join(root, 'app', 'src', 'main', 'assets', 'vendor', 'tailwind.min.css');
+if (!fs.existsSync(tailwindCssPath)) {
+    errors.push('vendor/tailwind.min.css tidak ditemukan.');
+}
+
 if (errors.length) {
     console.error(`Validasi aset PangDash gagal (${errors.length} masalah):`);
     errors.forEach((error) => console.error(`- ${error}`));
