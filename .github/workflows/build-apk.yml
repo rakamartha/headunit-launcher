@@ -1,8 +1,8 @@
 name: Build, Sign & Publish PangDash OTA APK
 
 on:
-  push:
-    branches: [ "main", "master" ]
+  # Rilis sekarang manual agar push biasa tidak pernah mempublikasikan OTA
+  # sebelum diuji. Jalankan lewat Actions > Run workflow.
   workflow_dispatch:
     inputs:
       publish_release:
@@ -10,7 +10,7 @@ on:
         type: boolean
         default: false
       version_code:
-        description: 'Override versionCode (kosongkan untuk otomatis; uji dua arah gunakan 149)'
+        description: 'versionCode rilis (mis. 150 untuk b150; kosongkan untuk 101 + run number)'
         type: string
         required: false
 
