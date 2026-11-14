@@ -1521,17 +1521,17 @@ class MainActivity : Activity(), LocationListener {
         @JavascriptInterface
         fun isDefaultLauncher(): Boolean {
             return try {
-                val resolved = currentHomePackageName()
-                if (!resolved.isNullOrEmpty()) {
-                    // Resolusi CATEGORY_HOME adalah kondisi nyata saat tombol Home ditekan.
-                    resolved == packageName
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    // Guard eksplisit: RoleManager hanya ada di Android 10+ (lint NewApi).
+                // RoleManager adalah sumber kebenaran di Android 10+. Saat boot,
+                // resolveActivity(CATEGORY_HOME) bisa sementara mengembalikan
+                // launcher lain/null meski role HOME sudah dipegang PangDash.
+                val roleHeld = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     val rm = homeRoleManager()
                     rm != null && rm.isRoleAvailable(RoleManager.ROLE_HOME) && rm.isRoleHeld(RoleManager.ROLE_HOME)
                 } else {
                     false
                 }
+                val resolved = currentHomePackageName()
+                roleHeld || (!resolved.isNullOrEmpty() && resolved == packageName)
             } catch (_: Throwable) {
                 false
             }
@@ -1544,7 +1544,7 @@ class MainActivity : Activity(), LocationListener {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     val rm = homeRoleManager()
                     if (rm != null && rm.isRoleAvailable(RoleManager.ROLE_HOME)) {
-                        if (rm.isRoleHeld(RoleManager.ROLE_HOME) && currentHomePackageName() == packageName) {
+                        if (isDefaultLauncher()) {
                             Toast.makeText(context, "PangDash sudah menjadi Layar Utama", Toast.LENGTH_SHORT).show()
                             return@runOnUiThread
                         }
@@ -1603,7 +1603,9 @@ class MainActivity : Activity(), LocationListener {
                 }
 
                 val result = JSONObject()
-                result.put("isDefault", resolvedPkg == context.packageName)
+                // Sama dengan isDefaultLauncher(): role HOME yang dipegang tetap
+                // dianggap default walau resolusi Home transien saat boot.
+                result.put("isDefault", roleHeld || resolvedPkg == context.packageName)
                 result.put("resolvedPackage", resolvedPkg)
                 result.put("resolvedComponent", resolvedComponent)
                 result.put("roleAvailable", roleAvailable)

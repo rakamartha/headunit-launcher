@@ -1057,23 +1057,68 @@
     autoScaleHeadunit();
 
     // 2. CEK STATUS DEFAULT HOME LAUNCHER & TAMPILKAN POPUP "JADIKAN LAYAR UTAMA"
+    // Popup hanya ditampilkan setelah dua pembacaan berturut-turut menyatakan
+    // PangDash bukan Home. Saat boot, resolusi Home bisa transien meski role
+    // HOME sudah dipegang PangDash. "Nanti Saja" disimpan agar tidak berulang.
+    const HOME_PROMPT_SNOOZE_KEY = 'gc_home_prompt_snooze_until_v1';
+    const HOME_PROMPT_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
     let defaultModalDismissed = false;
-    function checkDefaultLauncherStatus() {
-        if (window.AndroidBridge && window.AndroidBridge.isDefaultLauncher) {
-            const isDef = window.AndroidBridge.isDefaultLauncher();
-            const modal = document.getElementById('default-launcher-modal');
-            if (!defaultModalDismissed && !isDef) {
-                modal.classList.remove('hidden');
-            } else {
-                modal.classList.add('hidden');
-            }
+    try {
+        defaultModalDismissed = Number(localStorage.getItem(HOME_PROMPT_SNOOZE_KEY) || '0') > Date.now();
+    } catch (_e) {
+        defaultModalDismissed = false;
+    }
+    let defaultLauncherRetryTimer = null;
+
+    function hideDefaultLauncherModal() {
+        const modal = document.getElementById('default-launcher-modal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    function markDefaultLauncherConfirmed() {
+        defaultModalDismissed = false;
+        try { localStorage.removeItem(HOME_PROMPT_SNOOZE_KEY); } catch (_e) {}
+        hideDefaultLauncherModal();
+    }
+
+    function checkDefaultLauncherStatus(showPrompt) {
+        if (!window.AndroidBridge || !window.AndroidBridge.isDefaultLauncher) return;
+        let isDef = false;
+        try {
+            isDef = !!window.AndroidBridge.isDefaultLauncher();
+        } catch (_e) {
+            return;
+        }
+        if (isDef) {
+            markDefaultLauncherConfirmed();
+        } else if (!showPrompt || defaultModalDismissed) {
+            hideDefaultLauncherModal();
+        } else if (!defaultLauncherRetryTimer) {
+            // Verifikasi ulang setelah sistem selesai memulihkan default Home.
+            defaultLauncherRetryTimer = setTimeout(function() {
+                defaultLauncherRetryTimer = null;
+                let retryDef = false;
+                try {
+                    retryDef = !!(window.AndroidBridge && window.AndroidBridge.isDefaultLauncher
+                        ? window.AndroidBridge.isDefaultLauncher() : false);
+                } catch (_e) {}
+                if (retryDef) {
+                    markDefaultLauncherConfirmed();
+                } else if (!defaultModalDismissed) {
+                    const modal = document.getElementById('default-launcher-modal');
+                    if (modal) modal.classList.remove('hidden');
+                }
+            }, 1500);
         }
         const diag = document.getElementById('home-diagnostics-modal');
         if (diag && !diag.classList.contains('hidden')) renderHomeDiagnostics();
     }
     function dismissDefaultLauncherModal() {
         defaultModalDismissed = true;
-        document.getElementById('default-launcher-modal').classList.add('hidden');
+        try {
+            localStorage.setItem(HOME_PROMPT_SNOOZE_KEY, String(Date.now() + HOME_PROMPT_SNOOZE_MS));
+        } catch (_e) {}
+        hideDefaultLauncherModal();
     }
     function triggerSetDefaultLauncher() {
         document.getElementById('default-launcher-modal').classList.add('hidden');
@@ -1172,7 +1217,9 @@
         setGpsOffsetValue(savedOffset);
         const savedThemeIdx = parseInt(localStorage.getItem('gc_theme_idx_v16') || '0');
         applyThemeByIndex(savedThemeIdx, true);
-        checkDefaultLauncherStatus();
+        // Saat resume hanya periksa diam-diam: jangan memunculkan popup lagi
+        // setiap kembali dari Setelan/aplikasi lain.
+        checkDefaultLauncherStatus(false);
         syncAudioStateFromBridge();
         refreshNotificationListenerUI();
         setTimeout(() => checkAndShowStartupServiceAlert(false), 450);
@@ -1289,6 +1336,68 @@
     let tripHistoryArr = JSON.parse(localStorage.getItem('gc_trip_history_v9') || '[]');
     let gpsOffset = 0;
 
+    // Rute perjalanan: titik GPS disimpan sebagai polyline terenkode (presisi
+    // 5 desimal) agar hemat storage dan cukup kecil untuk dikirim terenkripsi.
+    const ROUTE_MIN_POINT_DISTANCE_KM = 0.015;
+    const ROUTE_MAX_RAW_POINTS = 1200;
+    const ROUTE_MAX_ENCODED_POINTS = 110;
+    let sessionRoutePoints = [];
+
+    function encodeRouteValue(value) {
+        let v = value < 0 ? ~(value << 1) : (value << 1);
+        let out = '';
+        while (v >= 0x20) {
+            out += String.fromCharCode((0x20 | (v & 0x1f)) + 63);
+            v >>= 5;
+        }
+        return out + String.fromCharCode(v + 63);
+    }
+
+    function encodeRoutePolyline(points) {
+        if (!Array.isArray(points) || points.length < 2) return '';
+        let lastLat = 0;
+        let lastLng = 0;
+        let out = '';
+        for (let i = 0; i < points.length; i++) {
+            const lat = Math.round(Number(points[i][0]) * 1e5);
+            const lng = Math.round(Number(points[i][1]) * 1e5);
+            if (!isFinite(lat) || !isFinite(lng)) continue;
+            out += encodeRouteValue(lat - lastLat) + encodeRouteValue(lng - lastLng);
+            lastLat = lat;
+            lastLng = lng;
+        }
+        return out;
+    }
+
+    function compactRoutePoints(points, maxPoints) {
+        if (!Array.isArray(points) || points.length <= maxPoints) return points || [];
+        const out = [];
+        const step = (points.length - 1) / (maxPoints - 1);
+        for (let i = 0; i < maxPoints; i++) {
+            out.push(points[Math.round(i * step)]);
+        }
+        return out;
+    }
+
+    function recordSessionRoutePoint(lat, lng) {
+        if (!isFinite(lat) || !isFinite(lng)) return;
+        const last = sessionRoutePoints[sessionRoutePoints.length - 1];
+        if (last && haversineKm(last[0], last[1], lat, lng) < ROUTE_MIN_POINT_DISTANCE_KM) return;
+        sessionRoutePoints.push([Number(lat.toFixed(5)), Number(lng.toFixed(5))]);
+        if (sessionRoutePoints.length > ROUTE_MAX_RAW_POINTS) {
+            const filtered = [];
+            for (let i = 0; i < sessionRoutePoints.length; i++) {
+                if (i % 2 === 0 || i === sessionRoutePoints.length - 1) filtered.push(sessionRoutePoints[i]);
+            }
+            sessionRoutePoints = filtered;
+        }
+    }
+
+    function currentSessionRouteEncoded() {
+        const compact = compactRoutePoints(sessionRoutePoints, ROUTE_MAX_ENCODED_POINTS);
+        return compact.length >= 2 ? encodeRoutePolyline(compact) : '';
+    }
+
     // Tulis localStorage secara hemat: maksimal sekali per 5 detik per kunci.
     // Data yang tertunda tetap dikirim saat headunit tidur / halaman ditutup.
     const STORAGE_WRITE_THROTTLE_MS = 5000;
@@ -1322,12 +1431,13 @@
         sessionSeconds = 0;
         sessionMaxSpeed = 0;
         sessionTripRecorded = false;
+        sessionRoutePoints = [];
         document.getElementById('session-dist').innerText = '0.0 km';
         document.getElementById('session-time').innerText = '00:00';
         document.getElementById('session-max').innerText = '0 km/j';
     }
 
-    function upsertCurrentSessionToHistory(force) {
+    function upsertCurrentSessionToHistory(force, publishRoute) {
         if (sessionDistKm < 0.05 && sessionSeconds < 30) return;
         const now = new Date();
         const endClock = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
@@ -1344,7 +1454,8 @@
             avgSpeedKmh: avgSpd,
             maxSpeedKmh: sessionMaxSpeed,
             category: tripCategory,
-            timestamp: now.getTime()
+            timestamp: now.getTime(),
+            route: currentSessionRouteEncoded()
         };
 
         const idx = tripHistoryArr.findIndex(t => t.tripId === currentSessionId);
@@ -1355,12 +1466,13 @@
             if (tripHistoryArr.length > 60) tripHistoryArr = tripHistoryArr.slice(0, 60);
         }
         writeStorageThrottled('gc_trip_history_v9', JSON.stringify(tripHistoryArr), force);
+        if (publishRoute) publishTripRoute(sessionObj);
     }
 
     // Dipanggil otomatis saat Headunit mati / ACC OFF / Sleep
     window.onNativeHeadunitSleep = function() {
         startupServiceAlertDismissedInSession = false;
-        upsertCurrentSessionToHistory(true);
+        upsertCurrentSessionToHistory(true, true);
         queueAutoSyncPayload(true);
         // Simpan snapshot servis terakhir sebelum proses WebView dihentikan.
         if (typeof publishServiceSnapshot === 'function') publishServiceSnapshot(true);
@@ -1392,6 +1504,32 @@
     const SERVICE_AUTO_PUBLISH_MIN_MS = 5 * 60 * 1000;
     const SERVICE_AUTO_PUBLISH_MIN_KM = 10;
     const seenSyncNonces = new Set();
+    let lastPublishedRouteSignature = '';
+
+    // Rute perjalanan dikirim terpisah dari state utama supaya amplop tetap
+    // kecil (batas ntfy ~3,8 KB). Topik state dipakai ulang dengan purpose
+    // "route" sehingga tidak perlu izin channel Ably baru.
+    async function publishTripRoute(trip) {
+        if (!trip || !trip.route || trip.route.length < 8) return;
+        if (!syncSession || !navigator.onLine) return;
+        if (typeof PDTransport === 'undefined' || !PDTransport.ready()) return;
+        if (syncQuotaBlockedUntil > Date.now()) return;
+        const signature = trip.tripId + ':' + trip.route.length;
+        if (signature === lastPublishedRouteSignature) return;
+        try {
+            const sealed = await PDSync.seal(syncSession, 'route', {
+                tripId: trip.tripId,
+                route: trip.route,
+                distanceKm: trip.distanceKm,
+                timestamp: trip.timestamp
+            });
+            if (sealed.length > PDTransport.maxPayloadBytes()) return;
+            await postSyncMessage(syncSession.stateTopic, sealed);
+            lastPublishedRouteSignature = signature;
+        } catch (e) {
+            if (e && e.status === 429) markSyncQuotaExhausted(e);
+        }
+    }
 
     function rememberNonce(nonce) {
         if (!nonce) return false;
@@ -1743,6 +1881,7 @@
         updateSpeedUI(speedKmh);
         currentLat = lat;
         currentLng = lng;
+        recordSessionRoutePoint(lat, lng);
         document.getElementById('map-coord-text').innerText = 'GPS Aktif: ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
 
         if (mapInstance && carMarker) {
@@ -1802,7 +1941,8 @@
         if (speedKmh >= 2) {
             // Jika sebelumnya mobil sudah berhenti lebih dari 5 menit lalu jalan lagi, mulai sesi perjalanan baru
             if (lastMovingTimestamp && (now - lastMovingTimestamp > 300000) && sessionTripRecorded) {
-                upsertCurrentSessionToHistory();
+                // Sesi selesai: kirim rute lebih dulu agar tidak hilang saat buffer direset.
+                upsertCurrentSessionToHistory(true, true);
                 startNewDrivingSession();
             }
             if (!sessionTripRecorded && sessionSeconds <= 2) {
@@ -1885,12 +2025,18 @@
             lastLat: currentLat,
             lastLng: currentLng,
             // Dibatasi 12 trip terbaru agar amplop terenkripsi tetap < 4 KB (batas pesan ntfy).
-            tripHistory: tripHistoryArr.slice(0, 12).map(t => ({
-                tripId: t.tripId, dateIso: t.dateIso, startTime: t.startTime, endTime: t.endTime,
-                distanceKm: t.distanceKm, durationMinutes: t.durationMinutes,
-                avgSpeedKmh: t.avgSpeedKmh, maxSpeedKmh: t.maxSpeedKmh,
-                category: t.category, timestamp: t.timestamp
-            })),
+            // Rute hanya disertakan untuk trip terbaru; rute trip lain dikirim
+            // sebagai pesan purpose "route" saat perjalanan selesai.
+            tripHistory: tripHistoryArr.slice(0, 12).map((t, idx) => {
+                const item = {
+                    tripId: t.tripId, dateIso: t.dateIso, startTime: t.startTime, endTime: t.endTime,
+                    distanceKm: t.distanceKm, durationMinutes: t.durationMinutes,
+                    avgSpeedKmh: t.avgSpeedKmh, maxSpeedKmh: t.maxSpeedKmh,
+                    category: t.category, timestamp: t.timestamp
+                };
+                if (idx === 0 && t.route) item.route = t.route;
+                return item;
+            }),
             updatedAt: Date.now()
         };
     }
@@ -4249,7 +4395,8 @@
         setGpsOffsetValue(savedOffset);
         const savedThemeIdx = parseInt(localStorage.getItem('gc_theme_idx_v16') || '0');
         applyThemeByIndex(savedThemeIdx, true);
-        checkDefaultLauncherStatus();
+        // Popup hanya dicek saat boot, dengan verifikasi ulang di dalam fungsi.
+        checkDefaultLauncherStatus(true);
         syncAudioStateFromBridge();
         refreshNotificationListenerUI();
         setTimeout(() => checkAndShowStartupServiceAlert(false), 450);
