@@ -50,7 +50,10 @@ android {
     defaultConfig {
         applicationId = "com.pangdash.launcher"
         minSdk = 24
-        targetSdk = 32
+        // b152: targetSdk 34 (Android 14). Receiver volume/media yang dikirim
+        // firmware headunit tetap RECEIVER_EXPORTED secara eksplisit (lihat
+        // registerVolumeSyncWatchers() dan registerMediaBroadcasts()).
+        targetSdk = 34
         // CI mengirim versionCodeOverride berbasis nomor build agar OTA selalu naik.
         versionCode = (findProperty("versionCodeOverride") as String?)?.toIntOrNull() ?: 148
         versionName = "1.4"
@@ -94,8 +97,10 @@ android {
         jvmTarget = "17"
     }
 
+    // b152: lint menjadi gate CI (P2-10). Error lint menggagalkan build;
+    // checkReleaseBuilds tetap false agar release tidak di-lint dua kali.
     lint {
-        abortOnError = false
+        abortOnError = true
         checkReleaseBuilds = false
     }
 }

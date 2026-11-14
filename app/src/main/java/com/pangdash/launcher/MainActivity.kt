@@ -561,11 +561,7 @@ class MainActivity : Activity(), LocationListener {
         registerVolumeSyncWatchers()
         registerAudioPlaybackWatcher()
         registerAutoNetworkSync()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(otaDownloadReceiver, IntentFilter("com.pangdash.launcher.OTA_INSTALL_COMMIT"), Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(otaDownloadReceiver, IntentFilter("com.pangdash.launcher.OTA_INSTALL_COMMIT"))
-        }
+        registerOtaDownloadReceiver()
 
         window?.decorView?.post {
             hideSystemUI()
@@ -573,6 +569,20 @@ class MainActivity : Activity(), LocationListener {
             pushCurrentSystemVolumeToWeb(force = true)
             pushCurrentSystemBrightnessToWeb(force = true)
             MediaListenerService.instance?.pollActiveMediaSessions()
+        }
+    }
+
+    // Hasil audit receiver (b152, P2-3): NOT_EXPORTED sudah dipakai di Android 13+.
+    // Cabang else (Android 12 ke bawah) memakai overload 2-argumen karena konstanta
+    // RECEIVER_* baru ada di API 33; lint menandainya false positive, jadi
+    // disembunyikan terarah di sini. Broadcast-nya private (setPackage) dan token
+    // sesinya acak, sehingga tidak bisa dipalsukan aplikasi lain.
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    private fun registerOtaDownloadReceiver() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(otaDownloadReceiver, IntentFilter("com.pangdash.launcher.OTA_INSTALL_COMMIT"), Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(otaDownloadReceiver, IntentFilter("com.pangdash.launcher.OTA_INSTALL_COMMIT"))
         }
     }
 
@@ -762,6 +772,17 @@ class MainActivity : Activity(), LocationListener {
         return super.dispatchKeyEvent(event)
     }
 
+    // Hasil audit receiver (b152, P2-3): receiver ini WAJIB RECEIVER_EXPORTED.
+    // Filter-nya mengandung broadcast firmware headunit dari aplikasi lain
+    // (com.microntek.*, com.syu.*, com.tw.volume, com.ts.main.volume,
+    // com.xyauto.volume, VOLUME_CHANGED_ACTION sistem) yang dikirim lintas UID;
+    // RECEIVER_NOT_EXPORTED akan memutus sinkronisasi slider volume/brightness
+    // di headunit sungguhan. Receiver ini hanya membaca extra untuk update UI
+    // (try/catch, abaikan action tak dikenal), tidak memicu OTA/instalasi,
+    // sehingga risikonya rendah dan flag EXPORTED sengaja dipertahankan.
+    // Suppress lint: flag sudah eksplisit di cabang Android 13+; konstanta
+    // RECEIVER_* tidak tersedia untuk cabang Android 12 ke bawah.
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun registerVolumeSyncWatchers() {
         try {
             val volFilter = IntentFilter().apply {
@@ -930,6 +951,15 @@ class MainActivity : Activity(), LocationListener {
         }
     }
 
+    // Hasil audit receiver (b152, P2-3): receiver ini WAJIB RECEIVER_EXPORTED.
+    // Broadcast metadata musik (com.android.music.*, Spotify, player vendor
+    // headunit) dikirim oleh aplikasi musik pihak ketiga lintas UID;
+    // RECEIVER_NOT_EXPORTED akan memutus judul lagu di dock. Receiver ini hanya
+    // meneruskan teks judul/artis ke WebView (di-escape) tanpa memproses Intent
+    // arbitrer, sehingga risikonya rendah dan flag EXPORTED sengaja dipertahankan.
+    // Suppress lint: flag sudah eksplisit di cabang Android 13+; konstanta
+    // RECEIVER_* tidak tersedia untuk cabang Android 12 ke bawah.
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun registerMediaBroadcasts() {
         try {
             val filter = IntentFilter().apply {
@@ -1495,9 +1525,12 @@ class MainActivity : Activity(), LocationListener {
                 if (!resolved.isNullOrEmpty()) {
                     // Resolusi CATEGORY_HOME adalah kondisi nyata saat tombol Home ditekan.
                     resolved == packageName
-                } else {
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // Guard eksplisit: RoleManager hanya ada di Android 10+ (lint NewApi).
                     val rm = homeRoleManager()
                     rm != null && rm.isRoleAvailable(RoleManager.ROLE_HOME) && rm.isRoleHeld(RoleManager.ROLE_HOME)
+                } else {
+                    false
                 }
             } catch (_: Throwable) {
                 false
@@ -1543,9 +1576,16 @@ class MainActivity : Activity(), LocationListener {
                 val resolved = pm.resolveActivity(homeIntent, PackageManager.MATCH_DEFAULT_ONLY)
                 val resolvedPkg = resolved?.activityInfo?.packageName ?: ""
                 val resolvedComponent = resolved?.activityInfo?.let { "${it.packageName}/${it.name}" } ?: ""
-                val rm = homeRoleManager()
-                val roleAvailable = rm?.isRoleAvailable(RoleManager.ROLE_HOME) ?: false
-                val roleHeld = rm?.isRoleHeld(RoleManager.ROLE_HOME) ?: false
+                // Guard eksplisit Android 10+: RoleManager hanya ada sejak API 29 (lint NewApi).
+                var roleAvailable = false
+                var roleHeld = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val rm = homeRoleManager()
+                    if (rm != null) {
+                        roleAvailable = rm.isRoleAvailable(RoleManager.ROLE_HOME)
+                        roleHeld = rm.isRoleHeld(RoleManager.ROLE_HOME)
+                    }
+                }
 
                 val candidates = JSONArray()
                 val seen = HashSet<String>()

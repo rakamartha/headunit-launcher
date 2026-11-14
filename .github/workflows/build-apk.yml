@@ -46,6 +46,24 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      # P2-10: lint menjadi gate. abortOnError=true di build.gradle.kts,
+      # sehingga error lint menggagalkan workflow sebelum APK dibangun.
+      - name: Lint Android
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :app:lintDebug --console=plain
+
+      - name: Upload laporan lint saat gagal
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.xml
+          if-no-files-found: ignore
+
       - name: Tentukan versi build
         run: |
           set -euo pipefail
