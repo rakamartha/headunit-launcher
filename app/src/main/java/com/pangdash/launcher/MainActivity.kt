@@ -449,6 +449,12 @@ class MainActivity : Activity(), LocationListener {
         try {
             requestWindowFeature(Window.FEATURE_NO_TITLE)
             window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            // Keyboard tidak boleh me-resize window. Pada WebView, resize
+            // viewport memicu autoScaleHeadunit() mengecilkan seluruh UI.
+            window?.setSoftInputMode(
+                WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN or
+                    WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN
+            )
         } catch (_: Throwable) {}
 
         try {
@@ -2097,6 +2103,22 @@ class MainActivity : Activity(), LocationListener {
         @JavascriptInterface
         fun openNotificationListenerSettings() {
             runOnUiThread {
+                // Android 11+ punya halaman detail per aplikasi. Ini lebih
+                // langsung daripada daftar "Device & app notifications".
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    try {
+                        val component = ComponentName(context, MediaListenerService::class.java)
+                        startActivity(
+                            Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+                                .putExtra(
+                                    Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+                                    component
+                                )
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                        return@runOnUiThread
+                    } catch (_: Throwable) {}
+                }
                 try {
                     startActivity(
                         Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)

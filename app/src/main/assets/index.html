@@ -389,6 +389,60 @@
             </div>
         </div>
 
+        <!-- MODAL 1C: PANDUAN AKSES NOTIFIKASI (RESTRICTED SETTING ANDROID 13+) -->
+        <div id="notification-access-modal" class="hidden" style="position:absolute; inset:0; z-index:100; background:rgba(7,3,18,0.9); backdrop-filter:blur(12px); display:flex; align-items:center; justify-content:center; padding:24px;">
+            <div class="glass-card" style="width:720px; max-height:88vh; overflow-y:auto; border-radius:22px; padding:24px; border:1px solid var(--border-subtle); box-shadow:0 20px 60px rgba(0,0,0,0.8); display:flex; flex-direction:column; gap:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                    <div>
+                        <div style="font-size:11px; font-weight:800; color:var(--accent-light);">AKSES NOTIFIKASI MEDIA</div>
+                        <h3 style="font-size:19px; font-weight:900; color:#fff; margin:2px 0 0 0;">Izinkan PangDash Membaca Media</h3>
+                    </div>
+                    <button onclick="closeNotificationAccessGuide()" aria-label="Tutup" style="background:var(--btn-secondary); border:1px solid var(--border-faint); color:var(--text-muted); width:34px; height:34px; border-radius:10px; font-size:18px; font-weight:900; cursor:pointer;">&times;</button>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:10px; background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:12px; padding:12px 14px;">
+                    <span id="notif-guide-dot" style="width:10px; height:10px; border-radius:999px; background:#f59e0b; flex:none;"></span>
+                    <div style="min-width:0;">
+                        <div id="notif-guide-status" style="font-size:13px; font-weight:900; color:#fff;">Memeriksa...</div>
+                        <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Dipakai untuk menampilkan judul/artis dan kontrol putar dari aplikasi musik.</div>
+                    </div>
+                </div>
+
+                <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.35); border-radius:12px; padding:11px 13px; font-size:11px; color:#fde68a; line-height:1.55;">
+                    <strong>Android 13 ke atas:</strong> aplikasi yang dipasang di luar Play Store bisa menampilkan pesan
+                    <em>&ldquo;Restricted setting &mdash; For your security, this setting is currently unavailable.&rdquo;</em>
+                    Ini pembatasan normal dari Android dan bisa diizinkan lewat menu Info Aplikasi.
+                </div>
+
+                <ol style="margin:0; padding-left:20px; display:flex; flex-direction:column; gap:7px; font-size:12px; color:#e4e4e7; line-height:1.5;">
+                    <li>Ketuk <strong>Buka Info Aplikasi</strong> di bawah.</li>
+                    <li>Ketuk menu <strong>&#8942;</strong> di kanan atas, lalu pilih <strong>Izinkan setelan terbatas</strong> / <strong>Allow restricted settings</strong>.</li>
+                    <li>Kembali ke PangDash, lalu ketuk <strong>Buka Akses Notifikasi</strong>.</li>
+                    <li>Aktifkan <strong>PangDash Media Integration</strong>, lalu kembali ke PangDash.</li>
+                </ol>
+
+                <div style="background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:12px; padding:10px 12px; font-size:11px; color:var(--text-muted); line-height:1.5;">
+                    Pada Android 12 ke bawah, langkah 1&ndash;2 bisa dilewati: langsung buka Akses Notifikasi dan aktifkan
+                    <strong>PangDash Media Integration</strong>.
+                </div>
+
+                <details style="background:var(--input-bg); border:1px solid var(--border-faint); border-radius:12px; padding:9px 11px;">
+                    <summary style="font-size:11px; font-weight:800; color:var(--accent-light); cursor:pointer;">Opsi teknisi (ADB)</summary>
+                    <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                        <code id="notif-adb-command" style="font-size:10px; color:#a7f3d0; flex:1; overflow:auto; white-space:nowrap;">adb shell appops set --uid com.pangdash.launcher ACCESS_RESTRICTED_SETTINGS allow</code>
+                        <button onclick="copyNotificationAdbCommand()" style="flex:none; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; padding:6px 10px; border-radius:8px; font-size:10px; font-weight:800; cursor:pointer;">Salin</button>
+                    </div>
+                    <div style="font-size:10px; color:var(--text-muted); margin-top:6px; line-height:1.45;">Setelah perintah dijalankan, buka kembali Akses Notifikasi dan aktifkan PangDash Media Integration.</div>
+                </details>
+
+                <div style="display:flex; gap:8px;">
+                    <button onclick="openAppInfoForNotificationGuide()" style="flex:1.2; padding:11px; border-radius:11px; background:linear-gradient(90deg, var(--btn-primary), var(--accent-main)); border:1px solid var(--accent-light); color:#fff; font-size:12px; font-weight:900; cursor:pointer;">Buka Info Aplikasi</button>
+                    <button onclick="openNotificationSettingsFromGuide()" style="flex:1.2; padding:11px; border-radius:11px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:12px; font-weight:800; cursor:pointer;">Buka Akses Notifikasi</button>
+                    <button onclick="closeNotificationAccessGuide()" style="flex:0.6; padding:11px; border-radius:11px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:var(--text-muted); font-size:12px; font-weight:800; cursor:pointer;">Tutup</button>
+                </div>
+            </div>
+        </div>
+
         <!-- MODAL 2: PEMILIH APLIKASI (UNTUK UBAH PINTASAN CEPAT & PILIH MANUAL APLIKASI MUSIK/SPOTIFY) -->
         <div id="app-picker-modal" class="hidden" style="position:absolute; inset:0; z-index:97; background:rgba(7,3,18,0.85); backdrop-filter:blur(12px); display:flex; align-items:center; justify-content:center; padding:28px;">
             <div class="glass-card" style="width:920px; height:560px; border-radius:22px; padding:22px; border:1px solid var(--border-subtle); display:flex; flex-direction:column; justify-content:space-between;">
@@ -980,7 +1034,7 @@
                                 <input id="gps-offset-slider" type="range" min="0" max="10" value="0" oninput="setGpsOffsetValue(this.value)" style="flex:1; height:6px;">
                                 <button onclick="adjustGpsOffset(1)" style="width:34px; height:34px; border-radius:9px; background:var(--squircle-bg); border:1px solid var(--border-subtle); color:var(--accent-light); font-size:16px; font-weight:900; display:flex; align-items:center; justify-content:center; cursor:pointer;">+</button>
                             </div>
-                            <button onclick="openNotificationListenerSettings()" style="width:100%; padding:8px 10px; border-radius:10px; background:var(--squircle-bg); border:1px solid var(--border-subtle); color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; margin-bottom:10px;">
+                            <button onclick="openNotificationAccessGuide()" style="width:100%; padding:8px 10px; border-radius:10px; background:var(--squircle-bg); border:1px solid var(--border-subtle); color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; margin-bottom:10px;">
                                 <span>Akses Notifikasi Media</span>
                                 <span id="notif-listener-status" style="font-size:10px; font-weight:900; color:#fca5a5;">Memeriksa...</span>
                             </button>
@@ -1049,7 +1103,15 @@
     function autoScaleHeadunit() {
         const scaler = document.getElementById('viewport-scaler');
         if (!scaler) return;
-        const scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+        // Di WebView headunit, sebagian ROM tetap me-resize window saat keyboard
+        // terbuka. Karena layout fullscreen, tinggi layar fisik dipakai sebagai
+        // batas bawah agar skala UI tidak ikut mengecil. Manifest & MainActivity
+        // memakai adjustPan supaya window tidak resize sejak awal.
+        let viewportHeight = window.innerHeight || 720;
+        if (window.AndroidBridge && window.screen && window.screen.height > 0) {
+            viewportHeight = Math.max(viewportHeight, window.screen.height);
+        }
+        const scale = Math.min(window.innerWidth / 1280, viewportHeight / 720);
         scaler.style.transform = 'scale(' + scale + ')';
     }
     window.addEventListener('resize', autoScaleHeadunit);
@@ -1222,6 +1284,9 @@
         checkDefaultLauncherStatus(false);
         syncAudioStateFromBridge();
         refreshNotificationListenerUI();
+        // Saat kembali dari Setelan/aplikasi lain, ambil perubahan servis yang
+        // mungkin terlewat ketika koneksi SSE sedang terputus.
+        refreshServiceFromRemote();
         setTimeout(() => checkAndShowStartupServiceAlert(false), 450);
         checkAndShowStartupServiceAlert(false);
     };
@@ -1577,6 +1642,54 @@
         return Math.max(0, Math.round((to.getTime() - from.getTime()) / 86400000));
     }
 
+    // ID perangkat stabil untuk tie-break revisi servis. Urutan data servis
+    // tidak boleh bergantung pada jam HP/headunit yang bisa berbeda.
+    function getSyncDeviceId() {
+        try {
+            let id = localStorage.getItem('gc_sync_device_id_v1');
+            if (!id) {
+                const bytes = new Uint8Array(6);
+                if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+                    window.crypto.getRandomValues(bytes);
+                } else {
+                    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+                }
+                id = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+                localStorage.setItem('gc_sync_device_id_v1', id);
+            }
+            return id;
+        } catch (_e) {
+            return 'headunit';
+        }
+    }
+    const SYNC_DEVICE_ID = getSyncDeviceId();
+
+    function bumpServiceComponent(comp) {
+        if (!comp) return comp;
+        comp.rev = Math.max(0, Number(comp.rev) || 0) + 1;
+        comp.updatedAt = Date.now();
+        comp.origin = SYNC_DEVICE_ID;
+        return comp;
+    }
+
+    function shouldApplyServiceComponent(incoming, current) {
+        const inRev = Math.max(0, Number(incoming.rev) || 0);
+        const curRev = Math.max(0, Number(current.rev) || 0);
+        if (inRev !== curRev) return inRev > curRev;
+        if (inRev === 0) {
+            // Snapshot versi lama hanya punya updatedAt. Setelah edit pertama,
+            // rev yang menentukan sehingga jam perangkat tidak lagi dipakai.
+            return Number(incoming.updatedAt || 0) >= Number(current.updatedAt || 0);
+        }
+        const inOrigin = String(incoming.origin || '');
+        const curOrigin = String(current.origin || '');
+        // Revisi sama dari perangkat yang sama: izinkan penyegaran data otomatis
+        // (sisa km/hari). Dari perangkat berbeda: pilih deterministik agar
+        // kedua sisi konvergen tanpa bergantung jam.
+        if (inOrigin === curOrigin) return true;
+        return inOrigin > curOrigin;
+    }
+
     // ---- Payload service ringkas (tanpa advice/history panjang) ----
     function compactServiceComponent(comp) {
         // Selalu sertakan definisi komponen agar kedua aplikasi tidak bergantung
@@ -1593,12 +1706,14 @@
             lastService: comp.lastService || '',
             lastServiceDateIso: comp.lastServiceDateIso || '',
             note: String(comp.note || '').slice(0, 160),
+            rev: Math.max(0, Number(comp.rev) || 0),
+            origin: String(comp.origin || ''),
             updatedAt: Number(comp.updatedAt || 0)
         };
     }
 
-    function buildServicePayload(components, updatedAt, part, total) {
-        const payload = { components: components, updatedAt: updatedAt };
+    function buildServicePayload(components, updatedAt, part, total, snapshotId) {
+        const payload = { components: components, updatedAt: updatedAt, snapshotId: snapshotId || String(updatedAt) };
         if (part && total > 1) {
             payload.part = part;
             payload.total = total;
@@ -1643,10 +1758,11 @@
         }
         servicePublishInFlight = true;
         const updatedAt = now;
+        const snapshotId = updatedAt.toString(36) + '-' + Math.random().toString(36).slice(2, 8);
         const maxBytes = PDTransport.maxPayloadBytes();
 
         try {
-            const single = await PDSync.seal(syncSession, 'service', buildServicePayload(comps, updatedAt));
+            const single = await PDSync.seal(syncSession, 'service', buildServicePayload(comps, updatedAt, 0, 0, snapshotId));
             if (single.length <= maxBytes) {
                 await postSyncMessage(syncSession.serviceTopic, single);
             } else {
@@ -1654,7 +1770,7 @@
                 let current = [];
                 for (const comp of comps) {
                     current.push(comp);
-                    const test = await PDSync.seal(syncSession, 'service', buildServicePayload(current, updatedAt));
+                    const test = await PDSync.seal(syncSession, 'service', buildServicePayload(current, updatedAt, 0, 0, snapshotId));
                     if (test.length > maxBytes && current.length > 1) {
                         current.pop();
                         chunks.push(current);
@@ -1663,7 +1779,7 @@
                 }
                 if (current.length) chunks.push(current);
                 for (let i = 0; i < chunks.length; i++) {
-                    const text = await PDSync.seal(syncSession, 'service', buildServicePayload(chunks[i], updatedAt, i + 1, chunks.length));
+                    const text = await PDSync.seal(syncSession, 'service', buildServicePayload(chunks[i], updatedAt, i + 1, chunks.length, snapshotId));
                     await postSyncMessage(syncSession.serviceTopic, text);
                 }
             }
@@ -1672,6 +1788,7 @@
             serviceKmSincePublish = 0;
         } catch (e) {
             if (e && e.status === 429) markSyncQuotaExhausted(e);
+            else console.warn('Publish servis PangDash gagal:', e && e.message ? e.message : e);
         } finally {
             servicePublishInFlight = false;
             if (servicePublishQueued) {
@@ -1713,12 +1830,14 @@
                     lastServiceDateIso: incoming.lastServiceDateIso || '',
                     note: incoming.note || '',
                     history: [],
+                    rev: 0,
+                    origin: '',
                     updatedAt: 0
                 };
                 serviceComponents.push(comp);
                 changed = true;
             }
-            if (Number(incoming.updatedAt || 0) < Number(comp.updatedAt || 0)) continue;
+            if (!shouldApplyServiceComponent(incoming, comp)) continue;
             comp.remKm = Number(incoming.remKm ?? comp.remKm);
             comp.remDays = Number(incoming.remDays ?? comp.remDays);
             comp.lastService = incoming.lastService || comp.lastService;
@@ -1727,6 +1846,8 @@
             // Jangan mengganti timestamp 0 dengan Date.now(): snapshot lama tanpa
             // updatedAt bisa dianggap lebih baru dan memblokir update berikutnya.
             comp.updatedAt = Number(incoming.updatedAt || 0);
+            comp.rev = Math.max(0, Number(incoming.rev) || 0);
+            if (incoming.origin !== undefined) comp.origin = String(incoming.origin || '');
             if (incoming.name) comp.name = incoming.name;
             if (incoming.iconKey) comp.iconKey = incoming.iconKey;
             if (incoming.hasKm !== undefined) comp.hasKm = !!incoming.hasKm;
@@ -1753,8 +1874,9 @@
         if (!env || !env.payload || rememberNonce(env.nonce)) return;
         const payload = env.payload;
         if (payload.part && payload.total > 1) {
-            if (!serviceChunkState || serviceChunkState.updatedAt !== payload.updatedAt) {
-                serviceChunkState = { updatedAt: payload.updatedAt, total: payload.total, parts: {} };
+            const snapshotKey = payload.snapshotId || payload.updatedAt;
+            if (!serviceChunkState || serviceChunkState.snapshotKey !== snapshotKey) {
+                serviceChunkState = { snapshotKey: snapshotKey, total: payload.total, parts: {} };
             }
             serviceChunkState.parts[payload.part] = payload.components || [];
             if (Object.keys(serviceChunkState.parts).length < serviceChunkState.total) return;
@@ -1769,9 +1891,17 @@
         }
     }
 
+    let servicePullInFlight = false;
+    let lastServicePullAt = 0;
+    const SERVICE_PULL_MIN_MS = 15000;
+
     async function pullServiceHistory() {
         if (!syncSession || !navigator.onLine) return;
         if (typeof PDTransport === 'undefined' || !PDTransport.ready()) return;
+        if (servicePullInFlight) return;
+        if (Date.now() - lastServicePullAt < SERVICE_PULL_MIN_MS) return;
+        servicePullInFlight = true;
+        lastServicePullAt = Date.now();
         try {
             const messages = await PDTransport.fetchRecent(syncSession.serviceTopic, 100);
             for (const message of messages) {
@@ -1780,7 +1910,18 @@
                     if (env) handleServiceEnvelope(env);
                 } catch (_e) {}
             }
-        } catch (_e) {}
+        } catch (e) {
+            console.warn('Tarik riwayat servis gagal:', e && e.message ? e.message : e);
+        } finally {
+            servicePullInFlight = false;
+        }
+    }
+
+    function refreshServiceFromRemote() {
+        if (!syncSession) return;
+        pullServiceHistory().then(function () {
+            subscribeServiceTopic();
+        }).catch(function () {});
     }
 
     function subscribeServiceTopic() {
@@ -2136,9 +2277,14 @@
             if (auto) auto.innerText = syncQuotaBlockedUntil > Date.now()
                 ? 'Kuota sync harian habis - pulih otomatis'
                 : (carId ? ('Auto-Sync HP (PD-' + carId + ')') : 'Auto-Sync HP Aktif');
+            // Tarik servis terbaru dari HP lebih dulu, baru kirim snapshot lokal.
+            // Urutan ini mencegah data lama headunit menimpa edit HP.
+            if (syncSession) {
+                refreshServiceFromRemote();
+                queueServicePublish(true);
+            }
             // Tetap hormati batas kuota; jangan kirim beruntun saat jaringan naik-turun.
             queueAutoSyncPayload(true);
-            if (syncSession) queueServicePublish(true);
         } else {
             if (dot) dot.style.background = '#f59e0b';
             if (syncDot) syncDot.style.background = '#f59e0b';
@@ -2673,14 +2819,24 @@
     }
 
     function refreshNotificationListenerUI() {
-        const statusEl = document.getElementById('notif-listener-status');
-        if (!statusEl) return;
         let enabled = false;
         try {
             enabled = !!(window.AndroidBridge && window.AndroidBridge.isNotificationListenerEnabled && window.AndroidBridge.isNotificationListenerEnabled());
         } catch (_e) {}
-        statusEl.innerText = enabled ? 'Aktif' : 'Belum Aktif - Ketuk';
-        statusEl.style.color = enabled ? '#6ee7b7' : '#fca5a5';
+        const statusEl = document.getElementById('notif-listener-status');
+        if (statusEl) {
+            statusEl.innerText = enabled ? 'Aktif' : 'Belum Aktif - Ketuk';
+            statusEl.style.color = enabled ? '#6ee7b7' : '#fca5a5';
+        }
+        const guideStatusEl = document.getElementById('notif-guide-status');
+        if (guideStatusEl) {
+            guideStatusEl.innerText = enabled
+                ? 'Akses notifikasi sudah aktif'
+                : 'Akses notifikasi belum aktif';
+            guideStatusEl.style.color = enabled ? '#6ee7b7' : '#fca5a5';
+        }
+        const guideDot = document.getElementById('notif-guide-dot');
+        if (guideDot) guideDot.style.background = enabled ? '#10b981' : '#f59e0b';
     }
 
     function openNotificationListenerSettings() {
@@ -2693,9 +2849,62 @@
         showToast('Buka Setelan Android -> Notifikasi -> Akses Notifikasi');
     }
 
+    function openNotificationAccessGuide() {
+        refreshNotificationListenerUI();
+        const modal = document.getElementById('notification-access-modal');
+        if (!modal) {
+            openNotificationListenerSettings();
+            return;
+        }
+        modal.classList.remove('hidden');
+    }
+
+    function closeNotificationAccessGuide() {
+        const modal = document.getElementById('notification-access-modal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    function openNotificationSettingsFromGuide() {
+        closeNotificationAccessGuide();
+        openNotificationListenerSettings();
+    }
+
+    function openAppInfoForNotificationGuide() {
+        try {
+            if (window.AndroidBridge && window.AndroidBridge.openAppDetailsSettings) {
+                window.AndroidBridge.openAppDetailsSettings();
+                return;
+            }
+        } catch (_e) {}
+        showToast('Buka Setelan Android -> Aplikasi -> PangDash -> menu titik tiga');
+    }
+
+    function copyNotificationAdbCommand() {
+        const el = document.getElementById('notif-adb-command');
+        const text = el ? el.textContent.trim() : 'adb shell appops set --uid com.pangdash.launcher ACCESS_RESTRICTED_SETTINGS allow';
+        try {
+            if (window.AndroidBridge && window.AndroidBridge.copyToClipboard) {
+                window.AndroidBridge.copyToClipboard(text);
+                return;
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function () {
+                    showToast('Perintah ADB disalin');
+                }).catch(function () {
+                    showToast('Tidak bisa menyalin otomatis');
+                });
+                return;
+            }
+        } catch (_e) {}
+        showToast('Salin manual: ' + text);
+    }
+
     window.addEventListener('focus', refreshNotificationListenerUI);
     document.addEventListener('visibilitychange', function() {
-        if (!document.hidden) refreshNotificationListenerUI();
+        if (!document.hidden) {
+            refreshNotificationListenerUI();
+            refreshServiceFromRemote();
+        }
     });
 
     // 9. BRIGHTNESS & VOLUME HEADUNIT (SINKRONISASI 2 ARAH KE SISTEM HEADUNIT)
@@ -3292,7 +3501,7 @@
         comp.remDays = Math.round((comp.intervalMonths || comp.recMonths || 12) * 30.4375);
         comp.lastService = `${dateFormatted} (${formatDotNumber(curOdo)} km)`;
         comp.lastServiceDateIso = localDateIso(now);
-        comp.updatedAt = now.getTime();
+        bumpServiceComponent(comp);
 
         if (!Array.isArray(comp.history)) comp.history = [];
         comp.history.unshift({
@@ -3703,7 +3912,7 @@
         comp.lastServiceDateIso = comp.remDays >= maxDays
             ? localDateIso(new Date())
             : daysAgoIso(maxDays - comp.remDays);
-        comp.updatedAt = Date.now();
+        bumpServiceComponent(comp);
 
         saveServiceComponentsToStorage();
         document.getElementById('srv-card-edit-mode').classList.add('hidden');
@@ -3719,7 +3928,7 @@
         const comp = serviceComponents.find(c => c.id === selectedServiceCompId);
         if (!comp) return;
         comp.note = String(val || '').slice(0, 160);
-        comp.updatedAt = Date.now();
+        bumpServiceComponent(comp);
         saveServiceComponentsToStorage();
         queueServicePublish(false);
     }
@@ -3790,6 +3999,8 @@
             lastServiceDateIso: '',
             note: '',
             history: [],
+            rev: 1,
+            origin: SYNC_DEVICE_ID,
             updatedAt: Date.now()
         };
         serviceComponents.push(newComp);

@@ -31,7 +31,8 @@
             android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode"
             android:stateNotNeeded="true"
-            android:clearTaskOnLaunch="true">
+            android:clearTaskOnLaunch="true"
+            android:windowSoftInputMode="adjustPan|stateAlwaysHidden">
             <!-- Filter 1: ikon aplikasi di launcher/app drawer -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
