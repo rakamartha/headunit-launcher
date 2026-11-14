@@ -1048,6 +1048,12 @@ class MainActivity : Activity(), LocationListener {
     override fun onResume() {
         super.onResume()
         hideSystemUI()
+        try {
+            val canUseLocation = Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+                checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            if (canUseLocation) startGpsTrackingSafely()
+        } catch (_: Throwable) {}
         val fileToInstall = pendingOtaApkFile
         if (fileToInstall != null && fileToInstall.exists() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && packageManager.canRequestPackageInstalls()) {
             pendingOtaApkFile = null
@@ -1118,35 +1124,49 @@ class MainActivity : Activity(), LocationListener {
     private fun startGpsTrackingSafely() {
         try {
             val lm = locationManager ?: return
+            try { lm.removeUpdates(this) } catch (_: Throwable) {}
             lastGpsFixElapsed = SystemClock.elapsedRealtime()
             gpsStaleNotified = false
             mainHandler.removeCallbacks(gpsWatchdogRunnable)
             mainHandler.postDelayed(gpsWatchdogRunnable, 2000L)
-            if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, this)
+            // Jangan gabungkan GPS dan NETWORK pada listener yang sama. Fix
+            // network yang kasar/tertinggal dapat bergantian dengan GPS dan
+            // membuat jarak melonjak serta rute bolak-balik.
+            val provider = when {
+                lm.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
+                lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
+                else -> null
             }
-            if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2000L, 0f, this)
+            if (provider != null) {
+                lm.requestLocationUpdates(provider, if (provider == LocationManager.GPS_PROVIDER) 1000L else 3000L, 0f, this)
             }
-            val lastLoc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-            if (lastLoc != null) {
-                onLocationChanged(lastLoc)
-            }
+            // Tidak memasukkan last-known location: titik tersebut bisa berasal
+            // dari perjalanan lama dan menggambar garis balik ke posisi awal.
         } catch (_: Throwable) {}
     }
 
     override fun onLocationChanged(location: Location) {
         try {
+            val nowElapsedNanos = SystemClock.elapsedRealtimeNanos()
+            val fixElapsedNanos = location.elapsedRealtimeNanos
+            if (fixElapsedNanos <= 0L || fixElapsedNanos > nowElapsedNanos) return
+            val fixAgeMs = (nowElapsedNanos - fixElapsedNanos) / 1_000_000L
+            // Jangan teruskan cache/fix yang sudah tertinggal. Watchdog juga
+            // hanya diperbarui oleh fix baru, bukan callback lama dari provider.
+            if (fixAgeMs > 15_000L) return
             lastGpsFixElapsed = SystemClock.elapsedRealtime()
             gpsStaleNotified = false
-            val speedKmh = if (location.hasSpeed()) (location.speed * 3.6f).toInt() else 0
+            val hasSpeed = location.hasSpeed()
+            val speedKmh = if (hasSpeed) location.speed * 3.6f else 0f
             val lat = location.latitude
             val lng = location.longitude
             val bearing = if (location.hasBearing()) location.bearing else 0f
+            val accuracy = if (location.hasAccuracy()) location.accuracy else 9999f
+            val isGpsProvider = location.provider == LocationManager.GPS_PROVIDER
+            val fixElapsedMs = fixElapsedNanos / 1_000_000.0
             runOnUiThread {
                 webView?.evaluateJavascript(
-                    "if(window.onNativeGpsUpdate) window.onNativeGpsUpdate($speedKmh, $lat, $lng, $bearing);",
+                    "if(window.onNativeGpsUpdate) window.onNativeGpsUpdate($speedKmh, $lat, $lng, $bearing, $accuracy, $isGpsProvider, $fixElapsedMs, $fixAgeMs, $hasSpeed);",
                     null
                 )
             }
@@ -1155,8 +1175,16 @@ class MainActivity : Activity(), LocationListener {
 
     @Deprecated("Deprecated in Java")
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
-    override fun onProviderEnabled(provider: String) {}
-    override fun onProviderDisabled(provider: String) {}
+    override fun onProviderEnabled(provider: String) {
+        if (provider == LocationManager.GPS_PROVIDER || provider == LocationManager.NETWORK_PROVIDER) {
+            mainHandler.post { startGpsTrackingSafely() }
+        }
+    }
+    override fun onProviderDisabled(provider: String) {
+        if (provider == LocationManager.GPS_PROVIDER || provider == LocationManager.NETWORK_PROVIDER) {
+            mainHandler.post { startGpsTrackingSafely() }
+        }
+    }
 
     private fun hideSystemUI() {
         try {

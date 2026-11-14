@@ -1295,7 +1295,7 @@
     let mapInstance = null;
     let carMarker = null;
     let routePolyline = null;
-    let routeCoords = [];
+    let routeSegments = [];
     let currentLat = -6.2297;
     let currentLng = 106.8096;
     let hasFirstGpsFix = false;
@@ -1385,6 +1385,10 @@
     let lastGpsTime = null;
     let lastLat = null;
     let lastLng = null;
+    let lastDistanceFixElapsedMs = null;
+    let lastDistanceAccuracyMeters = null;
+    let lastAcceptedGpsElapsedMs = null;
+    let routeBreakPending = true;
     let lastCloudPushTime = 0;
     let lastForcedPushTime = 0;
     let lastSentStateSignature = '';
@@ -1396,9 +1400,16 @@
     let totalMonthlyKm = parseFloat(localStorage.getItem('gc_total_km_v6') || '0.0');
     let totalTripsCount = parseInt(localStorage.getItem('gc_trips_count_v8') || '0');
     let totalDrivingSeconds = parseInt(localStorage.getItem('gc_total_sec_v8') || '0');
+    let totalMaxSpeedKmh = parseInt(localStorage.getItem('gc_max_speed_kmh_v1') || '0');
+    if (!isFinite(totalMaxSpeedKmh) || totalMaxSpeedKmh < 0) totalMaxSpeedKmh = 0;
     let longestTripKm = parseFloat(localStorage.getItem('gc_longest_km_v8') || '0.0');
     let activeDaysArr = JSON.parse(localStorage.getItem('gc_active_days_v8') || '[]');
     let tripHistoryArr = JSON.parse(localStorage.getItem('gc_trip_history_v9') || '[]');
+    if (!totalMaxSpeedKmh && tripHistoryArr.length) {
+        totalMaxSpeedKmh = Math.max(0, ...tripHistoryArr
+            .filter(trip => (trip.dateIso || '').slice(0, 7) === currentMonthKey())
+            .map(trip => Number(trip.maxSpeedKmh) || 0));
+    }
     let gpsOffset = 0;
 
     // Rute perjalanan: titik GPS disimpan sebagai polyline terenkode (presisi
@@ -1406,7 +1417,8 @@
     const ROUTE_MIN_POINT_DISTANCE_KM = 0.015;
     const ROUTE_MAX_RAW_POINTS = 1200;
     const ROUTE_MAX_ENCODED_POINTS = 110;
-    let sessionRoutePoints = [];
+    const ROUTE_MAX_SEGMENTS = 20;
+    let sessionRouteSegments = [];
 
     function encodeRouteValue(value) {
         let v = value < 0 ? ~(value << 1) : (value << 1);
@@ -1444,23 +1456,49 @@
         return out;
     }
 
-    function recordSessionRoutePoint(lat, lng) {
+    function recordSessionRoutePoint(lat, lng, startNewSegment) {
         if (!isFinite(lat) || !isFinite(lng)) return;
-        const last = sessionRoutePoints[sessionRoutePoints.length - 1];
+        let segment = sessionRouteSegments[sessionRouteSegments.length - 1];
+        if (startNewSegment || !segment) {
+            segment = [];
+            sessionRouteSegments.push(segment);
+            if (sessionRouteSegments.length > ROUTE_MAX_SEGMENTS) sessionRouteSegments.shift();
+        }
+        const last = segment[segment.length - 1];
         if (last && haversineKm(last[0], last[1], lat, lng) < ROUTE_MIN_POINT_DISTANCE_KM) return;
-        sessionRoutePoints.push([Number(lat.toFixed(5)), Number(lng.toFixed(5))]);
-        if (sessionRoutePoints.length > ROUTE_MAX_RAW_POINTS) {
-            const filtered = [];
-            for (let i = 0; i < sessionRoutePoints.length; i++) {
-                if (i % 2 === 0 || i === sessionRoutePoints.length - 1) filtered.push(sessionRoutePoints[i]);
+        segment.push([Number(lat.toFixed(5)), Number(lng.toFixed(5))]);
+        const pointCount = sessionRouteSegments.reduce((total, item) => total + item.length, 0);
+        if (pointCount > ROUTE_MAX_RAW_POINTS) {
+            for (let s = 0; s < sessionRouteSegments.length; s++) {
+                const points = sessionRouteSegments[s];
+                const filtered = [];
+                for (let i = 0; i < points.length; i++) {
+                    if (i % 2 === 0 || i === points.length - 1) filtered.push(points[i]);
+                }
+                sessionRouteSegments[s] = filtered;
             }
-            sessionRoutePoints = filtered;
         }
     }
 
     function currentSessionRouteEncoded() {
-        const compact = compactRoutePoints(sessionRoutePoints, ROUTE_MAX_ENCODED_POINTS);
-        return compact.length >= 2 ? encodeRoutePolyline(compact) : '';
+        const segments = sessionRouteSegments.filter(points => points.length >= 2);
+        if (!segments.length) return '';
+        const totalPoints = segments.reduce((total, points) => total + points.length, 0);
+        let remainingBudget = ROUTE_MAX_ENCODED_POINTS;
+        let remainingPoints = totalPoints;
+        const encoded = [];
+        for (let i = 0; i < segments.length; i++) {
+            const points = segments[i];
+            const segmentsAfter = segments.length - i - 1;
+            const maxForThis = Math.max(2, remainingBudget - segmentsAfter * 2);
+            const proportional = Math.round(remainingBudget * points.length / Math.max(1, remainingPoints));
+            const quota = Math.min(points.length, maxForThis, Math.max(2, proportional));
+            const value = encodeRoutePolyline(compactRoutePoints(points, quota));
+            if (value) encoded.push(value);
+            remainingBudget -= quota;
+            remainingPoints -= points.length;
+        }
+        return encoded.length <= 1 ? (encoded[0] || '') : encoded;
     }
 
     // Tulis localStorage secara hemat: maksimal sekali per 5 detik per kunci.
@@ -1496,7 +1534,15 @@
         sessionSeconds = 0;
         sessionMaxSpeed = 0;
         sessionTripRecorded = false;
-        sessionRoutePoints = [];
+        sessionRouteSegments = [];
+        lastGpsTime = null;
+        lastLat = null;
+        lastLng = null;
+        lastDistanceFixElapsedMs = null;
+        lastDistanceAccuracyMeters = null;
+        lastMovingTimestamp = null;
+        routeSegments = [];
+        if (routePolyline) routePolyline.setLatLngs(routeSegments);
         document.getElementById('session-dist').innerText = '0.0 km';
         document.getElementById('session-time').innerText = '00:00';
         document.getElementById('session-max').innerText = '0 km/j';
@@ -1507,7 +1553,8 @@
         const now = new Date();
         const endClock = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
         const durMin = Math.max(1, Math.round(sessionSeconds / 60));
-        const avgSpd = sessionSeconds > 30 ? Math.round(sessionDistKm / (sessionSeconds / 3600)) : 0;
+        const calculatedAvg = sessionSeconds > 30 ? Math.round(sessionDistKm / (sessionSeconds / 3600)) : 0;
+        const avgSpd = sessionMaxSpeed > 0 ? Math.min(calculatedAvg, sessionMaxSpeed) : 0;
 
         const sessionObj = {
             tripId: currentSessionId,
@@ -1575,11 +1622,13 @@
     // kecil (batas ntfy ~3,8 KB). Topik state dipakai ulang dengan purpose
     // "route" sehingga tidak perlu izin channel Ably baru.
     async function publishTripRoute(trip) {
-        if (!trip || !trip.route || trip.route.length < 8) return;
+        if (!trip || !trip.route) return;
+        const routeSignature = JSON.stringify(trip.route);
+        if (routeSignature.length < 8) return;
         if (!syncSession || !navigator.onLine) return;
         if (typeof PDTransport === 'undefined' || !PDTransport.ready()) return;
         if (syncQuotaBlockedUntil > Date.now()) return;
-        const signature = trip.tripId + ':' + trip.route.length;
+        const signature = trip.tripId + ':' + routeSignature;
         if (signature === lastPublishedRouteSignature) return;
         try {
             const sealed = await PDSync.seal(syncSession, 'route', {
@@ -1968,6 +2017,7 @@
         totalMonthlyKm = 0.0;
         totalTripsCount = 0;
         totalDrivingSeconds = 0;
+        totalMaxSpeedKmh = 0;
         longestTripKm = 0.0;
         activeDaysArr = [];
         tripHistoryArr = [];
@@ -1977,6 +2027,7 @@
         writeStorageThrottled('gc_total_km_v6', '0.0', true);
         writeStorageThrottled('gc_trips_count_v8', '0', true);
         writeStorageThrottled('gc_total_sec_v8', '0', true);
+        writeStorageThrottled('gc_max_speed_kmh_v1', '0', true);
         writeStorageThrottled('gc_longest_km_v8', '0.0', true);
         writeStorageThrottled('gc_active_days_v8', '[]', true);
         document.getElementById('session-dist').innerText = '0.0 km';
@@ -1997,11 +2048,65 @@
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
+    const MAX_FIX_AGE_MS = 10000;
+    const MAX_GPS_ACCURACY_METERS = 40;
+    const MAX_MAP_ACCURACY_METERS = 100;
+    const MAX_FIX_GAP_MS = 15000;
+    const MAX_PLAUSIBLE_SPEED_KMH = 200;
+    const MIN_DISTANCE_DELTA_KM = 0.008;
+
+    function setGpsBadge(text, color) {
+        const badge = document.getElementById('gps-badge');
+        if (!badge) return;
+        badge.innerText = text;
+        badge.style.background = color === 'green' ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)';
+        badge.style.color = color === 'green' ? '#6ee7b7' : '#fcd34d';
+        badge.style.borderColor = color === 'green' ? 'rgba(16,185,129,0.35)' : 'rgba(245,158,11,0.35)';
+    }
+
+    function resetGpsDistanceAnchor() {
+        lastLat = null;
+        lastLng = null;
+        lastDistanceFixElapsedMs = null;
+        lastDistanceAccuracyMeters = null;
+        lastGpsTime = null;
+        routeBreakPending = true;
+    }
+
+    function updateLiveRoutePoint(lat, lng, startNewSegment) {
+        let segment = routeSegments[routeSegments.length - 1];
+        if (startNewSegment || !segment) {
+            segment = [];
+            routeSegments.push(segment);
+        }
+        const previous = segment[segment.length - 1];
+        if (previous && haversineKm(previous[0], previous[1], lat, lng) < ROUTE_MIN_POINT_DISTANCE_KM) return;
+        segment.push([lat, lng]);
+        let pointCount = routeSegments.reduce((total, points) => total + points.length, 0);
+        while (pointCount > 500 && routeSegments.length) {
+            if (routeSegments[0].length > 2) {
+                routeSegments[0].shift();
+                pointCount--;
+            } else {
+                pointCount -= routeSegments[0].length;
+                routeSegments.shift();
+            }
+        }
+        if (routePolyline) routePolyline.setLatLngs(routeSegments);
+    }
+
     let lastRawSpeedKmh = 0;
     function updateSpeedUI(speedKmh) {
-        lastRawSpeedKmh = speedKmh;
-        const calibrated = speedKmh > 0 ? speedKmh + gpsOffset : 0;
+        const raw = Number(speedKmh);
+        lastRawSpeedKmh = isFinite(raw) ? raw : 0;
+        const calibrated = lastRawSpeedKmh > 0
+            ? Math.max(0, Math.min(MAX_PLAUSIBLE_SPEED_KMH, Math.round(lastRawSpeedKmh + gpsOffset)))
+            : 0;
         if (calibrated > sessionMaxSpeed) sessionMaxSpeed = calibrated;
+        if (calibrated > totalMaxSpeedKmh) {
+            totalMaxSpeedKmh = calibrated;
+            writeStorageThrottled('gc_max_speed_kmh_v1', String(totalMaxSpeedKmh));
+        }
         document.getElementById('speed-value').innerText = calibrated;
         document.getElementById('session-max').innerText = sessionMaxSpeed + ' km/j';
         const ratio = Math.min(1, calibrated / 180);
@@ -2011,66 +2116,166 @@
         if (glowArc) glowArc.style.strokeDashoffset = dashOffset;
     }
 
-    window.onNativeGpsUpdate = function(speedKmh, lat, lng, bearing) {
-        const gpsBadge = document.getElementById('gps-badge');
-        if (gpsBadge) {
-            gpsBadge.innerText = 'GPS REAL-TIME';
-            gpsBadge.style.background = 'rgba(16,185,129,0.2)';
-            gpsBadge.style.color = '#6ee7b7';
-            gpsBadge.style.borderColor = 'rgba(16,185,129,0.35)';
+    window.onNativeGpsUpdate = function(speedKmh, lat, lng, bearing, accuracyMeters, isGpsProvider, fixElapsedMs, fixAgeMs, hasSpeed) {
+        lat = Number(lat);
+        lng = Number(lng);
+        accuracyMeters = Number(accuracyMeters);
+        fixElapsedMs = Number(fixElapsedMs);
+        fixAgeMs = Number(fixAgeMs);
+        const rawSpeed = Number(speedKmh);
+        const hasValidSpeed = hasSpeed === true && isFinite(rawSpeed) && rawSpeed >= 0 && rawSpeed <= MAX_PLAUSIBLE_SPEED_KMH;
+        const reportedSpeed = hasValidSpeed ? rawSpeed : 0;
+        const validCoords = isFinite(lat) && isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+        const freshFix = isFinite(fixElapsedMs) && fixElapsedMs > 0 && isFinite(fixAgeMs) && fixAgeMs >= 0 && fixAgeMs <= MAX_FIX_AGE_MS;
+        if (!validCoords || !freshFix) {
+            updateSpeedUI(0);
+            resetGpsDistanceAnchor();
+            setGpsBadge('GPS TERTAHAN', 'yellow');
+            return;
         }
-        updateSpeedUI(speedKmh);
-        currentLat = lat;
-        currentLng = lng;
-        recordSessionRoutePoint(lat, lng);
-        document.getElementById('map-coord-text').innerText = 'GPS Aktif: ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
+        if (lastAcceptedGpsElapsedMs !== null && fixElapsedMs <= lastAcceptedGpsElapsedMs) return;
+        lastAcceptedGpsElapsedMs = fixElapsedMs;
 
-        if (mapInstance && carMarker) {
-            carMarker.setLatLng([lat, lng]);
-            const arrowEl = document.getElementById('car-arrow');
-            if (arrowEl && bearing) {
-                arrowEl.style.transform = 'rotate(' + bearing + 'deg)';
-            }
-            if (!hasFirstGpsFix || speedKmh >= 1) {
-                mapInstance.panTo([lat, lng], { animate: true });
-                hasFirstGpsFix = true;
-            }
-            if (routePolyline) {
-                routeCoords.push([lat, lng]);
-                if (routeCoords.length > 500) routeCoords.shift();
-                routePolyline.setLatLngs(routeCoords);
+        const canShowOnMap = isFinite(accuracyMeters) && accuracyMeters <= MAX_MAP_ACCURACY_METERS;
+        if (canShowOnMap) {
+            currentLat = lat;
+            currentLng = lng;
+            const coordText = document.getElementById('map-coord-text');
+            if (coordText) coordText.innerText = 'GPS Aktif: ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
+            if (mapInstance && carMarker) {
+                carMarker.setLatLng([lat, lng]);
+                const arrowEl = document.getElementById('car-arrow');
+                if (arrowEl && bearing) arrowEl.style.transform = 'rotate(' + bearing + 'deg)';
+                if (!hasFirstGpsFix || reportedSpeed >= 1) {
+                    mapInstance.panTo([lat, lng], { animate: true });
+                    hasFirstGpsFix = true;
+                }
             }
         }
+
+        if (isGpsProvider !== true || !isFinite(accuracyMeters) || accuracyMeters > MAX_GPS_ACCURACY_METERS) {
+            updateSpeedUI(0);
+            resetGpsDistanceAnchor();
+            setGpsBadge(isGpsProvider === true ? 'GPS AKURASI RENDAH' : 'LOKASI KASAR - JARAK DIJEDA', 'yellow');
+            return;
+        }
+        setGpsBadge('GPS REAL-TIME', 'green');
 
         const now = Date.now();
-        if (lastLat !== null && lastLng !== null) {
+        const previousFixElapsedMs = lastGpsTime;
+        const gapSincePreviousFix = previousFixElapsedMs === null ? null : fixElapsedMs - previousFixElapsedMs;
+        if (reportedSpeed >= 2 && lastMovingTimestamp && now - lastMovingTimestamp > 300000 && sessionTripRecorded) {
+            // Tutup sesi lama sebelum memproses jarak dari fix perjalanan baru.
+            upsertCurrentSessionToHistory(true, true);
+            startNewDrivingSession();
+        }
+
+        let inferredSpeedKmh = 0;
+        let acceptedMovement = false;
+        let distanceDeltaKm = 0;
+        let startsNewRouteSegment = routeBreakPending;
+        let routeStartAnchor = lastLat !== null && lastLng !== null
+            ? { lat: lastLat, lng: lastLng }
+            : null;
+
+        if (gapSincePreviousFix !== null && (gapSincePreviousFix <= 0 || gapSincePreviousFix > MAX_FIX_GAP_MS)) {
+            lastLat = null;
+            lastLng = null;
+            lastDistanceFixElapsedMs = null;
+            lastDistanceAccuracyMeters = null;
+            routeStartAnchor = null;
+            routeBreakPending = true;
+            startsNewRouteSegment = true;
+        }
+
+        if (lastLat !== null && lastLng !== null && lastDistanceFixElapsedMs !== null) {
+            const distanceDtMs = fixElapsedMs - lastDistanceFixElapsedMs;
             const deltaKm = haversineKm(lastLat, lastLng, lat, lng);
-            if (deltaKm > 0.003 && deltaKm < 2.0) {
-                sessionDistKm += deltaKm;
-                totalMonthlyKm += deltaKm;
-                if (typeof deductServiceComponentsKm === 'function') deductServiceComponentsKm(deltaKm);
-                if (sessionDistKm > longestTripKm) {
-                    longestTripKm = sessionDistKm;
-                    writeStorageThrottled('gc_longest_km_v8', longestTripKm.toFixed(2));
-                }
-                if (!sessionTripRecorded && sessionDistKm >= 0.05) {
-                    sessionTripRecorded = true;
-                    totalTripsCount += 1;
-                    localStorage.setItem('gc_trips_count_v8', String(totalTripsCount));
-                    const todayKey = localDateIso();
-                    if (!activeDaysArr.includes(todayKey)) {
-                        activeDaysArr.push(todayKey);
-                        localStorage.setItem('gc_active_days_v8', JSON.stringify(activeDaysArr));
+            if (distanceDtMs <= 0 || distanceDtMs > MAX_FIX_GAP_MS) {
+                routeBreakPending = true;
+                startsNewRouteSegment = true;
+                lastLat = null;
+                lastLng = null;
+                lastDistanceFixElapsedMs = null;
+                lastDistanceAccuracyMeters = null;
+                routeStartAnchor = null;
+            } else {
+                const deltaSpeedKmh = deltaKm / (distanceDtMs / 3600000);
+                const maxSegmentSpeed = hasValidSpeed
+                    ? (reportedSpeed >= 2 ? Math.min(MAX_PLAUSIBLE_SPEED_KMH, Math.max(50, reportedSpeed + 60)) : 35)
+                    : 180;
+                if (deltaSpeedKmh > maxSegmentSpeed || deltaSpeedKmh > MAX_PLAUSIBLE_SPEED_KMH) {
+                    // Lonjakan GPS: titik baru hanya menjadi anchor, tidak
+                    // menambah odometer dan tidak disambungkan ke garis lama.
+                    lastLat = lat;
+                    lastLng = lng;
+                    lastDistanceFixElapsedMs = fixElapsedMs;
+                    lastDistanceAccuracyMeters = accuracyMeters;
+                    routeBreakPending = true;
+                    startsNewRouteSegment = true;
+                } else {
+                    const movementThresholdMeters = Math.max(10, Math.min(25,
+                        ((Number(lastDistanceAccuracyMeters) || accuracyMeters) + accuracyMeters) * 0.6));
+                    if (deltaKm >= MIN_DISTANCE_DELTA_KM && deltaKm * 1000 >= movementThresholdMeters) {
+                        distanceDeltaKm = deltaKm;
+                        acceptedMovement = true;
+                        inferredSpeedKmh = deltaSpeedKmh;
+                        lastLat = lat;
+                        lastLng = lng;
+                        lastDistanceFixElapsedMs = fixElapsedMs;
+                        lastDistanceAccuracyMeters = accuracyMeters;
                     }
                 }
-                writeStorageThrottled('gc_total_km_v6', totalMonthlyKm.toFixed(2));
-                document.getElementById('session-dist').innerText = sessionDistKm.toFixed(1) + ' km';
-                renderTotalKm();
             }
+        } else {
+            lastLat = lat;
+            lastLng = lng;
+            lastDistanceFixElapsedMs = fixElapsedMs;
+            lastDistanceAccuracyMeters = accuracyMeters;
         }
-        if (speedKmh >= 2 && lastGpsTime !== null) {
-            const dtSec = Math.round((now - lastGpsTime) / 1000);
-            if (dtSec > 0 && dtSec < 15) {
+
+        const effectiveSpeedKmh = hasValidSpeed ? reportedSpeed : (acceptedMovement ? inferredSpeedKmh : 0);
+        updateSpeedUI(effectiveSpeedKmh);
+
+        if (acceptedMovement) {
+            sessionDistKm += distanceDeltaKm;
+            totalMonthlyKm += distanceDeltaKm;
+            if (typeof deductServiceComponentsKm === 'function') deductServiceComponentsKm(distanceDeltaKm);
+            if (sessionDistKm > longestTripKm) {
+                longestTripKm = sessionDistKm;
+                writeStorageThrottled('gc_longest_km_v8', longestTripKm.toFixed(2));
+            }
+            if (!sessionTripRecorded && sessionDistKm >= 0.05) {
+                sessionTripRecorded = true;
+                totalTripsCount += 1;
+                localStorage.setItem('gc_trips_count_v8', String(totalTripsCount));
+                const todayKey = localDateIso();
+                if (!activeDaysArr.includes(todayKey)) {
+                    activeDaysArr.push(todayKey);
+                    localStorage.setItem('gc_active_days_v8', JSON.stringify(activeDaysArr));
+                }
+            }
+            writeStorageThrottled('gc_total_km_v6', totalMonthlyKm.toFixed(2));
+            document.getElementById('session-dist').innerText = sessionDistKm.toFixed(1) + ' km';
+            renderTotalKm();
+
+            if (startsNewRouteSegment && lastDistanceFixElapsedMs !== null) {
+                if (routeStartAnchor) {
+                    recordSessionRoutePoint(routeStartAnchor.lat, routeStartAnchor.lng, true);
+                    updateLiveRoutePoint(routeStartAnchor.lat, routeStartAnchor.lng, true);
+                } else {
+                    recordSessionRoutePoint(lat, lng, true);
+                    updateLiveRoutePoint(lat, lng, true);
+                }
+            }
+            recordSessionRoutePoint(lat, lng, false);
+            updateLiveRoutePoint(lat, lng, false);
+            routeBreakPending = false;
+        }
+
+        if (effectiveSpeedKmh >= 2 && previousFixElapsedMs !== null) {
+            const dtSec = Math.round((fixElapsedMs - previousFixElapsedMs) / 1000);
+            if (dtSec > 0 && dtSec <= MAX_FIX_GAP_MS / 1000) {
                 sessionSeconds += dtSec;
                 totalDrivingSeconds += dtSec;
                 writeStorageThrottled('gc_total_sec_v8', String(totalDrivingSeconds));
@@ -2079,23 +2284,14 @@
                 document.getElementById('session-time').innerText = mins + ':' + secs;
             }
         }
-        if (speedKmh >= 2) {
-            // Jika sebelumnya mobil sudah berhenti lebih dari 5 menit lalu jalan lagi, mulai sesi perjalanan baru
-            if (lastMovingTimestamp && (now - lastMovingTimestamp > 300000) && sessionTripRecorded) {
-                // Sesi selesai: kirim rute lebih dulu agar tidak hilang saat buffer direset.
-                upsertCurrentSessionToHistory(true, true);
-                startNewDrivingSession();
-            }
+        if (effectiveSpeedKmh >= 2) {
             if (!sessionTripRecorded && sessionSeconds <= 2) {
                 sessionStartClock = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
             }
             lastMovingTimestamp = now;
         }
 
-        lastLat = lat;
-        lastLng = lng;
-        lastGpsTime = now;
-
+        lastGpsTime = fixElapsedMs;
         upsertCurrentSessionToHistory();
         queueAutoSyncPayload(false);
     };
@@ -2104,14 +2300,8 @@
     // Kecepatan dipaksa 0 tanpa menambah jarak atau menggeser peta.
     window.onNativeGpsStale = function() {
         updateSpeedUI(0);
-        lastGpsTime = null;
-        const gpsBadge = document.getElementById('gps-badge');
-        if (gpsBadge) {
-            gpsBadge.innerText = 'GPS TERTAHAN';
-            gpsBadge.style.background = 'rgba(245,158,11,0.2)';
-            gpsBadge.style.color = '#fcd34d';
-            gpsBadge.style.borderColor = 'rgba(245,158,11,0.35)';
-        }
+        resetGpsDistanceAnchor();
+        setGpsBadge('GPS TERTAHAN', 'yellow');
     };
 
     function currentMonthKey(date) {
@@ -2132,11 +2322,13 @@
         totalMonthlyKm = 0.0;
         totalTripsCount = 0;
         totalDrivingSeconds = 0;
+        totalMaxSpeedKmh = 0;
         longestTripKm = 0.0;
         activeDaysArr = [];
         localStorage.setItem('gc_total_km_v6', '0.0');
         localStorage.setItem('gc_trips_count_v8', '0');
         localStorage.setItem('gc_total_sec_v8', '0');
+        localStorage.setItem('gc_max_speed_kmh_v1', '0');
         localStorage.setItem('gc_longest_km_v8', '0.0');
         localStorage.setItem('gc_active_days_v8', '[]');
         renderTotalKm();
@@ -2147,7 +2339,10 @@
     function buildStatePayload() {
         upsertCurrentSessionToHistory();
         const odoBase = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
-        const avgSpd = totalDrivingSeconds > 60 ? Math.round((totalMonthlyKm / (totalDrivingSeconds / 3600))) : 0;
+        const calculatedAvgSpd = totalDrivingSeconds > 60
+            ? Math.round(totalMonthlyKm / (totalDrivingSeconds / 3600))
+            : 0;
+        const avgSpd = totalMaxSpeedKmh > 0 ? Math.min(calculatedAvgSpd, totalMaxSpeedKmh) : 0;
         return {
             v: 1,
             monthKey: currentMonthKey(),
@@ -2160,7 +2355,7 @@
             totalDurationSec: totalDrivingSeconds,
             activeDaysCount: activeDaysArr.length,
             longestTripKm: Number(longestTripKm.toFixed(2)),
-            maxSpeedKmh: sessionMaxSpeed,
+            maxSpeedKmh: totalMaxSpeedKmh,
             avgSpeedKmh: avgSpd,
             odometerKm: odoBase,
             lastLat: currentLat,
