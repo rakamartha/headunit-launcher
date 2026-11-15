@@ -29,6 +29,7 @@
             --dock-active-bg: rgba(147, 51, 234, 0.38);
             --accent-main: #a855f7;
             --accent-light: #C49BFF;
+            --text-primary: #ffffff;
             --text-muted: #d8b4fe;
             --border-subtle: rgba(196, 155, 255, 0.32);
             --border-faint: rgba(168, 85, 247, 0.24);
@@ -575,20 +576,10 @@
                         </div>
                     </div>
 
-                    <!-- Odometer Aktual: satu nilai untuk beranda dan tab Servis -->
-                    <div style="background:var(--squircle-bg); border:1.5px solid rgba(56,189,248,0.32); border-radius:14px; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; gap:8px; box-shadow:inset 0 1px 8px rgba(56,189,248,0.08);">
-                        <div style="display:flex; flex-direction:column; min-width:0;">
-                            <span style="font-size:10px; font-weight:800; letter-spacing:0.08em; color:var(--accent-light);">ODOMETER AKTUAL</span>
-                            <span id="home-odo-value" style="font-size:20px; font-weight:900; line-height:1.15; color:#38bdf8; letter-spacing:-0.02em;">Belum diatur</span>
-                        </div>
-                        <div id="home-odo-actions" style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
-                            <button onclick="startHomeOdometerEdit()" style="padding:7px 11px; border-radius:9px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800; cursor:pointer;">Atur</button>
-                        </div>
-                        <div id="home-odo-editor" style="display:none; gap:6px; align-items:center; flex-shrink:0;">
-                            <input id="home-odo-input" type="number" inputmode="numeric" placeholder="km" onkeydown="if(event.key==='Enter'){saveHomeOdometer();}" style="width:92px; padding:6px 8px; border-radius:9px; background:var(--input-bg); border:1px solid var(--accent-main); color:#fff; font-weight:800; font-size:13px;">
-                            <button onclick="saveHomeOdometer()" style="padding:7px 10px; border-radius:9px; background:var(--btn-primary); border:none; color:#fff; font-size:11px; font-weight:800; cursor:pointer;">Simpan</button>
-                            <button onclick="cancelHomeOdometerEdit()" aria-label="Batal" style="padding:7px 9px; border-radius:9px; background:rgba(255,255,255,0.1); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800; cursor:pointer;">&times;</button>
-                        </div>
+                    <!-- Odometer memakai nilai yang sama dengan tab Servis. -->
+                    <div style="width:100%; background:var(--squircle-bg); border:1.5px solid var(--border-subtle); border-radius:14px; padding:8px 12px; display:flex; flex-direction:column; align-items:center; text-align:center; box-shadow:inset 0 1px 8px var(--border-faint);">
+                        <span style="font-size:10px; font-weight:800; letter-spacing:0.08em; color:var(--accent-light);">ODOMETER</span>
+                        <span id="home-odo-value" style="font-size:20px; font-weight:900; line-height:1.15; color:var(--text-primary); font-variant-numeric:tabular-nums; font-feature-settings:'tnum';">Belum diatur</span>
                     </div>
 
                     <!-- 3 Kartu Statistik Sekali Lirik (JARAK JALAN, WAKTU JALAN, KEC. MAKS) -->
@@ -758,7 +749,7 @@
                         <div style="display:flex; align-items:center; gap:8px;">
                             <div style="text-align:right; line-height:1.2;">
                                 <span style="font-size:11px; color:var(--text-muted); font-weight:700;">Odometer Aktual (KM)</span><br>
-                                <span style="font-size:9px; color:rgba(56,189,248,0.85); font-weight:700;">Otomatis dari GPS &amp; beranda</span>
+                                <span style="font-size:9px; color:var(--accent-light); font-weight:700;">Otomatis dari GPS</span>
                             </div>
                             <input id="odo-input" type="number" value="0" style="width:110px; padding:6px 10px; border-radius:10px; background:var(--input-bg); border:1px solid var(--accent-main); color:#fff; font-weight:800; font-size:13px;">
                             <button onclick="updateOdometer()" style="padding:7px 12px; border-radius:10px; background:var(--btn-primary); color:#fff; font-weight:800; font-size:11px; border:none; cursor:pointer;">Simpan Odo</button>
@@ -4239,15 +4230,11 @@
         showToast('Komponen ' + name + ' ditambahkan');
     }
 
-    // Input dan angka beranda hanya disegarkan saat pengguna tidak sedang mengetik.
+    // Input servis tidak ditimpa saat pengguna sedang mengetik.
     function syncOdometerInput() {
         const input = document.getElementById('odo-input');
         if (input && document.activeElement !== input) {
             input.value = Math.round(odometerKm);
-        }
-        const homeInput = document.getElementById('home-odo-input');
-        if (homeInput && document.activeElement !== homeInput) {
-            homeInput.value = odometerCalibrated ? Math.round(odometerKm) : '';
         }
         const homeValue = document.getElementById('home-odo-value');
         if (homeValue) {
@@ -4257,7 +4244,7 @@
         }
     }
 
-    // Satu jalur penyimpanan untuk beranda maupun tab servis.
+    // Simpan kalibrasi odometer dari tab servis.
     function applyOdometerValue(rawVal) {
         const prevOdo = odometerKm;
         const num = parseFloat(rawVal);
@@ -4294,38 +4281,6 @@
         const result = applyOdometerValue(inputEl ? inputEl.value : '');
         if (result === null) syncOdometerInput();
         return result;
-    }
-
-    function startHomeOdometerEdit() {
-        const editor = document.getElementById('home-odo-editor');
-        const actions = document.getElementById('home-odo-actions');
-        const homeInput = document.getElementById('home-odo-input');
-        if (!editor) return;
-        if (homeInput) homeInput.value = odometerCalibrated ? Math.round(odometerKm) : '';
-        editor.style.display = 'flex';
-        if (actions) actions.style.display = 'none';
-        if (homeInput) {
-            homeInput.focus();
-            if (homeInput.select) homeInput.select();
-        }
-    }
-
-    function cancelHomeOdometerEdit() {
-        const editor = document.getElementById('home-odo-editor');
-        const actions = document.getElementById('home-odo-actions');
-        const homeInput = document.getElementById('home-odo-input');
-        if (editor) editor.style.display = 'none';
-        if (actions) actions.style.display = 'flex';
-        if (homeInput) homeInput.blur();
-        syncOdometerInput();
-    }
-
-    function saveHomeOdometer() {
-        const homeInput = document.getElementById('home-odo-input');
-        if (!homeInput) return;
-        const val = applyOdometerValue(homeInput.value);
-        cancelHomeOdometerEdit();
-        return val;
     }
 
     function updateVehicleName(name) {
