@@ -1567,7 +1567,11 @@
     function upsertCurrentSessionToHistory(force, publishRoute) {
         if (sessionDistKm < 0.05 && sessionSeconds < 30) return;
         const now = new Date();
-        const endClock = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
+        // Menutup atau menyinkronkan sesi setelah headunit bangun tidak boleh
+        // mengubah jam akhir menjadi waktu saat ini. Gunakan aktivitas terakhir.
+        const endClock = lastMovingTimestamp !== null
+            ? new Date(lastMovingTimestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.')
+            : sessionStartClock;
         const durMin = Math.max(1, Math.round(sessionSeconds / 60));
         const calculatedAvg = sessionSeconds > 30 ? Math.round(sessionDistKm / (sessionSeconds / 3600)) : 0;
         const avgSpd = sessionMaxSpeed > 0 ? Math.min(calculatedAvg, sessionMaxSpeed) : 0;
@@ -2306,7 +2310,7 @@
                 document.getElementById('session-time').innerText = mins + ':' + secs;
             }
         }
-        if (effectiveSpeedKmh >= 2) {
+        if (effectiveSpeedKmh >= 2 || acceptedMovement) {
             if (!sessionTripRecorded && sessionSeconds <= 2) {
                 sessionStartClock = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
             }
