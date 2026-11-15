@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Instrumentation
-import android.app.DownloadManager
 import android.content.SharedPreferences
 import android.database.Cursor
 import android.app.PendingIntent
@@ -169,7 +168,6 @@ class MainActivity : Activity(), LocationListener {
     private var lastPushedVolumePercent: Int = -1
     private var lastPushedBrightnessPercent: Int = -1
     private var hasPromptedWriteSettings: Boolean = false
-    private var otaDownloadId: Long = -1L
 
     
     @Volatile private var pendingOtaApkFile: File? = null

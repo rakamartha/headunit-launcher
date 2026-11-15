@@ -68,6 +68,9 @@ android {
                 storePassword = signingValue("KEYSTORE_PASSWORD")
                 keyAlias = signingValue("KEY_ALIAS")
                 keyPassword = signingValue("KEY_PASSWORD")
+                // v2 tetap dipakai Android 7-8; v3 menambah verifikasi lebih ketat di Android 9+.
+                // Identitas sertifikat dan package tidak berubah, jadi update in-place tetap aman.
+                enableV3Signing = true
             }
         }
     }
