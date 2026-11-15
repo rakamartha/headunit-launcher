@@ -33,6 +33,17 @@
             --text-muted: #d8b4fe;
             --border-subtle: rgba(196, 155, 255, 0.32);
             --border-faint: rgba(168, 85, 247, 0.24);
+            --bg-ambient-glow: var(--glow-1);
+            --glass-surface: rgba(24, 12, 50, 0.20);
+            --glass-dark-tint: rgba(12, 10, 22, 0.45);
+            --glass-border: rgba(196, 155, 255, 0.22);
+            --glass-border-soft: rgba(196, 155, 255, 0.43);
+            --glass-border-top: #C49BFF;
+            --glass-secondary: rgba(20, 9, 42, 0.08);
+            --glass-sheen: rgba(196, 155, 255, 0.24);
+            --glass-sheen-soft: rgba(196, 155, 255, 0.14);
+            --glass-edge-glow: rgba(124, 58, 237, 0.24);
+            --accent-glow: var(--glow-1);
         }
         * {
             box-sizing: border-box;
@@ -65,9 +76,10 @@
             width: 1280px;
             height: 720px;
             background:
-                radial-gradient(circle at 18% 18%, var(--glow-1), transparent 46%),
-                radial-gradient(circle at 82% 78%, var(--glow-2), transparent 52%),
-                linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 52%, var(--bg-deep) 100%);
+                radial-gradient(ellipse at 15% 30%, var(--bg-ambient-glow), transparent 29%),
+                radial-gradient(ellipse at 52% 78%, var(--ambient-glow-secondary, var(--glow-2)), transparent 27%),
+                radial-gradient(ellipse at 90% 20%, var(--bg-ambient-glow), transparent 27%),
+                var(--bg-deep);
             position: relative;
             overflow: hidden;
             display: flex;
@@ -78,12 +90,103 @@
             transition: background 0.35s ease;
         }
         .glass-card {
-            background: var(--card-bg);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border: 1px solid var(--card-border);
-            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.48);
-            transition: background 0.3s ease, border-color 0.3s ease;
+            position: relative;
+            background:
+                linear-gradient(135deg, rgba(255,255,255,0.11) 0%, rgba(255,255,255,0.03) 100%),
+                linear-gradient(var(--glass-dark-tint), var(--glass-dark-tint)),
+                var(--glass-surface);
+            backdrop-filter: blur(20px) saturate(140%);
+            -webkit-backdrop-filter: blur(20px) saturate(140%);
+            border: 1px solid var(--glass-border);
+            box-shadow:
+                inset 0 1px 1px rgba(255,255,255,0.35),
+                inset 0 -1px 0 rgba(255,255,255,0.04),
+                0 8px 24px rgba(0,0,0,0.25);
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        /* Pantulan spekular di tengah garis atas, seperti referensi. */
+        .hu-header.glass-card::before,
+        .hu-dock.glass-card::before,
+        #view-home .glass-card::before,
+        #view-apps::before,
+        #view-service::before,
+        #view-settings::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 18%;
+            right: 18%;
+            height: 1px;
+            z-index: 5;
+            pointer-events: none;
+            border-radius: 999px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+            opacity: 0.7;
+        }
+        /* Sub-panel: garis kaca sekunder yang tetap tegas, tanpa blur bertingkat. */
+        .glass-inset {
+            position: relative;
+            background:
+                linear-gradient(rgba(255,255,255,0.07), rgba(255,255,255,0.07)),
+                var(--glass-secondary) !important;
+            border: 1px solid var(--inset-border, var(--glass-border-soft)) !important;
+            box-shadow:
+                inset 0 1px 1px rgba(255,255,255,0.35),
+                0 4px 12px rgba(0,0,0,0.18) !important;
+        }
+        .glass-map-bar {
+            background:
+                linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06)),
+                var(--glass-map-surface, var(--panel-bg)) !important;
+            border: 1px solid var(--glass-border-soft) !important;
+            box-shadow:
+                inset 0 1px 1px rgba(255,255,255,0.35),
+                0 8px 24px rgba(0,0,0,0.25);
+            -webkit-backdrop-filter: blur(20px) saturate(140%);
+            backdrop-filter: blur(20px) saturate(140%);
+        }
+        /* Mask hanya membentuk bingkai; tidak menutupi isi atau interaksi. */
+        @supports (-webkit-mask-composite: xor) or (mask-composite: exclude) {
+            .glass-card::after, .glass-inset::after, .glass-map-bar::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                padding: 1px;
+                border-radius: inherit;
+                background: linear-gradient(160deg, rgba(255,255,255,0.55), rgba(255,255,255,0.16) 42%, var(--inset-border, var(--glass-border)) 100%);
+                -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                -webkit-mask-composite: xor;
+                mask-composite: exclude;
+                z-index: 5;
+                pointer-events: none;
+            }
+        }
+        .glass-map-bar button {
+            border: 1px solid var(--glass-border-soft) !important;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+        }
+        .glass-active, #btn-play {
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.30),
+                0 0 0 1px rgba(0,0,0,0.20),
+                0 0 16px var(--accent-glow) !important;
+        }
+        #cat-pribadi, #cat-kerja {
+            border: 1px solid var(--glass-border-soft) !important;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);
+        }
+        #cat-pribadi.glass-active, #cat-kerja.glass-active,
+        #src-btn-SPOTIFY.glass-active, #src-btn-MUSIK.glass-active,
+        #src-btn-FM.glass-active, #src-btn-BT.glass-active {
+            border-color: var(--accent-light) !important;
+        }
+        #src-btn-SPOTIFY, #src-btn-MUSIK, #src-btn-FM, #src-btn-BT {
+            border-color: var(--glass-border-soft) !important;
+        }
+        #speed-arc-glow { filter: url(#speedGlow); }
+        @media (prefers-reduced-motion: reduce) {
+            .glass-card { transition: none; }
         }
         input[type="range"] {
             accent-color: var(--accent-main);
@@ -509,7 +612,7 @@
                 <!-- KOLOM KIRI (4 Kolom): Speedometer GPS Real-Time (Mulai dari 0,0 KM) -->
                 <div class="col-4 glass-card" style="border-radius:16px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; height:100%;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; color:rgba(216,180,254,0.85);">SPEEDOMETER GPS</span>
+                        <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; color:var(--text-muted);">SPEEDOMETER GPS</span>
                         <span id="gps-badge" style="font-size:10px; font-weight:800; padding:3px 10px; border-radius:999px; background:rgba(16,185,129,0.2); color:#6ee7b7; border:1px solid rgba(16,185,129,0.35);">GPS REAL-TIME</span>
                     </div>
 
@@ -577,29 +680,29 @@
                     </div>
 
                     <!-- Odometer memakai nilai yang sama dengan tab Servis. -->
-                    <div style="width:100%; background:var(--squircle-bg); border:1.5px solid var(--border-subtle); border-radius:14px; padding:8px 12px; display:flex; flex-direction:column; align-items:center; text-align:center; box-shadow:inset 0 1px 8px var(--border-faint);">
+                    <div class="glass-inset" style="width:100%; background:var(--squircle-bg); border:1.5px solid var(--border-subtle); border-radius:14px; padding:8px 12px; display:flex; flex-direction:column; align-items:center; text-align:center; box-shadow:inset 0 1px 8px var(--border-faint);">
                         <span style="font-size:10px; font-weight:800; letter-spacing:0.08em; color:var(--accent-light);">ODOMETER</span>
                         <span id="home-odo-value" style="font-size:20px; font-weight:900; line-height:1.15; color:var(--text-primary); font-variant-numeric:tabular-nums; font-feature-settings:'tnum';">Belum diatur</span>
                     </div>
 
                     <!-- 3 Kartu Statistik Sekali Lirik (JARAK JALAN, WAKTU JALAN, KEC. MAKS) -->
                     <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
-                        <div style="background:var(--squircle-bg); border:1.5px solid var(--border-subtle); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px var(--border-subtle);">
+                        <div class="glass-inset" style="background:var(--squircle-bg); border:1.5px solid var(--border-subtle); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px var(--border-subtle);">
                             <div style="font-size:10px; color:var(--accent-light); font-weight:800; letter-spacing:0.06em;">JARAK JALAN</div>
                             <div id="session-dist" style="font-size:21px; font-weight:900; color:#ffffff; margin-top:4px; line-height:1.15; letter-spacing:-0.02em;">0.0 km</div>
                         </div>
-                        <div style="background:var(--squircle-bg); border:1.5px solid var(--border-subtle); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px var(--border-subtle);">
+                        <div class="glass-inset" style="background:var(--squircle-bg); border:1.5px solid var(--border-subtle); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px var(--border-subtle);">
                             <div style="font-size:10px; color:var(--accent-light); font-weight:800; letter-spacing:0.06em;">WAKTU JALAN</div>
                             <div id="session-time" style="font-size:21px; font-weight:900; color:#ffffff; margin-top:4px; line-height:1.15; letter-spacing:-0.02em;">00:00</div>
                         </div>
-                        <div style="background:var(--squircle-bg); border:1.5px solid rgba(250,204,21,0.38); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px rgba(250,204,21,0.08);">
+                        <div class="glass-inset" style="--inset-border: rgba(250,204,21,0.45); background:var(--squircle-bg); border:1.5px solid rgba(250,204,21,0.38); border-radius:14px; padding:10px 6px; text-align:center; box-shadow:inset 0 1px 8px rgba(250,204,21,0.08);">
                             <div style="font-size:10px; color:var(--accent-light); font-weight:800; letter-spacing:0.06em;">KEC. MAKS</div>
                             <div id="session-max" style="font-size:21px; font-weight:900; color:#facc15; margin-top:4px; line-height:1.15; letter-spacing:-0.02em;">0 km/j</div>
                         </div>
                     </div>
 
                     <!-- Tampilan Jam & Tanggal Besar Sekali Lirik (Mengisi Ruang di Atas Mode Pribadi/Kerja) -->
-                    <div style="background:var(--squircle-bg); border:1.5px solid var(--border-subtle); border-radius:14px; padding:10px 15px; display:flex; align-items:center; justify-content:space-between; box-shadow:inset 0 1px 10px var(--border-faint);">
+                    <div class="glass-inset" style="background:var(--squircle-bg); border:1.5px solid var(--border-subtle); border-radius:14px; padding:10px 15px; display:flex; align-items:center; justify-content:space-between; box-shadow:inset 0 1px 10px var(--border-faint);">
                         <div style="display:flex; align-items:baseline; gap:4px;">
                             <span id="hero-clock-text" style="font-size:38px; font-weight:900; line-height:1; color:#ffffff; letter-spacing:0.02em; text-shadow:0 0 18px var(--border-subtle);">09:45</span>
                             <span id="hero-sec-text" style="font-size:14px; font-weight:800; color:var(--accent-light); letter-spacing:0.04em;">:00</span>
@@ -624,7 +727,7 @@
                     <div id="live-map" class="map-dark-tiles" style="position:absolute; inset:0; width:100%; height:100%; z-index:1;"></div>
 
                     <!-- Bar Atas Peta -->
-                    <div style="position:relative; z-index:10; margin:12px; padding:10px 12px; border-radius:14px; background:var(--panel-dark-bg); border:1px solid var(--border-faint); display:flex; justify-content:space-between; align-items:center; backdrop-filter:blur(12px);">
+                    <div class="glass-map-bar" style="position:relative; z-index:10; margin:12px; padding:10px 12px; border-radius:14px; display:flex; justify-content:space-between; align-items:center;">
                         <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
                             <span style="width:30px; height:30px; border-radius:9px; background:var(--squircle-bg); border:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
                             <div style="overflow:hidden;">
@@ -640,7 +743,7 @@
                     </div>
 
                     <!-- Bar Bawah Peta -->
-                    <div style="position:relative; z-index:10; margin:12px; padding:10px; border-radius:14px; background:var(--panel-dark-bg); border:1px solid var(--border-faint); display:flex; gap:8px; backdrop-filter:blur(12px);">
+                    <div class="glass-map-bar" style="position:relative; z-index:10; margin:12px; padding:10px; border-radius:14px; display:flex; gap:8px;">
                         <button onclick="launchHeadunitMaps('Rumah')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800; display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>Rute Rumah</span></button>
                         <button onclick="launchHeadunitMaps('Kantor')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800; display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></svg> <span>Rute Kantor</span></button>
                         <button onclick="launchHeadunitMaps('SPBU Terdekat')" style="flex:1; padding:9px; border-radius:10px; background:var(--btn-secondary); border:1px solid var(--border-faint); color:#fff; font-size:11px; font-weight:800; display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="3" y1="22" x2="15" y2="22"/><line x1="4" y1="9" x2="14" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg> <span>Cari SPBU</span></button>
@@ -664,11 +767,11 @@
                         </div>
 
                         <!-- Kartu Info Aplikasi Musik & Status Audio Aktif (Klik untuk membuka aplikasi musik yang dipilih) -->
-                        <div onclick="openCurrentMusicSourceApp()" style="display:flex; align-items:center; gap:11px; cursor:pointer; background:var(--panel-bg); padding:10px; border-radius:14px; border:1px solid var(--border-faint);">
+                        <div class="glass-inset" onclick="openCurrentMusicSourceApp()" style="display:flex; align-items:center; gap:11px; cursor:pointer; background:var(--panel-bg); padding:10px; border-radius:14px; border:1px solid var(--border-faint);">
                             <div style="width:48px; height:48px; border-radius:999px; background:linear-gradient(135deg, var(--accent-main), var(--btn-primary)); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; border:2px solid rgba(255,255,255,0.2); box-shadow:0 0 15px var(--border-faint);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
                             <div style="overflow:hidden; flex:1;">
                                 <div id="song-title" style="font-size:13px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Memuat Audio...</div>
-                                <div id="song-artist" style="font-size:11px; color:rgba(216,180,254,0.85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">Putar musik di headunit</div>
+                                <div id="song-artist" style="font-size:11px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">Putar musik di headunit</div>
                             </div>
                             <div id="eq-bars" style="display:flex; align-items:flex-end; gap:3px; height:20px;">
                                 <span style="width:3px; background:var(--accent-light); border-radius:2px; height:6px;"></span>
@@ -680,7 +783,7 @@
 
                         <!-- Bar Status Pemutaran -->
                         <div style="display:flex; justify-content:space-between; align-items:center; padding:0 2px;">
-                            <span id="playback-status-text" style="font-size:10px; font-weight:700; color:rgba(216,180,254,0.75);">Audio Dijeda</span>
+                            <span id="playback-status-text" style="font-size:10px; font-weight:700; color:var(--text-muted);">Audio Dijeda</span>
                             <button onclick="openCurrentMusicSourceApp()" style="background:none; border:none; color:var(--accent-light); font-size:10px; font-weight:800;">Buka Aplikasi ↗</button>
                         </div>
 
@@ -718,7 +821,7 @@
                     <!-- Pintasan Cepat: Murni Ikon + Nama Aplikasi & Bisa Diubah -->
                     <div class="glass-card" style="height:168px; border-radius:16px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-size:10px; font-weight:800; letter-spacing:0.08em; color:rgba(216,180,254,0.85);">PINTASAN CEPAT</span>
+                            <span style="font-size:10px; font-weight:800; letter-spacing:0.08em; color:var(--text-muted);">PINTASAN CEPAT</span>
                             <button onclick="openShortcutPickerModal(0)" style="font-size:10px; font-weight:800; padding:2px 8px; border-radius:6px; background:var(--border-faint); color:var(--text-muted); border:1px solid var(--border-faint); display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> <span>Ubah</span></button>
                         </div>
                         <div id="quick-shortcuts-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; flex:1; margin-top:8px; align-items:center; justify-items:center;"></div>
@@ -996,7 +1099,7 @@
                     <div style="background:var(--panel-bg); border:1px solid var(--border-faint); border-radius:16px; padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
                         <div>
                             <div style="font-size:12px; font-weight:800; color:#facc15; margin-bottom:10px;">2. TEMA WARNA & PINTASAN</div>
-                            <div id="theme-buttons-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:7px; margin-bottom:10px;">
+                            <div id="theme-buttons-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:7px; margin-bottom:10px; max-height:205px; overflow-y:auto; padding:2px;">
                                 <button id="theme-btn-0" onclick="applyThemeByIndex(0)" style="padding:8px 8px; border-radius:11px; background:linear-gradient(135deg, #2e1065 0%, #170d2b 100%); color:#ffffff; font-size:11px; font-weight:800; border:2px solid #facc15; box-shadow:0 0 14px rgba(196,155,255,0.55); display:flex; align-items:center; justify-content:flex-start; gap:6px; cursor:pointer; transition:all 0.2s;">
                                     <span class="theme-swatch" style="width:12px; height:12px; border-radius:999px; background:#a855f7; border:1.5px solid #e9d5ff; flex-shrink:0;"></span>
                                     <span style="flex:1; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Cyber Purple</span>
@@ -1026,6 +1129,16 @@
                                     <span class="theme-swatch" style="width:12px; height:12px; border-radius:999px; background:#059669; border:1.5px solid #6ee7b7; flex-shrink:0;"></span>
                                     <span style="flex:1; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Racing Green</span>
                                     <span class="theme-check-icon hidden" style="width:15px; height:15px; border-radius:999px; background:#facc15; color:#09090b; display:none; align-items:center; justify-content:center; flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#09090b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                </button>
+                                <button id="theme-btn-6" onclick="applyThemeByIndex(6)" style="padding:8px; border-radius:11px; background:linear-gradient(135deg,#304e65,#222437); color:#e2e8f0; font-size:11px; font-weight:800; border:1px solid rgba(200,218,231,0.35); display:flex; align-items:center; gap:6px; cursor:pointer; transition:all 0.2s;">
+                                    <span class="theme-swatch" style="width:12px; height:12px; border-radius:999px; background:#a6b8c8; border:1.5px solid #dfebf4; flex-shrink:0;"></span>
+                                    <span style="flex:1; text-align:left;">Arctic Glass</span>
+                                    <span class="theme-check-icon hidden" style="width:15px; height:15px; border-radius:999px; background:#facc15; color:#09090b; display:none; align-items:center; justify-content:center; flex-shrink:0;">✓</span>
+                                </button>
+                                <button id="theme-btn-7" onclick="applyThemeByIndex(7)" style="padding:8px; border-radius:11px; background:linear-gradient(135deg,#424057,#493832); color:#eee7ec; font-size:11px; font-weight:800; border:1px solid rgba(217,204,220,0.35); display:flex; align-items:center; gap:6px; cursor:pointer; transition:all 0.2s;">
+                                    <span class="theme-swatch" style="width:12px; height:12px; border-radius:999px; background:#b7abbc; border:1.5px solid #e9dfe9; flex-shrink:0;"></span>
+                                    <span style="flex:1; text-align:left;">Twilight Glass</span>
+                                    <span class="theme-check-icon hidden" style="width:15px; height:15px; border-radius:999px; background:#facc15; color:#09090b; display:none; align-items:center; justify-content:center; flex-shrink:0;">✓</span>
                                 </button>
                             </div>
                         </div>
@@ -2524,6 +2637,8 @@
         document.getElementById('trip-badge').innerText = 'MODE: ' + cat;
         document.getElementById('cat-pribadi').style.background = cat === 'PRIBADI' ? 'var(--btn-primary)' : 'var(--panel-bg)';
         document.getElementById('cat-kerja').style.background = cat === 'KERJA' ? 'var(--btn-primary)' : 'var(--panel-bg)';
+        document.getElementById('cat-pribadi').classList.toggle('glass-active', cat === 'PRIBADI');
+        document.getElementById('cat-kerja').classList.toggle('glass-active', cat === 'KERJA');
         queueAutoSyncPayload();
     }
 
@@ -2605,6 +2720,7 @@
         ['SPOTIFY', 'MUSIK', 'FM', 'BT'].forEach(tab => {
             const btn = document.getElementById('src-btn-' + tab);
             if (!btn) return;
+            btn.classList.toggle('glass-active', tab === activeMusicTab);
             if (tab === activeMusicTab) {
                 btn.style.background = 'var(--btn-primary)';
                 btn.style.color = '#fff';
@@ -2691,7 +2807,7 @@
             const iconSource = (liveApp && liveApp.icon) ? liveApp.icon : (item.icon || '');
             const iconHtml = `<div style="width:50px; height:50px; border-radius:16px; background:var(--squircle-bg); border:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:center; padding:6px; box-shadow:inset 0 2px 8px rgba(0,0,0,0.55);">${appIconInnerHtml({ name: label, pkg: item.pkg, icon: iconSource }, 'width:100%; height:100%; border-radius:11px; object-fit:contain;', 'width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:900; color:var(--accent-light);')}</div>`;
             return `
-                <button onclick="handleShortcutClick(${idx})" oncontextmenu="openShortcutPickerModal(${idx}); return false;" style="background:var(--squircle-bg); border:1px solid var(--border-subtle); border-radius:18px; padding:8px 4px; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:#fff; overflow:hidden; box-shadow:0 6px 16px rgba(0,0,0,0.4);">
+                <button class="glass-inset" onclick="handleShortcutClick(${idx})" oncontextmenu="openShortcutPickerModal(${idx}); return false;" style="background:var(--squircle-bg); border:1px solid var(--border-subtle); border-radius:18px; padding:8px 4px; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:#fff; overflow:hidden; box-shadow:0 6px 16px rgba(0,0,0,0.4);">
                     ${iconHtml}
                     <span style="font-size:10px; font-weight:700; color:var(--text-muted); width:95%; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${safeLabel}</span>
                 </button>
@@ -4470,8 +4586,60 @@
             textMuted: '#a7f3d0',
             borderSubtle: 'rgba(110, 231, 183, 0.32)',
             borderFaint: 'rgba(16, 185, 129, 0.24)'
+        },
+        {
+            name: 'Arctic Glass',
+            bgDeep: '#080e1c',
+            bgPrimary: '#101c2d',
+            bgSecondary: '#23394d',
+            glow1: 'rgba(106, 166, 194, 0.42)',
+            glow2: 'rgba(133, 115, 162, 0.30)',
+            cardBg: 'rgba(50, 78, 99, 0.78)',
+            cardBorder: 'rgba(200, 218, 231, 0.30)',
+            squircleBg: '#243246',
+            inputBg: '#101a29',
+            panelBg: 'rgba(56, 72, 92, 0.72)',
+            panelDarkBg: 'rgba(15, 23, 36, 0.94)',
+            btnPrimary: '#67788d',
+            btnSecondary: 'rgba(86, 104, 126, 0.58)',
+            dockActiveBg: 'rgba(154, 174, 194, 0.28)',
+            accentMain: '#a6b8c8',
+            accentLight: '#dfebf4',
+            textMuted: '#cbd8e4',
+            borderSubtle: 'rgba(200, 218, 231, 0.34)',
+            borderFaint: 'rgba(171, 193, 212, 0.24)'
+        },
+        {
+            name: 'Twilight Glass',
+            bgDeep: '#110d19',
+            bgPrimary: '#211c2c',
+            bgSecondary: '#3c303d',
+            glow1: 'rgba(155, 143, 178, 0.40)',
+            glow2: 'rgba(185, 133, 106, 0.34)',
+            cardBg: 'rgba(75, 65, 86, 0.78)',
+            cardBorder: 'rgba(217, 204, 220, 0.30)',
+            squircleBg: '#322a3b',
+            inputBg: '#1b1622',
+            panelBg: 'rgba(80, 66, 78, 0.72)',
+            panelDarkBg: 'rgba(27, 22, 32, 0.94)',
+            btnPrimary: '#7e738a',
+            btnSecondary: 'rgba(115, 99, 118, 0.58)',
+            dockActiveBg: 'rgba(183, 171, 188, 0.28)',
+            accentMain: '#b7abbc',
+            accentLight: '#e9dfe9',
+            textMuted: '#dbd0da',
+            borderSubtle: 'rgba(217, 204, 220, 0.34)',
+            borderFaint: 'rgba(191, 170, 186, 0.24)'
         }
     ];
+
+    // Menurunkan kekuatan warna tema tanpa memakai tint tetap.
+    function themeColorWithAlpha(color, factor) {
+        const m = String(color).match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/i);
+        if (!m) return color;
+        const a = Math.min(1, (m[4] === undefined ? 1 : parseFloat(m[4])) * factor);
+        return 'rgba(' + Math.round(+m[1]) + ', ' + Math.round(+m[2]) + ', ' + Math.round(+m[3]) + ', ' + a.toFixed(2) + ')';
+    }
 
     function applyThemeByIndex(idx, silent) {
         const safeIdx = (idx >= 0 && idx < THEME_PRESETS.length) ? idx : 0;
@@ -4497,6 +4665,21 @@
         root.setProperty('--text-muted', t.textMuted);
         root.setProperty('--border-subtle', t.borderSubtle);
         root.setProperty('--border-faint', t.borderFaint);
+        // Token kaca mengikuti preset aktif; tidak memakai tint ungu tetap.
+        // Intensitas dan jangkauan orb diturunkan ~45% untuk berkendara malam.
+        root.setProperty('--bg-ambient-glow', themeColorWithAlpha(t.glow1, 1.045));
+        root.setProperty('--ambient-glow-secondary', themeColorWithAlpha(t.glow2, 0.99));
+        root.setProperty('--glass-surface', themeColorWithAlpha(t.cardBg, 0.28));
+        root.setProperty('--glass-border', themeColorWithAlpha(t.borderSubtle, 0.7));
+        root.setProperty('--glass-border-soft', themeColorWithAlpha(t.borderSubtle, 0.6));
+        root.setProperty('--glass-border-top', t.accentLight);
+        root.setProperty('--glass-secondary', themeColorWithAlpha(t.panelBg, 0.12));
+        // Peta bergerak lebih ramai: tint ekstra menjaga label tetap terbaca.
+        root.setProperty('--glass-map-surface', themeColorWithAlpha(t.panelDarkBg, 0.65));
+        root.setProperty('--glass-sheen', themeColorWithAlpha(t.borderSubtle, 0.75));
+        root.setProperty('--glass-sheen-soft', themeColorWithAlpha(t.borderSubtle, 0.35));
+        root.setProperty('--glass-edge-glow', themeColorWithAlpha(t.glow1, 0.65));
+        root.setProperty('--accent-glow', t.glow1);
 
         // Update Speedometer SVG Gradients & Route Polyline
         const s1 = document.getElementById('speed-grad-stop1');
@@ -4780,6 +4963,7 @@
             const btn = document.getElementById('dock-' + t);
             if (view) view.classList.toggle('hidden', t !== tab);
             if (btn) {
+                btn.classList.toggle('glass-active', t === tab);
                 btn.style.background = (t === tab) ? 'var(--dock-active-bg)' : 'transparent';
                 btn.style.borderColor = (t === tab) ? 'var(--accent-main)' : 'transparent';
                 btn.style.color = (t === tab) ? '#ffffff' : 'var(--text-muted)';
