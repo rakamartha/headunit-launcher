@@ -1403,6 +1403,12 @@
     let totalMaxSpeedKmh = parseInt(localStorage.getItem('gc_max_speed_kmh_v1') || '0');
     if (!isFinite(totalMaxSpeedKmh) || totalMaxSpeedKmh < 0) totalMaxSpeedKmh = 0;
     let longestTripKm = parseFloat(localStorage.getItem('gc_longest_km_v8') || '0.0');
+    // Odometer aktual mobil: diisi sekali oleh pengguna, lalu bertambah dari jarak GPS
+    // yang sudah lolos validasi. Nilai 0 berarti belum dikalibrasi.
+    let odometerKm = parseFloat(localStorage.getItem('gc_odo_km_v6') || '0') || 0;
+    if (!isFinite(odometerKm) || odometerKm < 0) odometerKm = 0;
+    // Instalasi lama yang sudah punya nilai odometer dianggap sudah dikalibrasi.
+    let odometerCalibrated = localStorage.getItem('gc_odo_calibrated_v1') === '1' || odometerKm > 0;
     let activeDaysArr = JSON.parse(localStorage.getItem('gc_active_days_v8') || '[]');
     let tripHistoryArr = JSON.parse(localStorage.getItem('gc_trip_history_v9') || '[]');
     if (!totalMaxSpeedKmh && tripHistoryArr.length) {
@@ -2241,6 +2247,12 @@
             sessionDistKm += distanceDeltaKm;
             totalMonthlyKm += distanceDeltaKm;
             if (typeof deductServiceComponentsKm === 'function') deductServiceComponentsKm(distanceDeltaKm);
+            // Odometer aktual ikut bertambah hanya setelah pengguna mengisi nilai awal.
+            if (odometerCalibrated) {
+                odometerKm += distanceDeltaKm;
+                writeStorageThrottled('gc_odo_km_v6', odometerKm.toFixed(2));
+                syncOdometerInput();
+            }
             if (sessionDistKm > longestTripKm) {
                 longestTripKm = sessionDistKm;
                 writeStorageThrottled('gc_longest_km_v8', longestTripKm.toFixed(2));
@@ -2338,7 +2350,7 @@
 
     function buildStatePayload() {
         upsertCurrentSessionToHistory();
-        const odoBase = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
+        const odoBase = Math.round(odometerKm);
         const calculatedAvgSpd = totalDrivingSeconds > 60
             ? Math.round(totalMonthlyKm / (totalDrivingSeconds / 3600))
             : 0;
@@ -3688,7 +3700,7 @@
         const now = new Date();
         const monthsId = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
         const dateFormatted = `${now.getDate()} ${monthsId[now.getMonth()]} ${now.getFullYear()}`;
-        const curOdo = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
+        const curOdo = Math.round(odometerKm);
 
         if (comp.hasKm) {
             comp.remKm = comp.intervalKm || comp.recKm || 10000;
@@ -4207,20 +4219,37 @@
         showToast('Komponen ' + name + ' ditambahkan');
     }
 
+    // Input hanya disegarkan saat pengguna tidak sedang mengetik.
+    function syncOdometerInput() {
+        const input = document.getElementById('odo-input');
+        if (input && document.activeElement !== input) {
+            input.value = Math.round(odometerKm);
+        }
+    }
+
     function updateOdometer() {
-        const prevOdo = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
-        const val = parseInt(document.getElementById('odo-input').value) || 0;
-        if (prevOdo > 0 && val > prevOdo) {
+        const prevOdo = odometerKm;
+        const inputEl = document.getElementById('odo-input');
+        const rawVal = parseFloat(inputEl.value);
+        const val = isFinite(rawVal) && rawVal > 0 ? Math.round(rawVal * 10) / 10 : 0;
+        // Selisih manual hanya mengurangi sisa servis jika odometer sudah pernah dikalibrasi.
+        // Jarak harian sudah dikurangi saat GPS menerima pergerakan yang valid.
+        if (odometerCalibrated && prevOdo > 0 && val > prevOdo) {
             deductServiceComponentsKm(val - prevOdo, true);
         }
-        localStorage.setItem('gc_odo_km_v6', String(val));
+        odometerKm = val;
+        odometerCalibrated = true;
+        localStorage.setItem('gc_odo_calibrated_v1', '1');
+        writeStorageThrottled('gc_odo_km_v6', odometerKm.toFixed(2), true);
+        if (inputEl) inputEl.value = val > 0 ? Math.round(val) : 0;
         renderServiceDashboard();
         queueAutoSyncPayload(true);
         if (syncSession && navigator.onLine) publishServiceSnapshot(true);
         const quotaNote = syncQuotaBlockedUntil > Date.now()
             ? ' Kuota sync habis; data dikirim otomatis setelah pulih.'
             : '';
-        showToast('Odometer (' + val.toLocaleString('id-ID') + ' KM) disimpan.' + quotaNote);
+        const autoNote = val > 0 ? ' Odometer akan bertambah otomatis sesuai jarak GPS.' : '';
+        showToast('Odometer (' + val.toLocaleString('id-ID') + ' KM) disimpan.' + autoNote + quotaNote);
     }
 
     function updateVehicleName(name) {
@@ -4788,8 +4817,7 @@
         document.getElementById('setting-vehicle-name').value = savedName;
         const savedGmail = localStorage.getItem('gc_user_gmail') || '';
         document.getElementById('setting-gmail-input').value = savedGmail;
-        const savedOdo = parseInt(localStorage.getItem('gc_odo_km_v6') || '0');
-        document.getElementById('odo-input').value = savedOdo;
+        document.getElementById('odo-input').value = Math.round(odometerKm);
         ensureMonthlyReset(false);
         renderServiceDashboard();
         renderTotalKm();
