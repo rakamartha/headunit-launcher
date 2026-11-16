@@ -166,6 +166,11 @@
             border: 1px solid var(--glass-border-soft) !important;
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
         }
+        /* Peta adalah layer bergerak: hindari blur induk + filter tile bertingkat. */
+        #view-home > .col-5.glass-card {
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
         .glass-active, #btn-play {
             box-shadow:
                 inset 0 1px 0 rgba(255,255,255,0.30),
@@ -1161,6 +1166,9 @@
                                 <span>Akses Notifikasi Media</span>
                                 <span id="notif-listener-status" style="font-size:10px; font-weight:900; color:#fca5a5;">Memeriksa...</span>
                             </button>
+                            <button onclick="enableGpsBootRecording()" style="width:100%; padding:8px 10px; border-radius:10px; background:var(--squircle-bg); border:1px solid var(--border-subtle); color:#fff; font-size:11px; font-weight:800; cursor:pointer; text-align:left;">
+                                GPS setelah boot · <span id="gps-boot-status" style="color:var(--text-muted);">Periksa izin</span>
+                            </button>
                         </div>
                         <div style="display:flex; gap:6px;">
                             <button onclick="resetTripDistance()" style="flex:1; padding:8px; border-radius:10px; background:rgba(220,38,38,0.3); border:1px solid rgba(248,113,113,0.4); color:#fca5a5; font-size:11px; font-weight:800; cursor:pointer;">Reset 0,0 KM</button>
@@ -1212,6 +1220,29 @@
 <script src="sync-secure.js"></script>
 <script src="sync-transport.js"></script>
 <script>
+    // Checkpoint dan ACK GPS disimpan dalam satu transaksi native.
+    // Pulihkan sebelum memuat penghitung agar replay setelah crash tidak ganda.
+    let gpsStoredCheckpoint = null;
+    let gpsJournalReady = false;
+    let gpsJournalDraining = false;
+    let gpsJournalLastId = 0;
+    let gpsJournalBoot = null;
+    let gpsJournalLastWall = 0;
+    let gpsCheckpointLastSavedAt = 0;
+    try {
+        if (window.AndroidBridge && window.AndroidBridge.readGpsCheckpoint) {
+            const raw = window.AndroidBridge.readGpsCheckpoint();
+            if (raw) {
+                const saved = JSON.parse(raw);
+                if (saved.v === 1 && saved.storage && saved.active) {
+                    gpsStoredCheckpoint = saved;
+                    Object.keys(saved.storage).forEach(key => {
+                        if (key.startsWith('gc_')) localStorage.setItem(key, saved.storage[key]);
+                    });
+                }
+            }
+        }
+    } catch (error) { console.warn('GPS checkpoint gagal dimuat', error); }
     // Escape semua data dinamis sebelum dimasukkan ke innerHTML (anti HTML/JS injection).
     function escapeHtml(value) {
         return String(value == null ? '' : value)
@@ -1397,6 +1428,8 @@
     }
 
     window.onNativeResumeCheck = function() {
+        drainNativeGpsJournal();
+        refreshGpsBootStatus();
                 syncAppVersionLabels();
         const savedOffset = parseInt(localStorage.getItem('gc_gps_offset_v13') || '0');
         setGpsOffsetValue(savedOffset);
@@ -1410,6 +1443,9 @@
         // Saat kembali dari Setelan/aplikasi lain, ambil perubahan servis yang
         // mungkin terlewat ketika koneksi SSE sedang terputus.
         refreshServiceFromRemote();
+        mapRecoveryAttempts = 0;
+        recoverLiveMap();
+        flushTripRouteBacklog();
         setTimeout(() => checkAndShowStartupServiceAlert(false), 450);
         checkAndShowStartupServiceAlert(false);
     };
@@ -1423,30 +1459,47 @@
     let currentLng = 106.8096;
     let hasFirstGpsFix = false;
     let isDarkMap = true;
+    let liveTileLayer = null;
+    let mapRecoveryTimer = null;
+    let mapRecoveryAttempts = 0;
+
+    function recoverLiveMap() {
+        if (!mapInstance) return;
+        mapInstance.invalidateSize({ pan: false });
+        if (liveTileLayer && navigator.onLine) liveTileLayer.redraw();
+    }
 
     function initLiveMap() {
         try {
             if (typeof L === 'undefined') return;
             mapInstance = L.map('live-map', {
-                zoomControl: false
+                zoomControl: false,
+                fadeAnimation: false,
+                zoomAnimation: false
             }).setView([currentLat, currentLng], 16);
 
             // Gunakan Google Maps Standard Road Tiles (Bebas API Key Required & Lengkap Seluruh Jalan Indonesia)
             const googleLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&hl=id&x={x}&y={y}&z={z}', {
                 maxZoom: 20,
+                keepBuffer: 4,
+                updateWhenZooming: false,
                 attribution: '&copy; Google'
             });
-            // Fallback ke OpenStreetMap jika koneksi membatasi domain tertentu.
-            // Hanya tambahkan sekali agar tileerror berulang tidak menumpuk layer.
-            let osmFallbackAdded = false;
-            googleLayer.on('tileerror', function() {
-                if (osmFallbackAdded) return;
-                osmFallbackAdded = true;
-                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }).addTo(mapInstance);
+            // Fallback per ubin, bukan lapisan baru yang menutupi tile sehat.
+            googleLayer.on('tileerror', function(event) {
+                if (!mapRecoveryTimer && mapRecoveryAttempts < 3 && navigator.onLine) {
+                    mapRecoveryTimer = setTimeout(function() {
+                        mapRecoveryTimer = null;
+                        mapRecoveryAttempts++;
+                        recoverLiveMap();
+                    }, 15000);
+                }
+                if (!event.tile || event.tile.dataset.osmFallback || event.coords.z > 19) return;
+                event.tile.dataset.osmFallback = '1';
+                event.tile.src = 'https://tile.openstreetmap.org/' + event.coords.z + '/' + event.coords.x + '/' + event.coords.y + '.png';
             });
+            liveTileLayer = googleLayer;
+            googleLayer.options.attribution += ' | &copy; OpenStreetMap contributors';
             googleLayer.addTo(mapInstance);
 
             routePolyline = L.polyline([], {
@@ -1654,8 +1707,8 @@
     }
 
 
-    function startNewDrivingSession() {
-        const now = new Date();
+    function startNewDrivingSession(atTime) {
+        const now = atTime === undefined ? new Date() : new Date(atTime);
         currentSessionId = 'TRIP-' + now.getTime();
         sessionStartClock = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
         sessionDateIso = localDateIso(now);
@@ -1711,7 +1764,7 @@
             if (tripHistoryArr.length > 60) tripHistoryArr = tripHistoryArr.slice(0, 60);
         }
         writeStorageThrottled('gc_trip_history_v9', JSON.stringify(tripHistoryArr), force);
-        if (publishRoute) publishTripRoute(sessionObj);
+        if (publishRoute) flushTripRouteBacklog(true);
     }
 
     // Dipanggil otomatis saat Headunit mati / ACC OFF / Sleep
@@ -1722,6 +1775,12 @@
         // Simpan snapshot servis terakhir sebelum proses WebView dihentikan.
         if (typeof publishServiceSnapshot === 'function') publishServiceSnapshot(true);
         flushStorageWrites();
+        saveNativeGpsCheckpoint(true);
+    };
+    window.onNativeDashboardHidden = function() {
+        upsertCurrentSessionToHistory(true);
+        flushStorageWrites();
+        saveNativeGpsCheckpoint(true);
     };
     window.addEventListener('pagehide', flushStorageWrites);
 
@@ -1749,20 +1808,45 @@
     const SERVICE_AUTO_PUBLISH_MIN_MS = 5 * 60 * 1000;
     const SERVICE_AUTO_PUBLISH_MIN_KM = 10;
     const seenSyncNonces = new Set();
-    let lastPublishedRouteSignature = '';
+    const publishedRouteSignatures = new Map();
+    let routePublishInFlight = false;
+
+    // Riwayat lokal menjadi outbox tahan restart. Maksimal 3 rute per batch;
+    // kirim ulang setelah membuka aplikasi agar HP dapat mengejar riwayat.
+    async function flushTripRouteBacklog(includeCurrent) {
+        if (routePublishInFlight) return;
+        routePublishInFlight = true;
+        try {
+            let sent = 0;
+            for (const trip of tripHistoryArr.slice(0, 60)) {
+                // Rute aktif sudah ikut state; jangan kirim tiap titik GPS.
+                if (trip.tripId === currentSessionId && includeCurrent !== true) continue;
+                if (!trip.route) continue;
+                const signature = JSON.stringify(trip.route);
+                if (publishedRouteSignatures.get(trip.tripId) === signature) continue;
+                await publishTripRoute(trip);
+                if (++sent >= 3) break;
+            }
+        } finally { routePublishInFlight = false; }
+    }
+    setInterval(flushTripRouteBacklog, AUTO_STATE_PUSH_INTERVAL_MS);
+    window.addEventListener('online', function() {
+        mapRecoveryAttempts = 0;
+        recoverLiveMap();
+        flushTripRouteBacklog();
+    });
 
     // Rute perjalanan dikirim terpisah dari state utama supaya amplop tetap
     // kecil (batas ntfy ~3,8 KB). Topik state dipakai ulang dengan purpose
     // "route" sehingga tidak perlu izin channel Ably baru.
     async function publishTripRoute(trip) {
-        if (!trip || !trip.route) return;
+        if (!trip || !trip.route) return false;
         const routeSignature = JSON.stringify(trip.route);
         if (routeSignature.length < 8) return;
         if (!syncSession || !navigator.onLine) return;
         if (typeof PDTransport === 'undefined' || !PDTransport.ready()) return;
         if (syncQuotaBlockedUntil > Date.now()) return;
-        const signature = trip.tripId + ':' + routeSignature;
-        if (signature === lastPublishedRouteSignature) return;
+        if (publishedRouteSignatures.get(trip.tripId) === routeSignature) return true;
         try {
             const sealed = await PDSync.seal(syncSession, 'route', {
                 tripId: trip.tripId,
@@ -1772,10 +1856,12 @@
             });
             if (sealed.length > PDTransport.maxPayloadBytes()) return;
             await postSyncMessage(syncSession.stateTopic, sealed);
-            lastPublishedRouteSignature = signature;
+            publishedRouteSignatures.set(trip.tripId, routeSignature);
+            return true;
         } catch (e) {
             if (e && e.status === 429) markSyncQuotaExhausted(e);
         }
+        return false;
     }
 
     function rememberNonce(nonce) {
@@ -2132,6 +2218,7 @@
             await pullServiceHistory();
             subscribeServiceTopic();
             queueAutoSyncPayload(true);
+            flushTripRouteBacklog();
             queueServicePublish(true);
         } catch (e) {
             console.warn('PDSync init gagal:', e && e.message);
@@ -2249,7 +2336,7 @@
         if (glowArc) glowArc.style.strokeDashoffset = dashOffset;
     }
 
-    window.onNativeGpsUpdate = function(speedKmh, lat, lng, bearing, accuracyMeters, isGpsProvider, fixElapsedMs, fixAgeMs, hasSpeed) {
+    window.onNativeGpsUpdate = function(speedKmh, lat, lng, bearing, accuracyMeters, isGpsProvider, fixElapsedMs, fixAgeMs, hasSpeed, recordedAt) {
         lat = Number(lat);
         lng = Number(lng);
         accuracyMeters = Number(accuracyMeters);
@@ -2280,7 +2367,7 @@
                 const arrowEl = document.getElementById('car-arrow');
                 if (arrowEl && bearing) arrowEl.style.transform = 'rotate(' + bearing + 'deg)';
                 if (!hasFirstGpsFix || reportedSpeed >= 1) {
-                    mapInstance.panTo([lat, lng], { animate: true });
+                    mapInstance.panTo([lat, lng], { animate: false });
                     hasFirstGpsFix = true;
                 }
             }
@@ -2294,13 +2381,17 @@
         }
         setGpsBadge('GPS REAL-TIME', 'green');
 
-        const now = Date.now();
+        const now = Number.isFinite(recordedAt) ? recordedAt : Date.now();
+        if (!sessionTripRecorded && sessionDistKm === 0 && sessionSeconds === 0) {
+            sessionStartClock = new Date(now).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
+            sessionDateIso = localDateIso(new Date(now));
+        }
         const previousFixElapsedMs = lastGpsTime;
         const gapSincePreviousFix = previousFixElapsedMs === null ? null : fixElapsedMs - previousFixElapsedMs;
         if (reportedSpeed >= 2 && lastMovingTimestamp && now - lastMovingTimestamp > 300000 && sessionTripRecorded) {
             // Tutup sesi lama sebelum memproses jarak dari fix perjalanan baru.
             upsertCurrentSessionToHistory(true, true);
-            startNewDrivingSession();
+            startNewDrivingSession(now);
         }
 
         let inferredSpeedKmh = 0;
@@ -2388,7 +2479,7 @@
                 sessionTripRecorded = true;
                 totalTripsCount += 1;
                 localStorage.setItem('gc_trips_count_v8', String(totalTripsCount));
-                const todayKey = localDateIso();
+                const todayKey = localDateIso(new Date(now));
                 if (!activeDaysArr.includes(todayKey)) {
                     activeDaysArr.push(todayKey);
                     localStorage.setItem('gc_active_days_v8', JSON.stringify(activeDaysArr));
@@ -2425,14 +2516,16 @@
         }
         if (effectiveSpeedKmh >= 2 || acceptedMovement) {
             if (!sessionTripRecorded && sessionSeconds <= 2) {
-                sessionStartClock = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
+                sessionStartClock = new Date(now).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
             }
             lastMovingTimestamp = now;
         }
 
         lastGpsTime = fixElapsedMs;
-        upsertCurrentSessionToHistory();
-        queueAutoSyncPayload(false);
+        if (!gpsJournalDraining) {
+            upsertCurrentSessionToHistory();
+            queueAutoSyncPayload(false);
+        }
     };
 
     // Dipanggil native saat tidak ada fix GPS baru (mis. masuk terowongan).
@@ -2442,6 +2535,106 @@
         resetGpsDistanceAnchor();
         setGpsBadge('GPS TERTAHAN', 'yellow');
     };
+
+    function saveNativeGpsCheckpoint(force) {
+        if (!gpsJournalReady || gpsJournalDraining || !window.AndroidBridge || !window.AndroidBridge.commitGpsBatch) return;
+        if (!force && Date.now() - gpsCheckpointLastSavedAt < STORAGE_WRITE_THROTTLE_MS) return;
+        flushStorageWrites();
+        const storage = {
+            gc_total_km_v6: String(totalMonthlyKm), gc_trips_count_v8: String(totalTripsCount),
+            gc_total_sec_v8: String(totalDrivingSeconds), gc_max_speed_kmh_v1: String(totalMaxSpeedKmh),
+            gc_longest_km_v8: String(longestTripKm), gc_odo_km_v6: String(odometerKm),
+            gc_odo_calibrated_v1: odometerCalibrated ? '1' : '0',
+            gc_active_days_v8: JSON.stringify(activeDaysArr), gc_trip_history_v9: JSON.stringify(tripHistoryArr),
+            gc_service_components_v13: JSON.stringify(serviceComponents),
+            gc_month_key_v1: localStorage.getItem('gc_month_key_v1') || currentMonthKey()
+        };
+        const active = {
+            currentSessionId, sessionStartClock, sessionDateIso, sessionDistKm, sessionSeconds,
+            sessionMaxSpeed, sessionTripRecorded, lastMovingTimestamp, lastGpsTime, lastLat, lastLng,
+            lastDistanceFixElapsedMs, lastDistanceAccuracyMeters, lastAcceptedGpsElapsedMs,
+            routeBreakPending, sessionRouteSegments, routeSegments, currentLat, currentLng
+        };
+        const snapshot = { v: 1, storage, active, lastId: gpsJournalLastId, boot: gpsJournalBoot, wall: gpsJournalLastWall };
+        try {
+            if (!window.AndroidBridge.commitGpsBatch(gpsJournalLastId, JSON.stringify(snapshot))) throw new Error('Native GPS commit gagal');
+            gpsCheckpointLastSavedAt = Date.now();
+        } catch (error) {
+            // Jangan konsumsi batch berikutnya jika checkpoint gagal disimpan.
+            gpsJournalReady = false;
+            console.error('GPS checkpoint gagal; journal tetap disimpan', error);
+            showToast('Penyimpanan perjalanan gagal. Buka ulang PangDash untuk mencoba lagi.');
+        }
+    }
+
+    function refreshGpsBootStatus() {
+        const label = document.getElementById('gps-boot-status');
+        if (label && window.AndroidBridge && window.AndroidBridge.getGpsBootStatus) {
+            label.innerText = window.AndroidBridge.getGpsBootStatus();
+        }
+    }
+
+    function enableGpsBootRecording() {
+        if (window.AndroidBridge && window.AndroidBridge.enableGpsBootRecording) {
+            window.AndroidBridge.enableGpsBootRecording();
+        } else showToast('Izin GPS setelah boot tersedia di aplikasi Android');
+    }
+
+    function restoreNativeGpsSession() {
+        if (!window.AndroidBridge || !window.AndroidBridge.readGpsBatch) return;
+        if (gpsStoredCheckpoint) {
+            const s = gpsStoredCheckpoint.active;
+            ({ currentSessionId, sessionStartClock, sessionDateIso, sessionDistKm, sessionSeconds,
+                sessionMaxSpeed, sessionTripRecorded, lastMovingTimestamp, lastGpsTime, lastLat, lastLng,
+                lastDistanceFixElapsedMs, lastDistanceAccuracyMeters, lastAcceptedGpsElapsedMs,
+                routeBreakPending, sessionRouteSegments, routeSegments, currentLat, currentLng } = s);
+            gpsJournalLastId = gpsStoredCheckpoint.lastId || 0;
+            gpsJournalBoot = gpsStoredCheckpoint.boot;
+            gpsJournalLastWall = gpsStoredCheckpoint.wall || 0;
+            gpsStoredCheckpoint = null;
+            document.getElementById('session-dist').innerText = sessionDistKm.toFixed(1) + ' km';
+            document.getElementById('session-time').innerText = String(Math.floor(sessionSeconds / 60)).padStart(2, '0') + ':' + String(sessionSeconds % 60).padStart(2, '0');
+            document.getElementById('session-max').innerText = sessionMaxSpeed + ' km/j';
+        }
+        gpsJournalReady = true;
+    }
+
+    function drainNativeGpsJournal() {
+        if (!gpsJournalReady || gpsJournalDraining) return;
+        let fixes;
+        try { fixes = JSON.parse(window.AndroidBridge.readGpsBatch()); }
+        catch (error) { console.warn('GPS journal gagal dibaca', error); return; }
+        if (!Array.isArray(fixes)) return;
+        gpsJournalDraining = true;
+        try {
+            for (const fix of fixes) {
+                if (fix.id <= gpsJournalLastId) continue;
+                if (gpsJournalBoot !== fix.boot) {
+                    resetGpsDistanceAnchor();
+                    lastGpsTime = null;
+                    lastAcceptedGpsElapsedMs = null;
+                    gpsJournalBoot = fix.boot;
+                }
+                window.onNativeGpsUpdate(fix.speed, fix.lat, fix.lng, fix.bearing,
+                    fix.accuracy, true, fix.elapsed, 0, fix.hasSpeed, fix.wall);
+                gpsJournalLastId = fix.id;
+                gpsJournalLastWall = fix.wall;
+            }
+            upsertCurrentSessionToHistory(false);
+        } catch (error) {
+            gpsJournalReady = false;
+            console.error('GPS replay gagal; journal tidak dihapus', error);
+        } finally { gpsJournalDraining = false; }
+        if (!gpsJournalReady) return;
+        if (fixes.length) {
+            saveNativeGpsCheckpoint(fixes.length === 120);
+            // Proses backlog bertahap, beri browser kesempatan menggambar UI.
+            if (fixes.length === 120 && gpsJournalReady) { setTimeout(drainNativeGpsJournal, 50); return; }
+            queueAutoSyncPayload(false);
+        }
+        if (Date.now() - gpsJournalLastWall > 5000) window.onNativeGpsStale();
+    }
+    setInterval(drainNativeGpsJournal, 1000);
 
     function currentMonthKey(date) {
         const d = date || new Date();
@@ -2543,6 +2736,7 @@
         const payload = buildStatePayload();
         latestStatePayload = payload;
         writeStorageThrottled('gc_latest_sync_payload', JSON.stringify(payload), !!forceImmediate);
+        if (!gpsJournalDraining) saveNativeGpsCheckpoint(!!forceImmediate);
 
         if (!navigator.onLine) return;
         const now = Date.now();
@@ -5020,6 +5214,8 @@
     updateClock();
 
     window.addEventListener('DOMContentLoaded', () => {
+        restoreNativeGpsSession();
+        refreshGpsBootStatus();
         try {
             const bootMs = (window.performance && performance.now) ? Math.round(performance.now()) : 0;
             console.log('[PangDashPerf] DOMContentLoaded ' + bootMs + ' ms');
@@ -5041,6 +5237,8 @@
         renderServiceDashboard();
         renderTotalKm();
         initLiveMap();
+        if (routePolyline && routeSegments.length) routePolyline.setLatLngs(routeSegments);
+        drainNativeGpsJournal();
         setTripCategory(tripCategory);
         loadInstalledAppsMeta(false);
                 syncAppVersionLabels();

@@ -32,9 +32,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.drawable.Drawable
-import android.location.Location
-import android.location.LocationListener
-import android.location.LocationManager
 import android.media.AudioManager
 import android.media.AudioPlaybackConfiguration
 import android.media.MediaMetadata
@@ -125,11 +122,10 @@ class MediaListenerService : NotificationListenerService() {
     }
 }
 
-class MainActivity : Activity(), LocationListener {
+class MainActivity : Activity() {
 
     private var webView: WebView? = null
     private var audioManager: AudioManager? = null
-    private var locationManager: LocationManager? = null
     private var connectivityManager: ConnectivityManager? = null
     @Volatile private var cachedAppsJson: String? = null
     @Volatile private var cachedAppsMetaJson: String? = null
@@ -137,25 +133,6 @@ class MainActivity : Activity(), LocationListener {
     private var activityCreateElapsed: Long = 0L
     private val mainHandler = Handler(Looper.getMainLooper())
     private val REQ_HOME_ROLE = 2002
-    private var lastGpsFixElapsed: Long = 0L
-    private var gpsStaleNotified: Boolean = false
-    private val gpsWatchdogRunnable = object : Runnable {
-        override fun run() {
-            try {
-                if (lastGpsFixElapsed > 0L &&
-                    SystemClock.elapsedRealtime() - lastGpsFixElapsed >= 5000L &&
-                    !gpsStaleNotified
-                ) {
-                    gpsStaleNotified = true
-                    webView?.evaluateJavascript(
-                        "if(window.onNativeGpsStale) window.onNativeGpsStale();",
-                        null
-                    )
-                }
-            } catch (_: Throwable) {}
-            mainHandler.postDelayed(this, 2000L)
-        }
-    }
     private var prefs: SharedPreferences? = null
     private var trackedVolumePercent: Int = 50
     private var isFixedStreamHeadunit: Boolean = false
@@ -458,7 +435,6 @@ class MainActivity : Activity(), LocationListener {
         try {
             prefs = getSharedPreferences("pangdash_hu_prefs", Context.MODE_PRIVATE)
             audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-            locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
             connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             volumeControlStream = AudioManager.STREAM_MUSIC
             initHeadunitVolumeState()
@@ -1018,7 +994,8 @@ class MainActivity : Activity(), LocationListener {
     override fun onPause() {
         super.onPause()
         runOnUiThread {
-            webView?.evaluateJavascript("if(window.onNativeHeadunitSleep) window.onNativeHeadunitSleep();", null)
+            // Kamera 360 / Maps / Setelan bukan bukti ACC OFF.
+            webView?.evaluateJavascript("if(window.onNativeDashboardHidden) window.onNativeDashboardHidden();", null)
         }
     }
 
@@ -1068,8 +1045,6 @@ class MainActivity : Activity(), LocationListener {
 
     override fun onDestroy() {
         super.onDestroy()
-        try { mainHandler.removeCallbacks(gpsWatchdogRunnable) } catch (_: Throwable) {}
-        try { locationManager?.removeUpdates(this) } catch (_: Throwable) {}
         try { unregisterReceiver(otaDownloadReceiver) } catch (_: Throwable) {}
         try { unregisterReceiver(mediaReceiver) } catch (_: Throwable) {}
         try { unregisterReceiver(volumeReceiver) } catch (_: Throwable) {}
@@ -1112,75 +1087,18 @@ class MainActivity : Activity(), LocationListener {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         try {
-            if (requestCode == 1001 && grantResults.any { it == PackageManager.PERMISSION_GRANTED }) {
+            if ((requestCode == 1001 || requestCode == 1002) && grantResults.any { it == PackageManager.PERMISSION_GRANTED }) {
                 startGpsTrackingSafely()
+                webView?.evaluateJavascript("if(window.refreshGpsBootStatus) window.refreshGpsBootStatus();", null)
             }
         } catch (_: Throwable) {}
     }
 
-    @SuppressLint("MissingPermission")
     private fun startGpsTrackingSafely() {
         try {
-            val lm = locationManager ?: return
-            try { lm.removeUpdates(this) } catch (_: Throwable) {}
-            lastGpsFixElapsed = SystemClock.elapsedRealtime()
-            gpsStaleNotified = false
-            mainHandler.removeCallbacks(gpsWatchdogRunnable)
-            mainHandler.postDelayed(gpsWatchdogRunnable, 2000L)
-            // Jangan gabungkan GPS dan NETWORK pada listener yang sama. Fix
-            // network yang kasar/tertinggal dapat bergantian dengan GPS dan
-            // membuat jarak melonjak serta rute bolak-balik.
-            val provider = when {
-                lm.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
-                lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
-                else -> null
-            }
-            if (provider != null) {
-                lm.requestLocationUpdates(provider, if (provider == LocationManager.GPS_PROVIDER) 1000L else 3000L, 0f, this)
-            }
-            // Tidak memasukkan last-known location: titik tersebut bisa berasal
-            // dari perjalanan lama dan menggambar garis balik ke posisi awal.
-        } catch (_: Throwable) {}
-    }
-
-    override fun onLocationChanged(location: Location) {
-        try {
-            val nowElapsedNanos = SystemClock.elapsedRealtimeNanos()
-            val fixElapsedNanos = location.elapsedRealtimeNanos
-            if (fixElapsedNanos <= 0L || fixElapsedNanos > nowElapsedNanos) return
-            val fixAgeMs = (nowElapsedNanos - fixElapsedNanos) / 1_000_000L
-            // Jangan teruskan cache/fix yang sudah tertinggal. Watchdog juga
-            // hanya diperbarui oleh fix baru, bukan callback lama dari provider.
-            if (fixAgeMs > 15_000L) return
-            lastGpsFixElapsed = SystemClock.elapsedRealtime()
-            gpsStaleNotified = false
-            val hasSpeed = location.hasSpeed()
-            val speedKmh = if (hasSpeed) location.speed * 3.6f else 0f
-            val lat = location.latitude
-            val lng = location.longitude
-            val bearing = if (location.hasBearing()) location.bearing else 0f
-            val accuracy = if (location.hasAccuracy()) location.accuracy else 9999f
-            val isGpsProvider = location.provider == LocationManager.GPS_PROVIDER
-            val fixElapsedMs = fixElapsedNanos / 1_000_000.0
-            runOnUiThread {
-                webView?.evaluateJavascript(
-                    "if(window.onNativeGpsUpdate) window.onNativeGpsUpdate($speedKmh, $lat, $lng, $bearing, $accuracy, $isGpsProvider, $fixElapsedMs, $fixAgeMs, $hasSpeed);",
-                    null
-                )
-            }
-        } catch (_: Throwable) {}
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
-    override fun onProviderEnabled(provider: String) {
-        if (provider == LocationManager.GPS_PROVIDER || provider == LocationManager.NETWORK_PROVIDER) {
-            mainHandler.post { startGpsTrackingSafely() }
-        }
-    }
-    override fun onProviderDisabled(provider: String) {
-        if (provider == LocationManager.GPS_PROVIDER || provider == LocationManager.NETWORK_PROVIDER) {
-            mainHandler.post { startGpsTrackingSafely() }
+            GpsRecordingService.start(this)
+        } catch (error: Exception) {
+            android.util.Log.w("PangDashGPS", "Foreground GPS belum dapat dimulai", error)
         }
     }
 
@@ -1349,6 +1267,43 @@ class MainActivity : Activity(), LocationListener {
     }
 
     inner class HeadunitBridge(private val context: Context) {
+        @JavascriptInterface
+        fun getGpsBootStatus(): String {
+            val fine = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            if (!fine) return "Perlu izin GPS presisi"
+            val background = Build.VERSION.SDK_INT < 29 || checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+            return if (background) "Izin boot siap" else "Perlu izin Selalu izinkan"
+        }
+
+        @JavascriptInterface
+        fun enableGpsBootRecording() {
+            runOnUiThread {
+                if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 1001)
+                    Toast.makeText(this@MainActivity, "Izinkan lokasi presisi, lalu tekan GPS setelah boot lagi", Toast.LENGTH_LONG).show()
+                } else if (Build.VERSION.SDK_INT >= 30 && checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this@MainActivity, "Izin > Lokasi > Selalu izinkan: agar GPS bisa mulai meski kamera tampil sejak boot", Toast.LENGTH_LONG).show()
+                    startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                } else if (Build.VERSION.SDK_INT == 29 && checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION), 1002)
+                } else {
+                    startGpsTrackingSafely()
+                    Toast.makeText(this@MainActivity, "Izin GPS setelah boot sudah siap", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun readGpsBatch(): String = try { GpsJournal.get(context).batch() } catch (_: Exception) { "[]" }
+
+        @JavascriptInterface
+        fun readGpsCheckpoint(): String = try { GpsJournal.get(context).checkpoint() } catch (_: Exception) { "" }
+
+        @JavascriptInterface
+        fun commitGpsBatch(throughId: Long, snapshot: String): Boolean = try {
+            GpsJournal.get(context).commit(throughId, snapshot)
+        } catch (_: Exception) { false }
+
 
         @JavascriptInterface
         fun getAppVersion(): String {
