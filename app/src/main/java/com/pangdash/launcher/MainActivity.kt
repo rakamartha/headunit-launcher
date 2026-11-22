@@ -144,6 +144,7 @@ class MainActivity : Activity() {
 
     private var lastPushedVolumePercent: Int = -1
     private var lastPushedBrightnessPercent: Int = -1
+    private val minBrightnessPercent = 20
     private var hasPromptedWriteSettings: Boolean = false
 
     
@@ -873,7 +874,7 @@ class MainActivity : Activity() {
     private fun readCurrentSystemBrightnessPercent(): Int {
         return try {
             val sysVal = Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 230)
-            ((sysVal.coerceIn(0, 255) / 255.0) * 100.0).roundToInt().coerceIn(5, 100)
+            ((sysVal.coerceIn(0, 255) / 255.0) * 100.0).roundToInt().coerceIn(minBrightnessPercent, 100)
         } catch (_: Throwable) {
             90
         }
@@ -1875,13 +1876,14 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun setSystemBrightness(percent: Int) {
-            val clamped = percent.coerceIn(5, 100)
-            val sysVal = ((clamped / 100.0) * 255.0).roundToInt().coerceIn(5, 255)
+            // Jangan izinkan WebView/slider mengirim backlight mendekati mati.
+            val clamped = percent.coerceIn(minBrightnessPercent, 100)
+            val sysVal = ((clamped / 100.0) * 255.0).roundToInt().coerceIn(51, 255)
             runOnUiThread {
                 // 1. Terapkan langsung pada Window Activity saat ini (hardware backlight override untuk window aktif)
                 try {
                     val lp = window.attributes
-                    lp.screenBrightness = (clamped / 100f).coerceIn(0.05f, 1.0f)
+                    lp.screenBrightness = (clamped / 100f).coerceIn(minBrightnessPercent / 100f, 1.0f)
                     window.attributes = lp
                 } catch (_: Throwable) {}
 

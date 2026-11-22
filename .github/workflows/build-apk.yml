@@ -40,6 +40,7 @@ jobs:
           node tools/test-gps-journal.js
           node tools/test-route-backlog.js
           node tools/test-map-recovery.js
+          node tools/test-brightness.js
 
       - name: Setup JDK 17
         uses: actions/setup-java@v4

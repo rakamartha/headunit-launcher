@@ -602,7 +602,7 @@
             <div style="display:flex; align-items:center; gap:8px; background:var(--panel-bg); border:1px solid var(--border-faint); padding:5px 12px; border-radius:12px;">
                 <span style="display:inline-flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
                 <button onclick="adjustBrightness(-10)" style="width:24px; height:24px; border-radius:6px; background:var(--btn-secondary); color:#fff; border:none; font-weight:800;">-</button>
-                <input id="brightness-slider" type="range" min="5" max="100" value="90" ontouchstart="isUserDraggingBrightness=true" ontouchend="isUserDraggingBrightness=false" onmousedown="isUserDraggingBrightness=true" onmouseup="isUserDraggingBrightness=false" oninput="setBrightness(this.value)" onchange="isUserDraggingBrightness=false; setBrightness(this.value)" style="width:105px; height:6px;">
+                <input id="brightness-slider" type="range" min="20" max="100" value="90" title="Kecerahan minimum 20% agar layar tetap terlihat" ontouchstart="isUserDraggingBrightness=true" ontouchend="isUserDraggingBrightness=false" onmousedown="isUserDraggingBrightness=true" onmouseup="isUserDraggingBrightness=false" oninput="setBrightness(this.value)" onchange="isUserDraggingBrightness=false; setBrightness(this.value)" style="width:105px; height:6px;">
                 <button onclick="adjustBrightness(10)" style="width:24px; height:24px; border-radius:6px; background:var(--btn-secondary); color:#fff; border:none; font-weight:800;">+</button>
                 <span id="brightness-val" style="font-size:12px; font-weight:800; min-width:34px; text-align:right; color:var(--text-muted);">95%</span>
             </div>
@@ -3441,21 +3441,22 @@
     // 9. BRIGHTNESS & VOLUME HEADUNIT (SINKRONISASI 2 ARAH KE SISTEM HEADUNIT)
     let isUserDraggingBrightness = false;
     let lastUserBrightnessActionTime = 0;
+    const MIN_BRIGHTNESS_PERCENT = 20;
 
     function updateBrightnessUIFromNative(val) {
         const parsed = parseInt(val);
         if (isNaN(parsed)) return;
-        const v = Math.min(100, Math.max(5, parsed));
+        const v = Math.min(100, Math.max(MIN_BRIGHTNESS_PERCENT, parsed));
         const slider = document.getElementById('brightness-slider');
         if (slider && parseInt(slider.value) !== v) {
             slider.value = v;
         }
         document.getElementById('brightness-val').innerText = v + '%';
-        // Gunakan overlay tipis sebagai pendamping backlight hardware agar di bawah 25% tetap nyaman di malam hari
+        // Hindari peredupan ganda: hardware rendah + overlay hitam.
         const canWriteSys = (window.AndroidBridge && window.AndroidBridge.canWriteSystemSettings)
             ? window.AndroidBridge.canWriteSystemSettings()
             : false;
-        const maxOverlay = canWriteSys ? 0.35 : 0.72;
+        const maxOverlay = canWriteSys ? 0 : 0.45;
         document.getElementById('brightness-overlay').style.opacity = ((100 - v) / 100) * maxOverlay;
     }
 
@@ -3467,7 +3468,8 @@
 
     function setBrightness(val) {
         lastUserBrightnessActionTime = Date.now();
-        const v = Math.min(100, Math.max(5, parseInt(val) || 90));
+        const parsed = parseInt(val);
+        const v = Math.min(100, Math.max(MIN_BRIGHTNESS_PERCENT, isNaN(parsed) ? 90 : parsed));
         updateBrightnessUIFromNative(v);
         if (window.AndroidBridge && window.AndroidBridge.setSystemBrightness) {
             window.AndroidBridge.setSystemBrightness(v);
